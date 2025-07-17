@@ -482,7 +482,7 @@
                         const userDocRef = doc(db, AppState.usersPath, user.uid);
                         const userDocSnap = await getDoc(userDocRef);
                         if (!userDocSnap.exists()) {
-                            await setDoc(userDocRef, { email: user.email || 'anonymous', role: 'dispatcher' });
+                            await setDoc(userDocRef, { email: user.email || user.uid, role: 'dispatcher' });
                         }
 
                         await findMyDriverProfile(AppState.userId);
@@ -912,114 +912,123 @@
         
         // --- Event Listeners ---
         
-        document.body.addEventListener('click', async (e) => {
-            // Logout
-            if (e.target.id === 'logout-btn') {
-                signOut(auth);
-                window.location.reload();
-            }
-            // Settings
-            if (e.target.id === 'settings-btn' || e.target.closest('#settings-btn')) {
-                renderUserRoleManagement();
-                settingsModal.classList.remove('hidden');
-            }
-            if (e.target.id === 'settings-cancel-btn') {
-                settingsModal.classList.add('hidden');
-            }
-            // Job Dashboard Tabs
+        logoutBtn.addEventListener('click', () => {
+            signOut(auth).catch((error) => console.error('Logout Error:', error));
+        });
+
+        settingsBtn.addEventListener('click', () => {
+            renderUserRoleManagement();
+            settingsModal.classList.remove('hidden');
+        });
+        
+        settingsCancelBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+
+        openCreateJobModalBtn.addEventListener('click', () => createJobModal.classList.remove('hidden'));
+        createJobCancelBtn.addEventListener('click', () => createJobModal.classList.add('hidden'));
+
+        jobDashboardPanel.addEventListener('click', (e) => {
             if (e.target.matches('.tab-btn')) {
                 jobDashboardPanel.querySelector('.tab-btn.active').classList.remove('active');
                 e.target.classList.add('active');
                 AppState.activeJobTab = e.target.dataset.tab;
                 renderAllJobsList();
             }
-            // Job List Actions (Archive, Delete, View Details)
-            if (e.target.closest('#jobs-list')) {
-                const button = e.target.closest('button');
-                if (button) {
-                    const jobId = button.dataset.jobId;
-                    if (button.classList.contains('delete-job-btn')) {
-                        showConfirmModal('Delete Job?', 'This action is permanent and cannot be undone. Are you sure?', () => deleteJob(jobId));
-                    } else if (button.classList.contains('archive-job-btn')) {
-                        archiveJob(jobId);
-                    }
-                } else if (e.target.closest('li[data-job-id]')) {
-                    const jobId = e.target.closest('li[data-job-id]').dataset.jobId;
-                    const job = AppState.allJobs.find(j => j.id === jobId);
-                    if (job) showJobDetailsModal(job);
+        });
+
+        jobsListEl.addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (button) {
+                const jobId = button.dataset.jobId;
+                if (button.classList.contains('delete-job-btn')) {
+                    showConfirmModal('Delete Job?', 'This action is permanent and cannot be undone. Are you sure?', () => deleteJob(jobId));
+                } else if (button.classList.contains('archive-job-btn')) {
+                    archiveJob(jobId);
                 }
+            } else if (e.target.closest('li[data-job-id]')) {
+                const jobId = e.target.closest('li[data-job-id]').dataset.jobId;
+                const job = AppState.allJobs.find(j => j.id === jobId);
+                if (job) showJobDetailsModal(job);
             }
-            // Driver List Actions
-            if (e.target.closest('#drivers-list')) {
-                if (e.target.classList.contains('manage-driver-btn')) {
-                    openEditDriverModal(e.target.dataset.driverId);
-                }
+        });
+
+        driversListEl.addEventListener('click', (e) => {
+            if (e.target.classList.contains('manage-driver-btn')) {
+                openEditDriverModal(e.target.dataset.driverId);
             }
-            // Available Jobs Actions
-            if (e.target.closest('#available-jobs-list')) {
-                if (e.target.classList.contains('accept-job-btn')) {
-                    const button = e.target;
-                    const { jobId } = button.dataset;
+        });
 
-                    button.disabled = true;
-                    button.textContent = 'Accepting...';
+        availableJobsList.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('accept-job-btn')) {
+                const button = e.target;
+                const { jobId } = button.dataset;
 
-                    const jobRef = doc(db, AppState.jobsPath, jobId);
-                    
-                    try {
-                        await runTransaction(db, async (transaction) => {
-                            const jobDoc = await transaction.get(jobRef);
-                            if (!jobDoc.exists()) throw "Job does not exist!";
-                            
-                            const jobData = jobDoc.data();
-                            const assignedDrivers = jobData.assignedDrivers || [];
+                button.disabled = true;
+                button.textContent = 'Accepting...';
 
-                            if (assignedDrivers.includes(AppState.userId)) throw "You have already accepted this job.";
-                            if (assignedDrivers.length >= jobData.driversNeeded) throw "All driver slots for this job are now filled.";
-                            
-                            const newAssignedDrivers = [...assignedDrivers, AppState.userId];
-                            const isNowFull = newAssignedDrivers.length >= jobData.driversNeeded;
-                            transaction.update(jobRef, { 
-                                status: isNowFull ? 'in-progress' : 'unassigned',
-                                assignedDrivers: arrayUnion(AppState.userId) 
-                            });
+                const jobRef = doc(db, AppState.jobsPath, jobId);
+                
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const jobDoc = await transaction.get(jobRef);
+                        if (!jobDoc.exists()) throw "Job does not exist!";
+                        
+                        const jobData = jobDoc.data();
+                        const assignedDrivers = jobData.assignedDrivers || [];
 
-                            if (AppState.isSharingLocation) {
-                                const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
-                                transaction.update(driverLocRef, { status: 'On Trip' });
-                            }
+                        if (assignedDrivers.includes(AppState.userId)) throw "You have already accepted this job.";
+                        if (assignedDrivers.length >= jobData.driversNeeded) throw "All driver slots for this job are now filled.";
+                        
+                        const newAssignedDrivers = [...assignedDrivers, AppState.userId];
+                        const isNowFull = newAssignedDrivers.length >= jobData.driversNeeded;
+                        transaction.update(jobRef, { 
+                            status: isNowFull ? 'in-progress' : 'unassigned',
+                            assignedDrivers: arrayUnion(AppState.userId) 
                         });
-                        showToast("Job accepted!", "success");
-                    } catch (error) {
-                        console.error("Error accepting job:", error);
-                        showToast(error.toString(), "error");
-                        button.disabled = false;
-                        button.textContent = 'Accept';
+
+                        if (AppState.isSharingLocation) {
+                            const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
+                            transaction.update(driverLocRef, { status: 'On Trip' });
+                        }
+                    });
+                    showToast("Job accepted!", "success");
+                    await findMyDriverProfile(AppState.userId);
+                } catch (error) {
+                    console.error("Error accepting job:", error);
+                    showToast(error.toString(), "error");
+                    button.disabled = false;
+                    button.textContent = 'Accept';
+                }
+            }
+        });
+
+        completeJobBtn.addEventListener('click', async (e) => {
+            const jobId = e.target.dataset.jobId;
+            const jobRef = doc(db, AppState.jobsPath, jobId);
+            
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const jobDoc = await transaction.get(jobRef);
+                    if (!jobDoc.exists()) throw "Job not found";
+                    
+                    const jobData = jobDoc.data();
+                    const assignedDrivers = jobData.assignedDrivers || [];
+                    const remainingDrivers = assignedDrivers.filter(id => id !== AppState.userId);
+
+                    if (remainingDrivers.length === 0) {
+                        transaction.update(jobRef, { status: 'completed', assignedDrivers: arrayRemove(AppState.userId) });
+                    } else {
+                        transaction.update(jobRef, { assignedDrivers: arrayRemove(AppState.userId) });
                     }
-                }
-            }
-            // Modal Buttons
-            if (e.target.closest('.modal-close-btn') || e.target.id === 'modal-close-btn') {
-                e.target.closest('.fixed').classList.add('hidden');
-            }
-            if (e.target.id === 'create-job-cancel-btn') createJobModal.classList.add('hidden');
-            if (e.target.id === 'edit-driver-cancel-btn') editDriverModal.classList.add('hidden');
-            if (e.target.id === 'add-driver-cancel-btn') addDriverModal.classList.add('hidden');
-            if (e.target.id === 'job-details-close-btn') jobDetailsModal.classList.add('hidden');
-            if (e.target.id === 'print-job-btn') window.print();
-            if (e.target.id === 'confirm-cancel-btn') {
-                confirmModal.classList.add('hidden');
-                AppState.confirmCallback = null;
-            }
-            if (e.target.id === 'confirm-action-btn') {
-                if (typeof AppState.confirmCallback === 'function') {
-                    AppState.confirmCallback();
-                }
-                confirmModal.classList.add('hidden');
-                AppState.confirmCallback = null;
-            }
-            if (e.target.id === 'open-create-job-modal-btn') {
-                createJobModal.classList.remove('hidden');
+
+                    if (AppState.isSharingLocation) {
+                        const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
+                        transaction.update(driverLocRef, { status: 'Available' });
+                    }
+                });
+                showToast("You have completed your part of the job!", "success");
+            } catch (error) {
+                console.error("Error completing job:", error);
+                showToast("Could not complete job.", "error");
             }
         });
 
@@ -1054,6 +1063,27 @@
             await updateDoc(driverRef, { name });
             showToast('Driver details updated.', 'success');
             editDriverModal.classList.add('hidden');
+        });
+
+        deactivateDriverBtn.addEventListener('click', () => {
+            const driverId = editDriverForm.dataset.driverId;
+            showConfirmModal('Deactivate Driver?', 'This will remove the driver from active lists. They can be reactivated later.', () => {
+                const driverRef = doc(db, AppState.driversPath, driverId);
+                updateDoc(driverRef, { status: 'inactive' }).then(() => {
+                    showToast('Driver has been deactivated.', 'success');
+                    editDriverModal.classList.add('hidden');
+                });
+            });
+        });
+
+        deleteDriverBtn.addEventListener('click', () => {
+            const driverId = editDriverForm.dataset.driverId;
+            showConfirmModal('Delete Driver?', 'This action is permanent and cannot be undone.', () => {
+                deleteDoc(doc(db, AppState.driversPath, driverId)).then(() => {
+                    showToast('Driver has been permanently deleted.', 'success');
+                    editDriverModal.classList.add('hidden');
+                });
+            });
         });
 
         function renderUserRoleManagement() {
@@ -1103,6 +1133,23 @@
                 }
             }
         });
+
+        // Modal Close Buttons
+        modalCloseBtn.addEventListener('click', () => infoModal.classList.add('hidden'));
+        editDriverCancelBtn.addEventListener('click', () => editDriverModal.classList.add('hidden'));
+        jobDetailsCloseBtn.addEventListener('click', () => jobDetailsModal.classList.add('hidden'));
+        confirmCancelBtn.addEventListener('click', () => {
+            confirmModal.classList.add('hidden');
+            AppState.confirmCallback = null;
+        });
+        confirmActionBtn.addEventListener('click', () => {
+            if (typeof AppState.confirmCallback === 'function') {
+                AppState.confirmCallback();
+            }
+            confirmModal.classList.add('hidden');
+            AppState.confirmCallback = null;
+        });
+        printJobBtn.addEventListener('click', () => window.print());
 
         window.onload = () => {
             initializeFirebase();
