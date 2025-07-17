@@ -136,7 +136,7 @@
                 <div class="flex items-center justify-between pb-2 border-b border-gray-700">
                     <h1 class="text-2xl font-bold text-white">Route Tracker</h1>
                     <div class="flex items-center space-x-4">
-                        <button id="settings-btn" class="text-gray-400 hover:text-white">
+                        <button id="settings-btn" class="hidden text-gray-400 hover:text-white">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         </button>
                         <button id="logout-btn" class="text-sm text-red-400 hover:text-red-300">Logout</button>
@@ -307,14 +307,11 @@
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, limit, getDoc, arrayUnion, arrayRemove, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // --- ANALYSIS: This is a well-structured single-page application (SPA) that uses vanilla JavaScript.
-        // It's a good example of how to build a real-time application without a heavy framework like React or Vue.
-        
         // --- Initialize Firebase and Services ---
         let app, auth, db;
+        const SUPER_ADMIN_UID = 'QbXV0sMecoM7MhikQ4ftseSx0rv2';
         
         // --- UI Elements ---
-        // ANALYSIS: All UI elements are neatly organized and selected at the top of the script. This is a good practice for readability and maintainability.
         const loadingOverlay = document.getElementById('loading-overlay');
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
@@ -382,8 +379,6 @@
 
 
         // --- App State ---
-        // ANALYSIS: The AppState object is a simple yet effective way to manage the application's state.
-        // It holds all the dynamic data, making it easy to see what the application is tracking at any given time.
         const AppState = {
             userId: 'offline',
             map: null,
@@ -399,15 +394,13 @@
             myCurrentJobUnsubscribe: null,
             openJobsUnsubscribe: null,
             activeJobTab: 'current',
-            confirmCallback: null, // Store the function for the confirm modal
-            // Firestore collection paths
+            confirmCallback: null, 
             usersPath: '',
             driversPath: '',
             driverLocationsPath: '',
             jobsPath: '',
-            // Location Simulation Variables
-            currentSimulatedLat: 38.0366,
-            currentSimulatedLng: -87.3717
+            directionsService: null,
+            directionsRenderer: null,
         };
 
         // --- Main App Initialization ---
@@ -418,12 +411,12 @@
                 mapElement.innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Error</p><p class="text-gray-400">Could not load Google Maps.</p></div>`;
                 return;
             }
-            mapElement.innerHTML = ''; // Clear placeholder text
+            mapElement.innerHTML = ''; 
             const mapOptions = {
-                center: { lat: 38.0366, lng: -87.3717 },
-                zoom: 12,
+                center: { lat: 39.8283, lng: -98.5795 }, // Center of the US
+                zoom: 4,
                 disableDefaultUI: true,
-                styles: [ /* Dark mode styles */
+                styles: [ 
                     { elementType: "geometry", stylers: [{ color: "#242f3e" }] }, { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] }, { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] }, { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] }, { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] }, { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] }, { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] }, { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] }, { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] }, { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] }, { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] }, { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] }, { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] }, { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] }, { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] },
                 ],
             };
@@ -432,7 +425,7 @@
             AppState.directionsRenderer = new google.maps.DirectionsRenderer({
                 map: AppState.map,
                 polylineOptions: { strokeColor: '#4285F4', strokeWeight: 6, strokeOpacity: 0.8 },
-                suppressMarkers: true // We use our own markers
+                suppressMarkers: true 
             });
             
             const autocompleteOptions = {
@@ -446,24 +439,13 @@
         };
 
         async function initializeFirebase() {
-             // Hardcoded Firebase config as a fallback
-            const hardcodedFirebaseConfig = {
-                apiKey: "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI",
-                authDomain: "route-tracker-e62b1.firebaseapp.com",
-                projectId: "route-tracker-e62b1",
-                storageBucket: "route-tracker-e62b1.appspot.com",
-                messagingSenderId: "1016000331711",
-                appId: "1:1016000331711:web:a122b8a52045ee4e832b0a",
-                measurementId: "G-B476Z21SKP"
-            };
+            // NOTE FOR PRODUCTION: The Firebase config should be provided via environment variables.
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : null;
 
-            // Use environment variables if available, otherwise use the hardcoded config
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : hardcodedFirebaseConfig;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.appId;
-
-            if (!firebaseConfig) {
-                console.error("Firebase config not found.");
-                loadingOverlay.innerHTML = '<p class="text-red-400">Error: Firebase configuration is missing.</p>';
+            if (!firebaseConfig || !appId) {
+                console.error("Firebase config or App ID not found. This application cannot run without it.");
+                loadingOverlay.innerHTML = '<p class="text-red-400">Error: Application configuration is missing.</p>';
                 return;
             }
 
@@ -472,7 +454,6 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Define collection paths using the environment app ID
                 AppState.usersPath = `/artifacts/${appId}/public/data/users`;
                 AppState.driversPath = `/artifacts/${appId}/public/data/drivers`;
                 AppState.driverLocationsPath = `/artifacts/${appId}/public/data/driverLocations`;
@@ -482,27 +463,33 @@
                     loadingOverlay.classList.add('hidden');
                     if (user) {
                         AppState.userId = user.uid;
-                        userIdEl.textContent = AppState.userId; // Display full user ID
+                        userIdEl.textContent = AppState.userId; 
                         
+                        if (user.uid === SUPER_ADMIN_UID) {
+                            settingsBtn.classList.remove('hidden');
+                        } else {
+                            settingsBtn.classList.add('hidden');
+                        }
+
                         const userDocRef = doc(db, AppState.usersPath, user.uid);
                         const userDocSnap = await getDoc(userDocRef);
                         if (!userDocSnap.exists()) {
-                            await setDoc(userDocRef, { email: user.email || user.uid, role: 'dispatcher' });
+                            await setDoc(userDocRef, { 
+                                email: user.email || user.uid, 
+                                role: user.uid === SUPER_ADMIN_UID ? 'dispatcher' : 'dispatcher' 
+                            });
                         }
 
                         await findMyDriverProfile(AppState.userId);
                         
-                        // Show the main app
                         authContainer.classList.add('hidden');
                         appContainer.classList.remove('hidden');
 
-                        // Start listening to data
                         listenForUsers();
                         listenForDrivers();
                         listenForActiveDrivers();
                         listenForAllJobs();
                     } else {
-                        // Show login screen
                         appContainer.classList.add('hidden');
                         authContainer.classList.remove('hidden');
                         AppState.myDriverProfile = null;
@@ -537,54 +524,83 @@
              });
         }
 
-        toggleBtn.addEventListener('click', () => {
-            if (!AppState.myDriverProfile) return;
-            AppState.isSharingLocation = !AppState.isSharingLocation;
-            if (AppState.isSharingLocation) {
+        function toggleSharing(shouldShare) {
+            AppState.isSharingLocation = shouldShare;
+            if (shouldShare) {
                 toggleBtn.textContent = 'Stop Sharing';
                 toggleBtn.classList.replace('bg-blue-600', 'bg-red-600');
                 locationStatusEl.textContent = 'Sharing is on';
                 driverStatusControl.classList.remove('hidden');
-                shareLocation();
-                AppState.locationInterval = setInterval(shareLocation, 5000);
+                shareLocation(); // Initial share
+                AppState.locationInterval = setInterval(shareLocation, 10000); // 10 second interval for production
             } else {
                 toggleBtn.textContent = 'Start Sharing';
                 toggleBtn.classList.replace('bg-red-600', 'bg-blue-600');
                 locationStatusEl.textContent = 'Sharing is off';
                 driverStatusControl.classList.add('hidden');
-                deleteDoc(doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id));
+                if (AppState.locationInterval) {
+                    clearInterval(AppState.locationInterval);
+                    AppState.locationInterval = null;
+                }
+                if (AppState.myDriverProfile) {
+                     deleteDoc(doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id));
+                }
                 if (AppState.userMarker) {
                     AppState.userMarker.setMap(null);
                     AppState.userMarker = null;
                 }
             }
-        });
-
-        function getSimulatedLocation() {
-            AppState.currentSimulatedLat += (Math.random() - 0.5) * 0.005;
-            AppState.currentSimulatedLng += (Math.random() - 0.5) * 0.005;
-            return { lat: AppState.currentSimulatedLat, lng: AppState.currentSimulatedLng };
         }
 
+        toggleBtn.addEventListener('click', () => {
+            if (!AppState.myDriverProfile) return;
+            toggleSharing(!AppState.isSharingLocation);
+        });
+
         function shareLocation() {
-            const newPos = getSimulatedLocation();
-            if (AppState.map && !AppState.userMarker) {
-                AppState.userMarker = new google.maps.Marker({ 
-                    position: newPos, map: AppState.map, title: 'You (Simulated)', 
-                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 } 
-                });
-            } else if (AppState.map && AppState.userMarker) {
-                AppState.userMarker.setPosition(newPos);
+            if (!navigator.geolocation) {
+                showToast("Geolocation is not supported by your browser.", "error");
+                toggleSharing(false);
+                return;
             }
-            if (AppState.map) AppState.map.setCenter(newPos);
-            if (AppState.myDriverProfile) {
-                const locationData = { 
-                    location: new GeoPoint(newPos.lat, newPos.lng), 
-                    timestamp: serverTimestamp(),
-                    status: driverStatusSelect.value
-                };
-                setDoc(doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id), locationData, { merge: true });
-            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const newPos = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                    };
+
+                    if (AppState.map && !AppState.userMarker) {
+                        AppState.userMarker = new google.maps.Marker({
+                            position: newPos,
+                            map: AppState.map,
+                            title: 'Your Location',
+                            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
+                        });
+                    } else if (AppState.map && AppState.userMarker) {
+                        AppState.userMarker.setPosition(newPos);
+                    }
+
+                    if (AppState.map) {
+                        AppState.map.setCenter(newPos);
+                    }
+
+                    if (AppState.myDriverProfile) {
+                        const locationData = {
+                            location: new GeoPoint(newPos.lat, newPos.lng),
+                            timestamp: serverTimestamp(),
+                            status: driverStatusSelect.value
+                        };
+                        setDoc(doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id), locationData, { merge: true });
+                    }
+                },
+                (error) => {
+                    showToast(`Geolocation Error: ${error.message}`, "error");
+                    toggleSharing(false);
+                },
+                { enableHighAccuracy: true }
+            );
         }
         
         driverStatusSelect.addEventListener('change', () => {
@@ -605,26 +621,40 @@
         function listenForActiveDrivers() {
             const locationsRef = collection(db, AppState.driverLocationsPath);
             onSnapshot(locationsRef, (snapshot) => {
-                AppState.activeDrivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const activeDriverDocs = snapshot.docs;
+                AppState.activeDrivers = activeDriverDocs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderDriversList();
-                
-                snapshot.docChanges().forEach((change) => {
-                    const driverId = change.doc.id;
-                    const docData = change.doc.data();
-                    if (driverId === (AppState.myDriverProfile ? AppState.myDriverProfile.id : '') || !AppState.map) return;
-                    
+
+                if (!AppState.map) return;
+
+                const activeDriverIds = new Set(activeDriverDocs.map(doc => doc.id));
+
+                for (const driverId in AppState.driverMapMarkers) {
+                    if (!activeDriverIds.has(driverId)) {
+                        AppState.driverMapMarkers[driverId].setMap(null);
+                        delete AppState.driverMapMarkers[driverId];
+                    }
+                }
+
+                activeDriverDocs.forEach(doc => {
+                    const driverId = doc.id;
+                    const docData = doc.data();
+
+                    if (driverId === (AppState.myDriverProfile ? AppState.myDriverProfile.id : '')) {
+                        return;
+                    }
+
                     const position = { lat: docData.location.latitude, lng: docData.location.longitude };
-                    if (change.type === "added" || change.type === "modified") {
-                        if (!AppState.driverMapMarkers[driverId]) {
-                            AppState.driverMapMarkers[driverId] = new google.maps.Marker({ position, map: AppState.map, label: { text: driverId.substring(0, 2).toUpperCase(), color: "white", fontWeight: 'bold' }, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#f39c12', fillOpacity: 1, strokeColor: 'black', strokeWeight: 2 } });
-                        } else {
-                            AppState.driverMapMarkers[driverId].setPosition(position);
-                        }
-                    } else if (change.type === "removed") {
-                        if (AppState.driverMapMarkers[driverId]) {
-                            AppState.driverMapMarkers[driverId].setMap(null);
-                            delete AppState.driverMapMarkers[driverId];
-                        }
+
+                    if (AppState.driverMapMarkers[driverId]) {
+                        AppState.driverMapMarkers[driverId].setPosition(position);
+                    } else {
+                        AppState.driverMapMarkers[driverId] = new google.maps.Marker({
+                            position,
+                            map: AppState.map,
+                            label: { text: driverId.substring(0, 2).toUpperCase(), color: "white", fontWeight: 'bold' },
+                            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#f39c12', fillOpacity: 1, strokeColor: 'black', strokeWeight: 2 }
+                        });
                     }
                 });
             });
@@ -809,6 +839,31 @@
             });
         }
         
+        function calculateAndDisplayRoute(origin, destination) {
+            if (!AppState.directionsService || !AppState.directionsRenderer) return;
+
+            AppState.directionsService.route(
+                {
+                    origin: origin,
+                    destination: destination,
+                    travelMode: google.maps.TravelMode.DRIVING
+                },
+                (response, status) => {
+                    if (status === "OK") {
+                        AppState.directionsRenderer.setDirections(response);
+                    } else {
+                        showToast("Directions request failed due to " + status, "error");
+                    }
+                }
+            );
+        }
+
+        function clearRoute() {
+            if (AppState.directionsRenderer) {
+                AppState.directionsRenderer.setDirections({ routes: [] });
+            }
+        }
+
         function listenForMyJob() {
             if (AppState.myCurrentJobUnsubscribe) AppState.myCurrentJobUnsubscribe();
             if (!AppState.myDriverProfile) return;
@@ -817,7 +872,7 @@
                 if (!snapshot.empty) {
                     const job = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
                     currentJobPanel.classList.remove('hidden');
-                    availableJobsPanel.classList.add('hidden'); // Hide available jobs when on a job
+                    availableJobsPanel.classList.add('hidden'); 
                     currentJobDetails.innerHTML = `
                         <p class="font-bold text-white">${job.jobName || 'Unnamed Job'}</p>
                         <p><strong class="text-white">From:</strong> ${job.origin}</p>
@@ -826,20 +881,23 @@
                     `;
                     completeJobBtn.dataset.jobId = job.id;
 
-                    if (AppState.isSharingLocation) {
-                        calculateAndDisplayRoute(getSimulatedLocation(), job.origin);
+                    if (AppState.isSharingLocation && AppState.userMarker) {
+                        const currentPosition = AppState.userMarker.getPosition();
+                        calculateAndDisplayRoute(currentPosition, job.destination);
                     } else {
                         showToast("Start sharing your location to see the route.", "info");
+                        clearRoute();
                     }
                 } else {
                     currentJobPanel.classList.add('hidden');
-                    availableJobsPanel.classList.remove('hidden'); // Show available jobs when not on a job
+                    availableJobsPanel.classList.remove('hidden'); 
                     clearRoute();
                 }
             });
         }
 
         function loadGoogleMapsScript() {
+            // NOTE FOR PRODUCTION: The API key should be secured, for example, by loading it from a secure backend or using API key restrictions.
             const apiKey = "AIzaSyCHmVp6ImHZ37mB6XPm4x6pNODgt5PJjjg";
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
@@ -868,7 +926,7 @@
         function showConfirmModal(title, message, onConfirm) {
             confirmModalTitle.textContent = title;
             confirmModalMessage.textContent = message;
-            AppState.confirmCallback = onConfirm; // Store the callback
+            AppState.confirmCallback = onConfirm; 
             confirmModal.classList.remove('hidden');
         }
 
@@ -892,12 +950,12 @@
         }
 
         function renderUIForRole() {
-            if (AppState.myDriverProfile) { // Is a driver
+            if (AppState.myDriverProfile) { 
                 dispatchUi.classList.add('hidden');
                 driverUi.classList.remove('hidden');
                 document.getElementById('user-welcome').textContent = `Welcome, ${AppState.myDriverProfile.name}!`;
                 locationSharingPanel.classList.remove('hidden');
-            } else { // Is a dispatcher
+            } else { 
                 dispatchUi.classList.remove('hidden');
                 driverUi.classList.add('hidden');
                 document.getElementById('user-welcome').textContent = 'Welcome, Dispatcher!';
@@ -1086,9 +1144,15 @@
 
         deactivateDriverBtn.addEventListener('click', () => {
             const driverId = editDriverForm.dataset.driverId;
-            showConfirmModal('Deactivate Driver?', 'This will remove the driver from active lists. They can be reactivated later.', () => {
+            showConfirmModal('Deactivate Driver?', 'This will remove the driver from active lists and stop location tracking. They can be reactivated later.', () => {
+                const batch = writeBatch(db);
                 const driverRef = doc(db, AppState.driversPath, driverId);
-                updateDoc(driverRef, { status: 'inactive' }).then(() => {
+                const locationRef = doc(db, AppState.driverLocationsPath, driverId);
+
+                batch.update(driverRef, { status: 'inactive' });
+                batch.delete(locationRef);
+
+                batch.commit().then(() => {
                     showToast('Driver has been deactivated.', 'success');
                     editDriverModal.classList.add('hidden');
                 });
@@ -1097,12 +1161,16 @@
 
         deleteDriverBtn.addEventListener('click', () => {
             const driverId = editDriverForm.dataset.driverId;
-            showConfirmModal('Delete Driver?', 'This action is permanent and will remove the user entirely. Are you sure?', async () => {
+            showConfirmModal('Delete Driver?', 'This action is permanent and will remove the user and their location data. Are you sure?', async () => {
                 const batch = writeBatch(db);
                 const driverRef = doc(db, AppState.driversPath, driverId);
                 const userRef = doc(db, AppState.usersPath, driverId);
+                const locationRef = doc(db, AppState.driverLocationsPath, driverId);
+
                 batch.delete(driverRef);
                 batch.delete(userRef);
+                batch.delete(locationRef);
+
                 await batch.commit();
                 showToast('Driver and user have been permanently deleted.', 'success');
                 editDriverModal.classList.add('hidden');
@@ -1144,16 +1212,14 @@
                     } catch (error) {
                         showToast(`Error: ${error.message}`, 'error');
                     }
-                } else { // dispatcher
+                } else { 
                     try {
                         await updateDoc(driverRef, { status: 'inactive' });
                         await updateDoc(userRef, { role: 'dispatcher' });
                         showToast('Driver demoted to Dispatcher.', 'success');
                     } catch (error) {
-                         // Ignore error if driver doc doesn't exist
                     }
                 }
-                // If the current user's role was changed, re-check their profile
                 if (selectedUserId === AppState.userId) {
                     await findMyDriverProfile(AppState.userId);
                 }
