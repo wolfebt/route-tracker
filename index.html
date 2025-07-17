@@ -59,6 +59,11 @@
             height: 1rem;
             animation: spin 1s ease-in-out infinite;
         }
+        .large-spinner {
+             width: 3rem;
+             height: 3rem;
+             border-width: 4px;
+        }
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -66,11 +71,16 @@
 </head>
 <body class="bg-gray-900 text-gray-200">
 
+    <!-- Fullscreen Loader -->
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-[10001]">
+        <div class="spinner large-spinner"></div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-[10000]"></div>
 
     <!-- Auth Container -->
-    <div id="auth-container" class="flex items-center justify-center h-screen">
+    <div id="auth-container" class="hidden flex items-center justify-center h-screen">
         <div class="w-full max-w-sm text-center">
              <h1 class="text-4xl font-bold text-white mb-2">Dispatch Center</h1>
              <p class="text-gray-400 mb-8">Please sign in to continue</p>
@@ -321,6 +331,7 @@
         let app, auth, db;
         
         // --- UI Elements ---
+        const loadingOverlay = document.getElementById('loading-overlay');
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
         const googleSigninBtn = document.getElementById('google-signin-btn');
@@ -479,6 +490,7 @@
                 AppState.jobsPath = `/artifacts/${appId}/public/data/jobs`;
                 
                 onAuthStateChanged(auth, async (user) => {
+                    loadingOverlay.classList.add('hidden'); // Hide loader once auth state is known
                     if (user) {
                         AppState.userId = user.uid;
                         userIdEl.textContent = AppState.userId.substring(0, 8) + '...';
