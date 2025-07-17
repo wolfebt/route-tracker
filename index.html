@@ -323,9 +323,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, limit, getDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- Firebase Configuration ---
-        // NOTE: The configuration is now handled by environment variables.
         
         // --- Initialize Firebase and Services ---
         let app, auth, db;
@@ -480,9 +477,20 @@
         };
 
         async function initializeFirebase() {
-            // Use environment variables for Firebase config and auth
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+             // Hardcoded Firebase config as a fallback
+            const hardcodedFirebaseConfig = {
+                apiKey: "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI",
+                authDomain: "route-tracker-e62b1.firebaseapp.com",
+                projectId: "route-tracker-e62b1",
+                storageBucket: "route-tracker-e62b1.appspot.com",
+                messagingSenderId: "1016000331711",
+                appId: "1:1016000331711:web:a122b8a52045ee4e832b0a",
+                measurementId: "G-B476Z21SKP"
+            };
+
+            // Use environment variables if available, otherwise use the hardcoded config
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : hardcodedFirebaseConfig;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.appId;
 
             if (!firebaseConfig) {
                 console.error("Firebase config not found.");
