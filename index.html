@@ -67,6 +67,10 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        .tab-btn.active {
+            border-bottom-color: #4f46e5; /* indigo-600 */
+            color: #e5e7eb; /* gray-200 */
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200">
@@ -115,6 +119,7 @@
                 <div id="user-info-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                      <h2 id="user-welcome" class="text-lg font-semibold text-gray-200 mb-2">Welcome!</h2>
                      <p class="text-sm text-gray-400">Your User ID: <span id="userId" class="font-mono break-all"></span></p>
+                     <p class="text-sm text-gray-400">Your Team: <strong id="current-team-display" class="text-teal-400">None</strong></p>
                 </div>
 
                 <!-- Dispatcher UI -->
@@ -122,7 +127,7 @@
                     <div id="management-actions-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                         <h2 class="text-lg font-semibold text-gray-200 mb-2">Management Actions</h2>
                         <div class="grid grid-cols-2 gap-2">
-                            <button id="open-promote-driver-modal-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Promote User</button>
+                            <button id="open-create-team-modal-btn" class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Create Team</button>
                             <button id="open-create-job-modal-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Create Job</button>
                         </div>
                     </div>
@@ -131,8 +136,11 @@
                         <ul id="drivers-list" class="space-y-2"></ul>
                     </div>
                     <div id="job-dashboard-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                        <h3 class="text-lg font-semibold text-gray-200 mb-2">Job Dashboard</h3>
-                        <ul id="jobs-list" class="space-y-2"></ul>
+                        <div class="flex border-b border-gray-700">
+                            <button data-tab="current" class="tab-btn flex-1 py-2 text-center font-semibold text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-300 active">Current</button>
+                            <button data-tab="archive" class="tab-btn flex-1 py-2 text-center font-semibold text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-300">Archive</button>
+                        </div>
+                        <ul id="jobs-list" class="space-y-2 mt-4"></ul>
                     </div>
                 </div>
 
@@ -144,7 +152,7 @@
                         <button id="complete-job-btn" class="w-full mt-3 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Complete Job</button>
                     </div>
                     <div id="available-jobs-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                        <h3 class="text-lg font-semibold text-gray-200 mb-2">Available Team Jobs</h3>
+                        <h3 class="text-lg font-semibold text-gray-200 mb-2">Open Job Postings</h3>
                         <ul id="available-jobs-list" class="space-y-2"></ul>
                     </div>
                     <div id="location-sharing-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
@@ -180,23 +188,15 @@
             </div>
         </div>
     </div>
-    <div id="promote-driver-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div id="create-team-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <form id="promote-driver-form">
-                <h3 class="text-xl font-bold text-white mb-4">Promote User to Driver</h3>
+            <form id="create-team-form">
+                <h3 class="text-xl font-bold text-white mb-4">Create New Team</h3>
                 <div class="space-y-4">
-                    <div>
-                        <label for="user-select" class="block text-sm font-medium text-gray-300">Select User:</label>
-                        <select id="user-select" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md text-white"></select>
-                    </div>
-                    <input type="text" id="promote-driver-name-input" placeholder="Driver's Full Name" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <input type="text" id="promote-team-id-input" placeholder="Assign Team ID" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="new-team-name-input" placeholder="New Team Name" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <div class="flex justify-end space-x-2">
-                        <button type="button" id="promote-driver-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 flex items-center justify-center w-28">
-                            <span class="btn-text">Promote</span>
-                            <span class="spinner hidden ml-2"></span>
-                        </button>
+                        <button type="button" id="create-team-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Create Team</button>
                     </div>
                 </div>
             </form>
@@ -207,6 +207,7 @@
             <form id="create-job-form">
                 <h3 class="text-xl font-bold text-white mb-4">Create New Job</h3>
                 <div class="space-y-4">
+                    <input type="text" id="job-name-input" placeholder="Job Name (e.g., Warehouse Delivery)" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <input type="text" id="job-origin-input" placeholder="Job Origin" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <input type="text" id="job-destination-input" placeholder="Job Destination" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <textarea id="job-note-input" placeholder="Job Notes (optional)" rows="2" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
@@ -214,31 +215,14 @@
                         <label for="assign-team-select" class="block text-sm font-medium text-gray-300">Assign to Team:</label>
                         <select id="assign-team-select" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md text-white"></select>
                     </div>
+                    <div>
+                        <label for="drivers-needed-input" class="block text-sm font-medium text-gray-300">Number of Drivers Needed:</label>
+                        <input type="number" id="drivers-needed-input" min="1" max="9" value="1" required class="w-full mt-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
                     <div class="flex justify-end space-x-2">
                         <button type="button" id="create-job-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
                         <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center w-32">
                             <span class="btn-text">Create Job</span>
-                            <span class="spinner hidden ml-2"></span>
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-    <div id="manual-assign-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <form id="manual-assign-form">
-                <h3 class="text-xl font-bold text-white mb-4">Manually Assign Job</h3>
-                <div class="space-y-4">
-                    <div>
-                        <label for="manual-assign-driver-select" class="block text-sm font-medium text-gray-300">Select an available driver:</label>
-                        <select id="manual-assign-driver-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md text-white">
-                        </select>
-                    </div>
-                    <div class="flex justify-end space-x-2">
-                        <button type="button" id="manual-assign-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center w-48">
-                            <span class="btn-text">Confirm Assignment</span>
                             <span class="spinner hidden ml-2"></span>
                         </button>
                     </div>
@@ -256,51 +240,52 @@
             </div>
         </div>
     </div>
-    <div id="job-details-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-white">Job Details</h3>
-                <button id="job-details-close-btn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
-            </div>
-            <div id="job-details-content" class="text-gray-300 space-y-2"></div>
-        </div>
-    </div>
     <div id="edit-driver-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
             <form id="edit-driver-form">
                 <h3 class="text-xl font-bold text-white mb-4">Manage Driver</h3>
                 <div class="space-y-4">
                     <input type="text" id="edit-driver-name-input" placeholder="Driver Name" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <input type="text" id="edit-team-id-input" placeholder="Team ID" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <div class="flex justify-between items-center">
-                         <button type="button" id="deactivate-driver-btn" class="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-700">Deactivate</button>
-                         <div class="space-x-2">
-                            <button type="button" id="edit-driver-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                            <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 flex items-center justify-center w-36">
-                                <span class="btn-text">Save Changes</span>
-                                <span class="spinner hidden ml-2"></span>
-                            </button>
-                         </div>
+                    <div class="flex justify-between items-center pt-2">
+                         <button type="button" id="deactivate-driver-btn" class="px-4 py-2 bg-yellow-700 text-white rounded-lg hover:bg-yellow-600">Deactivate</button>
+                         <button type="button" id="delete-driver-btn" class="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-700">Delete Driver</button>
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-4">
+                        <button type="button" id="edit-driver-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 flex items-center justify-center w-36">
+                            <span class="btn-text">Save Changes</span>
+                            <span class="spinner hidden ml-2"></span>
+                        </button>
                     </div>
                 </div>
             </form>
         </div>
     </div>
-     <div id="route-options-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div id="job-details-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg mx-4">
-            <h3 class="text-xl font-bold text-white mb-4">Select a Route</h3>
-            <ul id="route-options-list" class="space-y-2"></ul>
-            <button id="route-options-cancel-btn" class="mt-4 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
+            <div id="job-details-printable">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-white">Job Details</h3>
+                    <button id="job-details-close-btn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+                </div>
+                <div id="job-details-content" class="text-gray-300 space-y-2"></div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-2">
+                <button id="print-job-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Print</button>
+            </div>
         </div>
     </div>
     <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <h3 class="text-xl font-bold text-white mb-4">Developer Settings</h3>
+            <h3 class="text-xl font-bold text-white mb-4">Settings</h3>
             <div id="settings-content" class="space-y-4">
-                 <p class="text-sm text-gray-400">Toggle your driver status for testing. If you enable driver mode for the first time, you will be assigned default values.</p>
-                 <div class="flex justify-around space-x-2 pt-2">
-                    <button id="dev-activate-driver-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full">Activate Driver Role</button>
-                    <button id="dev-deactivate-driver-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 w-full">Deactivate Driver Role</button>
+                 <div class="border-b border-gray-700 pb-4">
+                    <h4 class="text-lg font-semibold text-gray-200 mb-2">Developer Tools</h4>
+                    <p class="text-sm text-gray-400">Toggle your driver status for testing.</p>
+                     <div class="flex justify-around space-x-2 pt-2">
+                        <button id="dev-activate-driver-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full">Activate Driver</button>
+                        <button id="dev-deactivate-driver-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 w-full">Deactivate Driver</button>
+                     </div>
                  </div>
             </div>
              <button id="settings-cancel-btn" class="mt-6 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
@@ -312,7 +297,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, limit, getDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, limit, getDoc, arrayUnion, arrayRemove, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- Initialize Firebase and Services ---
         let app, auth, db;
@@ -323,12 +308,14 @@
         const appContainer = document.getElementById('app-container');
         const logoutBtn = document.getElementById('logout-btn');
         const settingsBtn = document.getElementById('settings-btn');
+        const currentTeamDisplay = document.getElementById('current-team-display');
 
         const toggleBtn = document.getElementById('toggle-share-btn');
         const locationStatusEl = document.getElementById('location-status');
         const userIdEl = document.getElementById('userId');
         const driversListEl = document.getElementById('drivers-list');
         const jobsListEl = document.getElementById('jobs-list');
+        const jobDashboardPanel = document.getElementById('job-dashboard-panel');
         const dispatchUi = document.getElementById('dispatch-ui');
         const driverUi = document.getElementById('driver-ui');
         const driverInfoPanel = document.getElementById('driver-info-panel');
@@ -345,28 +332,39 @@
         const modalMessage = document.getElementById('modal-message');
         const modalCloseBtn = document.getElementById('modal-close-btn');
 
-        const promoteDriverModal = document.getElementById('promote-driver-modal');
-        const openPromoteDriverModalBtn = document.getElementById('open-promote-driver-modal-btn');
-        const promoteDriverForm = document.getElementById('promote-driver-form');
-        const userSelect = document.getElementById('user-select');
-        const promoteDriverNameInput = document.getElementById('promote-driver-name-input');
-        const promoteTeamIdInput = document.getElementById('promote-team-id-input');
-        const promoteDriverCancelBtn = document.getElementById('promote-driver-cancel-btn');
-
+        const createTeamModal = document.getElementById('create-team-modal');
+        const openCreateTeamModalBtn = document.getElementById('open-create-team-modal-btn');
+        const createTeamForm = document.getElementById('create-team-form');
+        const newTeamNameInput = document.getElementById('new-team-name-input');
+        const createTeamCancelBtn = document.getElementById('create-team-cancel-btn');
+        
         const createJobModal = document.getElementById('create-job-modal');
         const openCreateJobModalBtn = document.getElementById('open-create-job-modal-btn');
         const createJobForm = document.getElementById('create-job-form');
+        const jobNameInput = document.getElementById('job-name-input');
         const jobOriginInput = document.getElementById('job-origin-input');
         const jobDestinationInput = document.getElementById('job-destination-input');
         const jobNoteInput = document.getElementById('job-note-input');
         const assignTeamSelect = document.getElementById('assign-team-select');
+        const driversNeededInput = document.getElementById('drivers-needed-input');
         const createJobCancelBtn = document.getElementById('create-job-cancel-btn');
 
-        const manualAssignModal = document.getElementById('manual-assign-modal');
-        const manualAssignForm = document.getElementById('manual-assign-form');
-        const manualAssignDriverSelect = document.getElementById('manual-assign-driver-select');
-        const manualAssignCancelBtn = document.getElementById('manual-assign-cancel-btn');
+        const currentJobPanel = document.getElementById('current-job-panel');
+        const currentJobDetails = document.getElementById('current-job-details');
+        const completeJobBtn = document.getElementById('complete-job-btn');
+
+        const settingsModal = document.getElementById('settings-modal');
+        const settingsCancelBtn = document.getElementById('settings-cancel-btn');
+        const devActivateDriverBtn = document.getElementById('dev-activate-driver-btn');
+        const devDeactivateDriverBtn = document.getElementById('dev-deactivate-driver-btn');
         
+        const editDriverModal = document.getElementById('edit-driver-modal');
+        const editDriverForm = document.getElementById('edit-driver-form');
+        const editDriverNameInput = document.getElementById('edit-driver-name-input');
+        const deactivateDriverBtn = document.getElementById('deactivate-driver-btn');
+        const deleteDriverBtn = document.getElementById('delete-driver-btn');
+        const editDriverCancelBtn = document.getElementById('edit-driver-cancel-btn');
+
         const confirmModal = document.getElementById('confirm-modal');
         const confirmModalTitle = document.getElementById('confirm-modal-title');
         const confirmModalMessage = document.getElementById('confirm-modal-message');
@@ -376,27 +374,7 @@
         const jobDetailsModal = document.getElementById('job-details-modal');
         const jobDetailsContent = document.getElementById('job-details-content');
         const jobDetailsCloseBtn = document.getElementById('job-details-close-btn');
-
-        const editDriverModal = document.getElementById('edit-driver-modal');
-        const editDriverForm = document.getElementById('edit-driver-form');
-        const editDriverNameInput = document.getElementById('edit-driver-name-input');
-        const editTeamIdInput = document.getElementById('edit-team-id-input');
-        const deactivateDriverBtn = document.getElementById('deactivate-driver-btn');
-        const editDriverCancelBtn = document.getElementById('edit-driver-cancel-btn');
-
-        const currentJobPanel = document.getElementById('current-job-panel');
-        const currentJobDetails = document.getElementById('current-job-details');
-        const completeJobBtn = document.getElementById('complete-job-btn');
-        const changeRouteBtn = document.getElementById('change-route-btn');
-
-        const routeOptionsModal = document.getElementById('route-options-modal');
-        const routeOptionsList = document.getElementById('route-options-list');
-        const routeOptionsCancelBtn = document.getElementById('route-options-cancel-btn');
-
-        const settingsModal = document.getElementById('settings-modal');
-        const settingsCancelBtn = document.getElementById('settings-cancel-btn');
-        const devActivateDriverBtn = document.getElementById('dev-activate-driver-btn');
-        const devDeactivateDriverBtn = document.getElementById('dev-deactivate-driver-btn');
+        const printJobBtn = document.getElementById('print-job-btn');
 
 
         // --- App State ---
@@ -409,16 +387,19 @@
             locationInterval: null,
             allDrivers: [],
             allUsers: [],
+            allJobs: [],
+            allTeams: [],
             activeDrivers: [],
             myDriverProfile: null,
             myCurrentJobUnsubscribe: null,
             teamJobsUnsubscribe: null,
             directionsService: null,
             directionsRenderer: null,
-            currentDirections: null, // To store the full directions result
+            activeJobTab: 'current',
             // Firestore collection paths
             usersPath: '',
             driversPath: '',
+            teamsPath: '',
             driverLocationsPath: '',
             jobsPath: '',
             // Location Simulation Variables
@@ -491,6 +472,7 @@
                 // Define collection paths using the environment app ID
                 AppState.usersPath = `/artifacts/${appId}/public/data/users`;
                 AppState.driversPath = `/artifacts/${appId}/public/data/drivers`;
+                AppState.teamsPath = `/artifacts/${appId}/public/data/teams`;
                 AppState.driverLocationsPath = `/artifacts/${appId}/public/data/driverLocations`;
                 AppState.jobsPath = `/artifacts/${appId}/public/data/jobs`;
                 
@@ -522,6 +504,7 @@
                         // Start listening to data
                         listenForUsers();
                         listenForDrivers();
+                        listenForTeams();
                         listenForActiveDrivers();
                         listenForAllJobs();
                     } else {
@@ -545,12 +528,13 @@
             const driverSnap = await getDoc(driverRef);
             if (driverSnap.exists() && driverSnap.data().status !== 'inactive') {
                 AppState.myDriverProfile = { id: driverSnap.id, ...driverSnap.data() };
-                console.log("Operating as driver:", AppState.myDriverProfile.name);
+                const team = AppState.allTeams.find(t => t.id === AppState.myDriverProfile.teamId);
+                currentTeamDisplay.textContent = team ? team.name : 'None';
                 listenForMyJob();
-                listenForTeamJobs();
+                listenForOpenJobs();
             } else {
                 AppState.myDriverProfile = null;
-                console.log("This user is not a registered driver or is inactive.");
+                currentTeamDisplay.textContent = 'None';
                 if (AppState.teamJobsUnsubscribe) AppState.teamJobsUnsubscribe();
             }
             renderUIForRole();
@@ -561,6 +545,14 @@
              onSnapshot(usersRef, (snapshot) => {
                 AppState.allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
              });
+        }
+
+        function listenForTeams() {
+            const teamsRef = collection(db, AppState.teamsPath);
+            onSnapshot(teamsRef, (snapshot) => {
+                AppState.allTeams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                populateTeamSelect(assignTeamSelect);
+            });
         }
 
         toggleBtn.addEventListener('click', () => {
@@ -621,22 +613,20 @@
         });
 
         function listenForDrivers() {
-            const q = query(collection(db, AppState.driversPath), where("status", "!=", "inactive"));
-            onSnapshot(q, (snapshot) => {
+            const driversRef = collection(db, AppState.driversPath);
+            onSnapshot(driversRef, (snapshot) => {
                 AppState.allDrivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderDriversList();
-                populateTeamSelect();
             });
         }
         
-        function populateTeamSelect() {
-            const teams = [...new Set(AppState.allDrivers.map(d => d.teamId))];
-            assignTeamSelect.innerHTML = '';
-            teams.forEach(teamId => {
+        function populateTeamSelect(selectElement) {
+            selectElement.innerHTML = '<option value="">Select a team...</option>';
+            AppState.allTeams.forEach(team => {
                 const option = document.createElement('option');
-                option.value = teamId;
-                option.textContent = `Team ${teamId}`;
-                assignTeamSelect.appendChild(option);
+                option.value = team.id;
+                option.textContent = team.name;
+                selectElement.appendChild(option);
             });
         }
 
@@ -675,12 +665,16 @@
                 return;
             }
             AppState.allDrivers.forEach(driver => {
+                if (driver.status === 'inactive') return;
                 const activeInfo = AppState.activeDrivers.find(d => d.id === driver.id);
                 const isActive = !!activeInfo;
                 const li = document.createElement('li');
                 const borderClass = isActive ? 'border-l-4 border-green-500' : 'border-l-4 border-gray-700';
                 li.className = `flex justify-between items-center bg-gray-800 p-2 rounded-md ${borderClass}`;
                 
+                const team = AppState.allTeams.find(t => t.id === driver.teamId);
+                const teamName = team ? team.name : 'None';
+
                 const status = activeInfo ? activeInfo.status : 'Offline';
                 let statusColor = 'bg-gray-500';
                 if (status === 'Available') statusColor = 'bg-green-500';
@@ -690,8 +684,7 @@
                 li.innerHTML = `
                     <div>
                         <p class="text-sm font-bold text-gray-200">${driver.name}</p>
-                        <p class="text-xs font-mono text-gray-400">Team: ${driver.teamId}</p>
-                         <p class="text-xs font-mono text-gray-500">${driver.id}</p>
+                        <p class="text-xs font-mono text-gray-400">Team: ${teamName}</p>
                     </div>
                     <div class="flex items-center">
                          <span class="text-xs font-semibold text-gray-400 mr-2">${status}</span>
@@ -718,7 +711,6 @@
             }
             editDriverForm.dataset.driverId = driverId;
             editDriverNameInput.value = driver.name;
-            editTeamIdInput.value = driver.teamId;
             editDriverModal.classList.remove('hidden');
         }
 
@@ -726,13 +718,12 @@
             e.preventDefault();
             const driverId = e.target.dataset.driverId;
             const name = editDriverNameInput.value.trim();
-            const teamId = editTeamIdInput.value.trim();
-            if (!driverId || !name || !teamId) {
-                showToast('All fields are required.', 'error');
+            if (!driverId || !name) {
+                showToast('Driver name is required.', 'error');
                 return;
             }
             const driverRef = doc(db, AppState.driversPath, driverId);
-            await updateDoc(driverRef, { name, teamId });
+            await updateDoc(driverRef, { name });
             showToast('Driver details updated.', 'success');
             editDriverModal.classList.add('hidden');
         });
@@ -751,209 +742,172 @@
             );
         });
 
+        deleteDriverBtn.addEventListener('click', async () => {
+            const driverId = editDriverForm.dataset.driverId;
+            showConfirmModal(
+                'Delete Driver?',
+                'This action is permanent and cannot be undone. Are you sure you want to delete this driver?',
+                async () => {
+                    await deleteDoc(doc(db, AppState.driversPath, driverId));
+                    showToast('Driver has been permanently deleted.', 'success');
+                    editDriverModal.classList.add('hidden');
+                }
+            );
+        });
+
         function listenForAllJobs() {
             const jobsRef = collection(db, AppState.jobsPath);
             onSnapshot(jobsRef, (snapshot) => {
                 const allJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                
-                const statusOrder = { 'unassigned': 1, 'in-progress': 2, 'completed': 3 };
-                allJobs.sort((a, b) => {
-                    const orderA = statusOrder[a.status] || 4;
-                    const orderB = statusOrder[b.status] || 4;
-                    if (orderA !== orderB) return orderA - orderB;
-                    const timeA = a.createdAt ? a.createdAt.toMillis() : 0;
-                    const timeB = b.createdAt ? b.createdAt.toMillis() : 0;
-                    return timeB - timeA;
-                });
-
-                renderAllJobsList(allJobs);
+                AppState.allJobs = allJobs;
+                renderAllJobsList();
             });
         }
 
-        function renderAllJobsList(jobs) {
+        function renderAllJobsList() {
+            const isArchivedView = AppState.activeJobTab === 'archive';
+            const jobsToRender = AppState.allJobs.filter(job => !!job.archived === isArchivedView);
+
+            const statusOrder = { 'unassigned': 1, 'in-progress': 2, 'completed': 3 };
+            jobsToRender.sort((a, b) => {
+                const orderA = statusOrder[a.status] || 4;
+                const orderB = statusOrder[b.status] || 4;
+                if (orderA !== orderB) return orderA - orderB;
+                const timeA = a.createdAt ? a.createdAt.toMillis() : 0;
+                const timeB = b.createdAt ? b.createdAt.toMillis() : 0;
+                return timeB - timeA;
+            });
+
             jobsListEl.innerHTML = '';
-            if (jobs.length === 0) {
-                jobsListEl.innerHTML = '<li class="text-gray-400 text-sm">No jobs in the system.</li>';
+            if (jobsToRender.length === 0) {
+                jobsListEl.innerHTML = `<li class="text-gray-400 text-sm">No ${isArchivedView ? 'archived' : 'current'} jobs.</li>`;
                 return;
             }
 
-            jobs.forEach(job => {
+            jobsToRender.forEach(job => {
                 const li = document.createElement('li');
                 li.dataset.jobId = job.id;
                 let content = '';
-                let styleClasses = 'bg-gray-800 p-2 rounded-md text-sm cursor-pointer hover:bg-gray-700';
+                let styleClasses = 'bg-gray-800 p-3 rounded-md text-sm cursor-pointer hover:bg-gray-700';
+
+                const team = AppState.allTeams.find(t => t.id === job.teamId);
+                const teamName = team ? team.name : 'Unknown Team';
+
+                const assignedDrivers = job.assignedDrivers || [];
+                const assignedDriverNames = assignedDrivers
+                    .map(driverId => {
+                        const driver = AppState.allDrivers.find(d => d.id === driverId);
+                        return driver ? driver.name : 'Unknown';
+                    })
+                    .join(', ');
+
+                const openings = `${assignedDrivers.length} of ${job.driversNeeded}`;
+                const baseContent = `
+                    <p class="font-bold text-white">${job.jobName || 'Unnamed Job'}</p>
+                    <p class="text-gray-400"><strong class="text-gray-200">Team:</strong> ${teamName}</p>
+                    <p class="text-gray-400"><strong class="text-gray-200">From:</strong> ${job.origin}</p>
+                    <p class="text-gray-400"><strong class="text-gray-200">To:</strong> ${job.destination}</p>
+                    <p class="text-gray-400"><strong class="text-gray-200">Openings:</strong> ${openings}</p>
+                    ${assignedDriverNames ? `<p class="text-gray-400"><strong class="text-gray-200">Drivers:</strong> ${assignedDriverNames}</p>` : ''}
+                `;
+                
+                const archiveButton = `<button data-job-id="${job.id}" class="archive-job-btn w-full mt-2 px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Archive</button>`;
+                const deleteButton = `<button data-job-id="${job.id}" class="delete-job-btn w-full mt-2 px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>`;
+                const actionButtons = isArchivedView ? deleteButton : archiveButton + deleteButton;
 
                 switch(job.status) {
                     case 'unassigned':
                         styleClasses += ' border-l-4 border-yellow-500';
-                        content = `
-                            <p class="text-gray-400"><strong class="text-gray-200">Team:</strong> ${job.teamId}</p>
-                            <p class="text-gray-400"><strong class="text-gray-200">From:</strong> ${job.origin}</p>
-                            <p class="text-gray-400"><strong class="text-gray-200">To:</strong> ${job.destination}</p>
-                            <p class="text-gray-400 mt-1 italic"><strong class="text-gray-200">Note:</strong> ${job.note || 'N/A'}</p>
-                            <button data-job-id="${job.id}" class="manual-assign-btn w-full mt-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">Manually Assign</button>
-                        `;
                         break;
                     case 'in-progress':
-                        const inProgressDriver = AppState.allDrivers.find(d => d.id === job.assignedDriverId);
-                        const inProgressDriverName = inProgressDriver ? inProgressDriver.name : 'Unknown';
                         styleClasses += ' border-l-4 border-green-500';
-                        content = `
-                            <p class="text-gray-400"><strong class="text-gray-200">Driver:</strong> ${inProgressDriverName}</p>
-                            <p class="text-gray-400"><strong class="text-gray-200">To:</strong> ${job.destination}</p>
-                            <p class="text-gray-400 mt-1 italic"><strong class="text-gray-200">Note:</strong> ${job.note || 'N/A'}</p>
-                            <button data-job-id="${job.id}" data-driver-id="${job.assignedDriverId}" class="reassign-job-btn w-full mt-2 px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">Cancel/Reassign</button>
-                        `;
                         break;
                     case 'completed':
-                         const completedDriver = AppState.allDrivers.find(d => d.id === job.assignedDriverId);
-                         const completedDriverName = completedDriver ? completedDriver.name : 'Unknown';
-                         styleClasses += ' border-l-4 border-gray-600 opacity-60';
-                         content = `
-                            <p class="text-gray-400"><strong class="text-gray-200">Driver:</strong> ${completedDriverName}</p>
-                            <p class="text-gray-400"><strong class="text-gray-200">Trip:</strong> ${job.origin} to ${job.destination}</p>
-                            <p class="text-gray-400 mt-1 italic"><strong class="text-gray-200">Note:</strong> ${job.note || 'N/A'}</p>
-                         `;
+                         styleClasses += ' border-l-4 border-gray-600 opacity-80';
                         break;
                 }
                 li.className = styleClasses;
-                li.innerHTML = content;
+                li.innerHTML = baseContent + actionButtons;
                 jobsListEl.appendChild(li);
             });
         }
 
         jobsListEl.addEventListener('click', async (e) => {
             const target = e.target;
-            const jobLi = target.closest('li[data-job-id]');
-            if (!jobLi) return;
+            const jobId = target.dataset.jobId;
 
-            const jobId = jobLi.dataset.jobId;
-
-            if (target.classList.contains('manual-assign-btn')) {
-                openManualAssignModal(jobId);
-            } else if (target.classList.contains('reassign-job-btn')) {
-                const driverId = target.dataset.driverId;
+            if (target.classList.contains('delete-job-btn')) {
                 showConfirmModal(
-                    'Cancel & Reassign Job?', 
-                    'This will remove the job from the current driver and make it available again. Are you sure?', 
-                    () => { reassignJob(jobId, driverId); }
+                    'Delete Job?',
+                    'This action is permanent and cannot be undone. Are you sure?',
+                    () => deleteJob(jobId)
                 );
-            } else {
-                const jobRef = doc(db, AppState.jobsPath, jobId);
-                const jobSnap = await getDoc(jobRef);
-                if (jobSnap.exists()) {
-                    showJobDetailsModal(jobSnap.data(), jobId);
-                }
+            } else if (target.classList.contains('archive-job-btn')) {
+                archiveJob(jobId);
+            } else if (target.closest('li[data-job-id]')) {
+                const job = AppState.allJobs.find(j => j.id === target.closest('li[data-job-id]').dataset.jobId);
+                if (job) showJobDetailsModal(job);
             }
         });
 
-        async function reassignJob(jobId, driverId) {
-            if (!jobId || !driverId) {
-                showToast('Missing job or driver information.', 'error');
-                return;
-            }
+        async function deleteJob(jobId) {
+            await deleteDoc(doc(db, AppState.jobsPath, jobId));
+            showToast('Job has been deleted.', 'success');
+        }
+
+        async function archiveJob(jobId) {
             const jobRef = doc(db, AppState.jobsPath, jobId);
-            const driverLocRef = doc(db, AppState.driverLocationsPath, driverId);
-
-            const batch = writeBatch(db);
-
-            batch.update(jobRef, {
-                status: 'unassigned',
-                assignedDriverId: null,
-                declinedBy: arrayUnion(driverId)
-            });
-
-            batch.update(driverLocRef, { status: 'Available' });
-
-            try {
-                await batch.commit();
-                showToast('Job has been reassigned and is now open.', 'success');
-            } catch (error) {
-                console.error("Error reassigning job: ", error);
-                showToast('Could not reassign the job.', 'error');
-            }
+            await updateDoc(jobRef, { archived: true });
+            showToast('Job has been archived.', 'success');
         }
 
-        function openManualAssignModal(jobId) {
-            manualAssignDriverSelect.innerHTML = '';
-            const availableDrivers = AppState.allDrivers.filter(d => {
-                const activeInfo = AppState.activeDrivers.find(ad => ad.id === d.id);
-                return activeInfo && activeInfo.status === 'Available';
-            });
-
-            if (availableDrivers.length === 0) {
-                showModal('No Drivers Available', 'There are no drivers online and available.');
-                return;
-            }
-
-            availableDrivers.forEach(driver => {
-                const option = document.createElement('option');
-                option.value = driver.id;
-                option.textContent = `${driver.name} (Team: ${driver.teamId})`;
-                manualAssignDriverSelect.appendChild(option);
-            });
-            
-            manualAssignForm.dataset.jobId = jobId;
-            manualAssignModal.classList.remove('hidden');
-        }
-
-        manualAssignForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const button = e.submitter;
-            showSpinner(button);
-            const jobId = e.target.dataset.jobId;
-            const driverId = manualAssignDriverSelect.value;
-            if (jobId && driverId) {
-                const driver = AppState.allDrivers.find(d => d.id === driverId);
-                const jobRef = doc(db, AppState.jobsPath, jobId);
-                const driverLocRef = doc(db, AppState.driverLocationsPath, driverId);
-                const batch = writeBatch(db);
-                batch.update(jobRef, { status: 'in-progress', assignedDriverId: driverId });
-                batch.update(driverLocRef, { status: 'On Trip' });
-                await batch.commit();
-                showToast(`Job manually assigned to ${driver.name}.`, 'success');
-            }
-            hideSpinner(button);
-            manualAssignModal.classList.add('hidden');
-        });
-        
-        manualAssignCancelBtn.addEventListener('click', () => manualAssignModal.classList.add('hidden'));
-
-        function listenForTeamJobs() {
+        function listenForOpenJobs() {
             if (AppState.teamJobsUnsubscribe) AppState.teamJobsUnsubscribe();
             if (!AppState.myDriverProfile) return;
 
             const q = query(
                 collection(db, AppState.jobsPath),
-                where("teamId", "==", AppState.myDriverProfile.teamId),
-                where("status", "==", "unassigned")
+                where("status", "in", ["unassigned", "in-progress"]),
+                where("archived", "==", false)
             );
 
             AppState.teamJobsUnsubscribe = onSnapshot(q, (snapshot) => {
-                const teamJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const availableTeamJobs = teamJobs.filter(job => !job.declinedBy || !job.declinedBy.includes(AppState.userId));
-                renderAvailableJobsList(availableTeamJobs);
+                const openJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const availableJobs = openJobs.filter(job => {
+                    const assignedDrivers = job.assignedDrivers || [];
+                    const isFull = assignedDrivers.length >= job.driversNeeded;
+                    const alreadyOnJob = assignedDrivers.includes(AppState.userId);
+                    return !isFull && !alreadyOnJob;
+                });
+                renderAvailableJobsList(availableJobs);
             });
         }
 
         function renderAvailableJobsList(jobs) {
             availableJobsList.innerHTML = '';
             if (jobs.length === 0) {
-                availableJobsList.innerHTML = '<li class="text-gray-400 text-sm p-2">No jobs currently available for your team.</li>';
+                availableJobsList.innerHTML = '<li class="text-gray-400 text-sm p-2">No job postings currently available.</li>';
                 return;
             }
 
             jobs.forEach(job => {
                 const li = document.createElement('li');
                 li.className = 'bg-gray-800 p-3 rounded-md';
+                const assignedCount = (job.assignedDrivers || []).length;
+                const team = AppState.allTeams.find(t => t.id === job.teamId);
+                const teamName = team ? team.name : 'Unknown Team';
+
                 li.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
+                            <p class="font-bold text-white">${job.jobName || 'Unnamed Job'}</p>
+                            <p class="text-gray-300"><strong class="text-white">Team:</strong> ${teamName}</p>
                             <p class="text-gray-300"><strong class="text-white">From:</strong> ${job.origin}</p>
                             <p class="text-gray-300"><strong class="text-white">To:</strong> ${job.destination}</p>
+                            <p class="text-gray-300"><strong class="text-white">Openings:</strong> ${assignedCount} of ${job.driversNeeded}</p>
                             <p class="text-gray-400 mt-1 italic text-xs">${job.note || 'No notes'}</p>
                         </div>
-                        <button data-job-id="${job.id}" data-job-origin="${job.origin}" data-job-destination="${job.destination}" class="accept-job-btn ml-2 px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 flex-shrink-0">Accept</button>
+                        <button data-job-id="${job.id}" data-team-id="${job.teamId}" class="accept-job-btn ml-2 px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 flex-shrink-0">Accept</button>
                     </div>
                 `;
                 availableJobsList.appendChild(li);
@@ -962,35 +916,47 @@
         
         availableJobsList.addEventListener('click', async (e) => {
             if (e.target.classList.contains('accept-job-btn')) {
-                if (!currentJobPanel.classList.contains('hidden')) {
-                    showToast("You must complete your current job first.", "error");
-                    return;
-                }
-
                 const button = e.target;
-                const { jobId, jobOrigin, jobDestination } = button.dataset;
+                const { jobId, teamId } = button.dataset;
 
                 button.disabled = true;
                 button.textContent = 'Accepting...';
 
                 const jobRef = doc(db, AppState.jobsPath, jobId);
-                const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
-
-                const batch = writeBatch(db);
-                batch.update(jobRef, { status: 'in-progress', assignedDriverId: AppState.myDriverProfile.id });
+                const driverRef = doc(db, AppState.driversPath, AppState.userId);
                 
-                if (AppState.isSharingLocation) {
-                    batch.update(driverLocRef, { status: 'On Trip' });
-                }
-
                 try {
-                    await batch.commit();
-                    showToast("Job accepted!", "success");
-                    listenForMyJob();
-                    calculateAndDisplayRoute(getSimulatedLocation(), jobOrigin);
+                    await runTransaction(db, async (transaction) => {
+                        const jobDoc = await transaction.get(jobRef);
+                        if (!jobDoc.exists()) throw "Job does not exist!";
+                        
+                        const jobData = jobDoc.data();
+                        const assignedDrivers = jobData.assignedDrivers || [];
+
+                        if (assignedDrivers.includes(AppState.userId)) throw "You have already accepted this job.";
+                        if (assignedDrivers.length >= jobData.driversNeeded) throw "All driver slots for this job are now filled.";
+                        
+                        // Update driver's team
+                        transaction.update(driverRef, { teamId: teamId });
+
+                        // Update job
+                        const newAssignedDrivers = [...assignedDrivers, AppState.userId];
+                        const isNowFull = newAssignedDrivers.length >= jobData.driversNeeded;
+                        transaction.update(jobRef, { 
+                            status: isNowFull ? 'in-progress' : 'unassigned',
+                            assignedDrivers: arrayUnion(AppState.userId) 
+                        });
+
+                        if (AppState.isSharingLocation) {
+                            const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
+                            transaction.update(driverLocRef, { status: 'On Trip' });
+                        }
+                    });
+                    showToast("Job accepted! You have joined the team.", "success");
+                    await findMyDriverProfile(AppState.userId); // Refresh profile to show new team
                 } catch (error) {
                     console.error("Error accepting job:", error);
-                    showToast("Could not accept job.", "error");
+                    showToast(error.toString(), "error");
                     button.disabled = false;
                     button.textContent = 'Accept';
                 }
@@ -1001,13 +967,14 @@
         function listenForMyJob() {
             if (AppState.myCurrentJobUnsubscribe) AppState.myCurrentJobUnsubscribe();
             if (!AppState.myDriverProfile) return;
-            const q = query(collection(db, AppState.jobsPath), where("assignedDriverId", "==", AppState.myDriverProfile.id), where("status", "==", "in-progress"), limit(1));
+            const q = query(collection(db, AppState.jobsPath), where("assignedDrivers", "array-contains", AppState.myDriverProfile.id), where("status", "==", "in-progress"));
             AppState.myCurrentJobUnsubscribe = onSnapshot(q, (snapshot) => {
                 if (!snapshot.empty) {
                     const job = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
                     currentJobPanel.classList.remove('hidden');
                     availableJobsPanel.classList.add('hidden'); // Hide available jobs when on a job
                     currentJobDetails.innerHTML = `
+                        <p class="font-bold text-white">${job.jobName || 'Unnamed Job'}</p>
                         <p><strong class="text-white">From:</strong> ${job.origin}</p>
                         <p><strong class="text-white">To:</strong> ${job.destination}</p>
                         <p class="mt-1 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
@@ -1023,42 +990,46 @@
         completeJobBtn.addEventListener('click', async (e) => {
             const jobId = e.target.dataset.jobId;
             const jobRef = doc(db, AppState.jobsPath, jobId);
-            const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
-            const batch = writeBatch(db);
-            batch.update(jobRef, { status: 'completed' });
-            if (AppState.isSharingLocation) {
-                batch.update(driverLocRef, { status: 'Available' });
-            }
-            await batch.commit();
-            showToast("Job Complete!", "success");
-        });
+            
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const jobDoc = await transaction.get(jobRef);
+                    if (!jobDoc.exists()) throw "Job not found";
+                    
+                    const jobData = jobDoc.data();
+                    const assignedDrivers = jobData.assignedDrivers || [];
+                    const remainingDrivers = assignedDrivers.filter(id => id !== AppState.userId);
 
-        promoteDriverForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const button = e.submitter;
-            showSpinner(button);
-            const selectedUserId = userSelect.value;
-            const name = promoteDriverNameInput.value.trim();
-            const team = promoteTeamIdInput.value.trim();
-            if (!selectedUserId || !name || !team) { showToast('Please fill all fields.', 'error'); hideSpinner(button); return; }
-            const newDriverRef = doc(db, AppState.driversPath, selectedUserId);
-            await setDoc(newDriverRef, { name, teamId: team, status: 'active' });
-            showToast(`User has been promoted to driver: ${name}.`, 'success');
-            promoteDriverForm.reset();
-            promoteDriverModal.classList.add('hidden');
-            hideSpinner(button);
+                    if (remainingDrivers.length === 0) {
+                        transaction.update(jobRef, { status: 'completed', assignedDrivers: arrayRemove(AppState.userId) });
+                    } else {
+                        transaction.update(jobRef, { assignedDrivers: arrayRemove(AppState.userId) });
+                    }
+
+                    if (AppState.isSharingLocation) {
+                        const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
+                        transaction.update(driverLocRef, { status: 'Available' });
+                    }
+                });
+                showToast("You have completed your part of the job!", "success");
+            } catch (error) {
+                console.error("Error completing job:", error);
+                showToast("Could not complete job.", "error");
+            }
         });
 
         createJobForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const button = e.submitter;
             showSpinner(button);
+            const jobName = jobNameInput.value.trim();
             const origin = jobOriginInput.value.trim();
             const destination = jobDestinationInput.value.trim();
             const teamId = assignTeamSelect.value;
+            const driversNeeded = parseInt(driversNeededInput.value, 10);
             const note = jobNoteInput.value.trim();
-            if (!origin || !destination || !teamId) { showToast('Please fill out all required fields.', 'error'); hideSpinner(button); return; }
-            const jobData = { origin, destination, teamId, note, status: 'unassigned', createdAt: serverTimestamp(), declinedBy: [] };
+            if (!jobName || !origin || !destination || !teamId || !driversNeeded) { showToast('Please fill out all required fields.', 'error'); hideSpinner(button); return; }
+            const jobData = { jobName, origin, destination, teamId, note, status: 'unassigned', driversNeeded, assignedDrivers: [], createdAt: serverTimestamp(), declinedBy: [], archived: false };
             await addDoc(collection(db, AppState.jobsPath), jobData);
             showToast('New job has been created.', 'success');
             createJobForm.reset();
@@ -1066,31 +1037,7 @@
             hideSpinner(button);
         });
 
-        function calculateAndDisplayRoute(origin, destination) {
-            if (!origin || !destination) return;
-            const request = {
-                origin: origin,
-                destination: destination,
-                travelMode: 'DRIVING'
-            };
-            AppState.directionsService.route(request, (result, status) => {
-                if (status == 'OK') {
-                    AppState.directionsRenderer.setDirections(result);
-                } else {
-                    console.error('Directions request failed due to ' + status);
-                    showToast(`Could not display route. Status: ${status}`, 'error');
-                }
-            });
-        }
-
-        function clearRoute() {
-            if (AppState.directionsRenderer) {
-                AppState.directionsRenderer.setDirections({ routes: [] });
-            }
-        }
-
         function loadGoogleMapsScript() {
-            // NOTE: It's better to manage API keys securely, but for this context, we'll keep the existing one.
             const apiKey = "AIzaSyCHmVp6ImHZ37mB6XPm4x6pNODgt5PJjjg";
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
@@ -1101,31 +1048,21 @@
             document.head.appendChild(script);
         }
 
-        function showModal(title, message) {
-            infoModal.classList.remove('hidden');
-            modalTitle.textContent = title;
-            modalMessage.innerHTML = message;
-        }
-
         function showToast(message, type = 'info') {
             const toastContainer = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
+            toast.className = `p-4 mb-2 rounded-md shadow-lg text-white ${type === 'error' ? 'bg-red-600' : type === 'success' ? 'bg-green-600' : 'bg-blue-600'}`;
             toast.textContent = message;
             toastContainer.appendChild(toast);
 
             setTimeout(() => {
-                toast.classList.add('show');
-            }, 100);
-
-            setTimeout(() => {
-                toast.classList.remove('show');
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
                 setTimeout(() => {
                     toast.remove();
                 }, 300);
             }, 3000);
         }
-        
+
         function showConfirmModal(title, message, onConfirm) {
             confirmModalTitle.textContent = title;
             confirmModalMessage.textContent = message;
@@ -1142,16 +1079,21 @@
         }
 
         function showJobDetailsModal(job) {
-            const driver = AppState.allDrivers.find(d => d.id === job.assignedDriverId);
-            const driverName = driver ? driver.name : 'N/A';
+            const team = AppState.allTeams.find(t => t.id === job.teamId);
+            const teamName = team ? team.name : 'N/A';
+            const assignedDrivers = (job.assignedDrivers || [])
+                .map(id => AppState.allDrivers.find(d => d.id === id)?.name || 'Unknown')
+                .join(', ');
             const createdTime = job.createdAt ? job.createdAt.toDate().toLocaleString() : 'N/A';
             
             jobDetailsContent.innerHTML = `
+                <p><strong>Job Name:</strong> ${job.jobName || 'N/A'}</p>
                 <p><strong>Status:</strong> ${job.status}</p>
-                <p><strong>Team:</strong> ${job.teamId}</p>
+                <p><strong>Team:</strong> ${teamName}</p>
                 <p><strong>From:</strong> ${job.origin}</p>
                 <p><strong>To:</strong> ${job.destination}</p>
-                <p><strong>Assigned Driver:</strong> ${driverName}</p>
+                <p><strong>Drivers Needed:</strong> ${job.driversNeeded}</p>
+                <p><strong>Assigned Drivers:</strong> ${assignedDrivers || 'None'}</p>
                 <p><strong>Created:</strong> ${createdTime}</p>
                 <p class="mt-2 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
             `;
@@ -1173,14 +1115,18 @@
         
         function showSpinner(button) {
             button.disabled = true;
-            button.querySelector('.btn-text').classList.add('hidden');
-            button.querySelector('.spinner').classList.remove('hidden');
+            const btnText = button.querySelector('.btn-text');
+            const spinner = button.querySelector('.spinner');
+            if (btnText) btnText.classList.add('hidden');
+            if (spinner) spinner.classList.remove('hidden');
         }
 
         function hideSpinner(button) {
             button.disabled = false;
-            button.querySelector('.btn-text').classList.remove('hidden');
-            button.querySelector('.spinner').classList.add('hidden');
+            const btnText = button.querySelector('.btn-text');
+            const spinner = button.querySelector('.spinner');
+            if (btnText) btnText.classList.remove('hidden');
+            if (spinner) spinner.classList.add('hidden');
         }
         
         // --- Event Listeners ---
@@ -1202,9 +1148,9 @@
             const driverRef = doc(db, AppState.driversPath, AppState.userId);
             try {
                 await setDoc(driverRef, { 
-                    name: 'Dev Driver', 
-                    teamId: '007', 
-                    status: 'active' 
+                    name: `Driver-${AppState.userId.substring(0,4)}`, 
+                    status: 'active',
+                    teamId: null
                 }, { merge: true });
                 showToast('Driver role activated.', 'success');
                 await findMyDriverProfile(AppState.userId);
@@ -1218,7 +1164,7 @@
             if (AppState.myDriverProfile) {
                 const driverRef = doc(db, AppState.driversPath, AppState.userId);
                 try {
-                    await updateDoc(driverRef, { status: 'inactive' });
+                    await updateDoc(driverRef, { status: 'inactive', teamId: null });
                     showToast('Driver role deactivated.', 'success');
                     await findMyDriverProfile(AppState.userId);
                 } catch (error) {
@@ -1230,29 +1176,56 @@
             settingsModal.classList.add('hidden');
         });
 
-
-        modalCloseBtn.addEventListener('click', () => infoModal.classList.add('hidden'));
-        confirmCancelBtn.addEventListener('click', () => confirmModal.classList.add('hidden'));
-        jobDetailsCloseBtn.addEventListener('click', () => jobDetailsModal.classList.add('hidden'));
-        openPromoteDriverModalBtn.addEventListener('click', () => {
-            userSelect.innerHTML = '';
-            const nonDrivers = AppState.allUsers.filter(u => !AppState.allDrivers.some(d => d.id === u.id));
-            if(nonDrivers.length === 0) {
-                showModal('No Users to Promote', 'There are no registered users who are not already drivers.');
+        openCreateTeamModalBtn.addEventListener('click', () => createTeamModal.classList.remove('hidden'));
+        createTeamCancelBtn.addEventListener('click', () => createTeamModal.classList.add('hidden'));
+        createTeamForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newTeamName = newTeamNameInput.value.trim();
+            if (!newTeamName) {
+                showToast("Please enter a name for the new team.", "error");
                 return;
             }
-            nonDrivers.forEach(user => {
-                const option = document.createElement('option');
-                option.value = user.id;
-                option.textContent = user.email;
-                userSelect.appendChild(option);
-            });
-            promoteDriverModal.classList.remove('hidden')
+            const newTeamRef = doc(collection(db, AppState.teamsPath));
+            await setDoc(newTeamRef, { name: newTeamName });
+            showToast(`Successfully created team ${newTeamName}.`, 'success');
+            newTeamNameInput.value = '';
+            createTeamModal.classList.add('hidden');
         });
-        promoteDriverCancelBtn.addEventListener('click', () => promoteDriverModal.classList.add('hidden'));
+        
         openCreateJobModalBtn.addEventListener('click', () => createJobModal.classList.remove('hidden'));
         createJobCancelBtn.addEventListener('click', () => createJobModal.classList.add('hidden'));
-        editDriverCancelBtn.addEventListener('click', () => editDriverModal.classList.add('hidden'));
+        
+        modalCloseBtn.addEventListener('click', () => {
+            infoModal.classList.add('hidden');
+        });
+
+        jobDashboardPanel.addEventListener('click', (e) => {
+            if (e.target.matches('.tab-btn')) {
+                jobDashboardPanel.querySelector('.tab-btn.active').classList.remove('active');
+                e.target.classList.add('active');
+                AppState.activeJobTab = e.target.dataset.tab;
+                renderAllJobsList();
+            }
+        });
+
+        jobDetailsCloseBtn.addEventListener('click', () => jobDetailsModal.classList.add('hidden'));
+        printJobBtn.addEventListener('click', () => {
+            const printableArea = document.getElementById('job-details-printable').innerHTML;
+            const originalContents = document.body.innerHTML;
+            document.body.innerHTML = printableArea;
+            window.print();
+            document.body.innerHTML = originalContents;
+            // Re-initialize necessary elements and listeners after printing
+            window.location.reload(); 
+        });
+
+        confirmCancelBtn.addEventListener('click', () => {
+            confirmModal.classList.add('hidden');
+        });
+
+        editDriverCancelBtn.addEventListener('click', () => {
+            editDriverModal.classList.add('hidden');
+        });
 
         window.onload = () => {
             initializeFirebase();
