@@ -989,7 +989,14 @@
         
         // --- Event Listeners ---
         
-        logoutBtn.addEventListener('click', () => {
+        logoutBtn.addEventListener('click', async () => {
+            if (AppState.myDriverProfile) {
+                try {
+                    await deleteDoc(doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id));
+                } catch (error) {
+                    console.error("Error removing location on logout:", error);
+                }
+            }
             signOut(auth).catch((error) => console.error('Logout Error:', error));
         });
 
@@ -1217,7 +1224,7 @@
                             status: 'active'
                         }, { merge: true });
                         await updateDoc(userRef, { role: 'driver' });
-                        showToast('User set to Driver.', 'success');
+                        showToast('User promoted to Driver.', 'success');
                     } catch (error) {
                         showToast(`Error: ${error.message}`, 'error');
                     }
@@ -1225,7 +1232,7 @@
                     try {
                         await updateDoc(driverRef, { status: 'inactive' });
                         await updateDoc(userRef, { role: 'dispatcher' });
-                        showToast('Driver set to Dispatcher.', 'success');
+                        showToast('Driver demoted to Dispatcher.', 'success');
                     } catch (error) {
                     }
                 }
