@@ -124,13 +124,14 @@
 
                 <!-- Driver UI -->
                 <div id="driver-ui" class="hidden">
+                    <div id="available-jobs-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                        <h3 class="text-lg font-semibold text-gray-200 mb-2">Available Team Jobs</h3>
+                        <ul id="available-jobs-list" class="space-y-2"></ul>
+                    </div>
                     <div id="current-job-panel" class="hidden bg-blue-900 border border-blue-700 p-4 rounded-lg shadow-sm mt-4">
                         <h3 class="text-lg font-semibold text-white mb-2">My Current Job</h3>
                         <div id="current-job-details" class="text-sm text-blue-200 space-y-1"></div>
-                        <div class="flex space-x-2 mt-3">
-                            <button id="change-route-btn" class="w-1/2 px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-500">Change Route</button>
-                            <button id="complete-job-btn" class="w-1/2 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Complete Job</button>
-                        </div>
+                        <button id="complete-job-btn" class="w-full mt-3 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Complete Job</button>
                     </div>
                     <div id="location-sharing-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                         <h2 class="text-lg font-semibold text-gray-200 mb-2">My Location Sharing</h2>
@@ -288,6 +289,15 @@
             <button id="route-options-cancel-btn" class="mt-4 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
         </div>
     </div>
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+            <h3 class="text-xl font-bold text-white mb-4">Settings</h3>
+            <div id="settings-content" class="space-y-4">
+                <!-- Settings content will be dynamically generated -->
+            </div>
+             <button id="settings-cancel-btn" class="mt-4 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
+        </div>
+    </div>
 
 
     <!-- Firebase SDK Imports -->
@@ -315,6 +325,7 @@
         const appContainer = document.getElementById('app-container');
         const googleSigninBtn = document.getElementById('google-signin-btn');
         const logoutBtn = document.getElementById('logout-btn');
+        const settingsBtn = document.getElementById('settings-btn');
 
         const toggleBtn = document.getElementById('toggle-share-btn');
         const locationStatusEl = document.getElementById('location-status');
@@ -328,6 +339,8 @@
         const locationSharingPanel = document.getElementById('location-sharing-panel');
         const driverStatusControl = document.getElementById('driver-status-control');
         const driverStatusSelect = document.getElementById('driver-status-select');
+        const availableJobsPanel = document.getElementById('available-jobs-panel');
+        const availableJobsList = document.getElementById('available-jobs-list');
         
         // Modals and their controls
         const infoModal = document.getElementById('info-modal');
@@ -388,6 +401,10 @@
         const routeOptionsList = document.getElementById('route-options-list');
         const routeOptionsCancelBtn = document.getElementById('route-options-cancel-btn');
 
+        const settingsModal = document.getElementById('settings-modal');
+        const settingsContent = document.getElementById('settings-content');
+        const settingsCancelBtn = document.getElementById('settings-cancel-btn');
+
         // --- App State ---
         const AppState = {
             userId: 'offline',
@@ -401,6 +418,7 @@
             activeDrivers: [],
             myDriverProfile: null,
             myCurrentJobUnsubscribe: null,
+            teamJobsUnsubscribe: null,
             directionsService: null,
             directionsRenderer: null,
             currentDirections: null, // To store the full directions result
@@ -502,9 +520,11 @@
                 AppState.myDriverProfile = { id: driverSnap.id, ...driverSnap.data() };
                 console.log("Operating as driver:", AppState.myDriverProfile.name);
                 listenForMyJob();
+                listenForTeamJobs();
             } else {
                 AppState.myDriverProfile = null;
                 console.log("This user is not a registered driver or is inactive.");
+                if (AppState.teamJobsUnsubscribe) AppState.teamJobsUnsubscribe();
             }
             renderUIForRole();
         }
