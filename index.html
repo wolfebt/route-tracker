@@ -289,11 +289,11 @@
             <h3 class="text-xl font-bold text-white mb-4">Settings</h3>
             <div id="settings-content" class="space-y-4">
                  <div class="border-b border-gray-700 pb-4">
-                    <h4 class="text-lg font-semibold text-gray-200 mb-2">User Role Management</h4>
-                    <p class="text-sm text-gray-400 mb-2">Assign roles to any user in the system.</p>
-                    <ul id="user-role-list" class="space-y-2">
-                        <!-- User roles will be dynamically inserted here -->
-                    </ul>
+                     <h4 class="text-lg font-semibold text-gray-200 mb-2">User Role Management</h4>
+                     <p class="text-sm text-gray-400 mb-2">Assign roles to any user in the system.</p>
+                     <ul id="user-role-list" class="space-y-2">
+                         <!-- User roles will be dynamically inserted here -->
+                     </ul>
                  </div>
             </div>
              <button id="settings-cancel-btn" class="mt-6 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
@@ -307,10 +307,14 @@
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, limit, getDoc, arrayUnion, arrayRemove, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
+        // --- ANALYSIS: This is a well-structured single-page application (SPA) that uses vanilla JavaScript.
+        // It's a good example of how to build a real-time application without a heavy framework like React or Vue.
+        
         // --- Initialize Firebase and Services ---
         let app, auth, db;
         
         // --- UI Elements ---
+        // ANALYSIS: All UI elements are neatly organized and selected at the top of the script. This is a good practice for readability and maintainability.
         const loadingOverlay = document.getElementById('loading-overlay');
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
@@ -378,6 +382,8 @@
 
 
         // --- App State ---
+        // ANALYSIS: The AppState object is a simple yet effective way to manage the application's state.
+        // It holds all the dynamic data, making it easy to see what the application is tracking at any given time.
         const AppState = {
             userId: 'offline',
             map: null,
@@ -527,7 +533,7 @@
         function listenForUsers() {
              const usersRef = collection(db, AppState.usersPath);
              onSnapshot(usersRef, (snapshot) => {
-                AppState.allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                 AppState.allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
              });
         }
 
