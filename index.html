@@ -819,9 +819,16 @@
                         <p class="mt-1 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
                     `;
                     completeJobBtn.dataset.jobId = job.id;
+
+                    if (AppState.isSharingLocation) {
+                        calculateAndDisplayRoute(getSimulatedLocation(), job.origin);
+                    } else {
+                        showToast("Start sharing your location to see the route.", "info");
+                    }
                 } else {
                     currentJobPanel.classList.add('hidden');
                     availableJobsPanel.classList.remove('hidden'); // Show available jobs when not on a job
+                    clearRoute();
                 }
             });
         }
