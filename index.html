@@ -138,14 +138,14 @@
 
                 <!-- Driver UI -->
                 <div id="driver-ui" class="hidden">
-                    <div id="available-jobs-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                        <h3 class="text-lg font-semibold text-gray-200 mb-2">Available Team Jobs</h3>
-                        <ul id="available-jobs-list" class="space-y-2"></ul>
-                    </div>
                     <div id="current-job-panel" class="hidden bg-blue-900 border border-blue-700 p-4 rounded-lg shadow-sm mt-4">
                         <h3 class="text-lg font-semibold text-white mb-2">My Current Job</h3>
                         <div id="current-job-details" class="text-sm text-blue-200 space-y-1"></div>
                         <button id="complete-job-btn" class="w-full mt-3 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Complete Job</button>
+                    </div>
+                    <div id="available-jobs-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                        <h3 class="text-lg font-semibold text-gray-200 mb-2">Available Team Jobs</h3>
+                        <ul id="available-jobs-list" class="space-y-2"></ul>
                     </div>
                     <div id="location-sharing-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                         <h2 class="text-lg font-semibold text-gray-200 mb-2">My Location Sharing</h2>
@@ -223,16 +223,6 @@
                     </div>
                 </div>
             </form>
-        </div>
-    </div>
-    <div id="job-offer-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <h3 class="text-xl font-bold text-white mb-4">New Job Offer</h3>
-            <div id="job-offer-details" class="text-gray-300 mb-4 space-y-1"></div>
-            <div class="flex justify-end space-x-2">
-                <button id="decline-job-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Decline</button>
-                <button id="accept-job-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Accept</button>
-            </div>
         </div>
     </div>
     <div id="manual-assign-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -371,11 +361,6 @@
         const jobNoteInput = document.getElementById('job-note-input');
         const assignTeamSelect = document.getElementById('assign-team-select');
         const createJobCancelBtn = document.getElementById('create-job-cancel-btn');
-
-        const jobOfferModal = document.getElementById('job-offer-modal');
-        const jobOfferDetails = document.getElementById('job-offer-details');
-        const acceptJobBtn = document.getElementById('accept-job-btn');
-        const declineJobBtn = document.getElementById('decline-job-btn');
 
         const manualAssignModal = document.getElementById('manual-assign-modal');
         const manualAssignForm = document.getElementById('manual-assign-form');
@@ -935,7 +920,7 @@
         manualAssignCancelBtn.addEventListener('click', () => manualAssignModal.classList.add('hidden'));
 
         function listenForTeamJobs() {
-            if (AppState.teamJobsUnsubscribe) AppState.teamJobsUnsubscribe(); // Unsubscribe from previous listener
+            if (AppState.teamJobsUnsubscribe) AppState.teamJobsUnsubscribe();
             if (!AppState.myDriverProfile) return;
 
             const q = query(
@@ -945,75 +930,83 @@
             );
 
             AppState.teamJobsUnsubscribe = onSnapshot(q, (snapshot) => {
-                // Don't show new job offers if already in a job, in a modal, or not available.
-                if (currentJobPanel.classList.contains('hidden') === false || 
-                    jobOfferModal.classList.contains('hidden') === false ||
-                    (AppState.isSharingLocation && driverStatusSelect.value !== 'Available')) {
+                const teamJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const availableTeamJobs = teamJobs.filter(job => !job.declinedBy || !job.declinedBy.includes(AppState.userId));
+                renderAvailableJobsList(availableTeamJobs);
+            });
+        }
+
+        function renderAvailableJobsList(jobs) {
+            availableJobsList.innerHTML = '';
+            if (jobs.length === 0) {
+                availableJobsList.innerHTML = '<li class="text-gray-400 text-sm p-2">No jobs currently available for your team.</li>';
+                return;
+            }
+
+            jobs.forEach(job => {
+                const li = document.createElement('li');
+                li.className = 'bg-gray-800 p-3 rounded-md';
+                li.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-300"><strong class="text-white">From:</strong> ${job.origin}</p>
+                            <p class="text-gray-300"><strong class="text-white">To:</strong> ${job.destination}</p>
+                            <p class="text-gray-400 mt-1 italic text-xs">${job.note || 'No notes'}</p>
+                        </div>
+                        <button data-job-id="${job.id}" data-job-origin="${job.origin}" data-job-destination="${job.destination}" class="accept-job-btn ml-2 px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 flex-shrink-0">Accept</button>
+                    </div>
+                `;
+                availableJobsList.appendChild(li);
+            });
+        }
+        
+        availableJobsList.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('accept-job-btn')) {
+                if (!currentJobPanel.classList.contains('hidden')) {
+                    showToast("You must complete your current job first.", "error");
                     return;
                 }
 
-                const newJobs = [];
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === "added") {
-                        const job = { id: change.doc.id, ...change.doc.data() };
-                        // Check if the driver has already declined this job
-                        if (!job.declinedBy || !job.declinedBy.includes(AppState.userId)) {
-                           newJobs.push(job);
-                        }
-                    }
-                });
+                const button = e.target;
+                const { jobId, jobOrigin, jobDestination } = button.dataset;
 
-                if (newJobs.length > 0) {
-                    // Sort by creation time to get the oldest one first
-                    newJobs.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
-                    showJobOffer(newJobs[0]);
+                button.disabled = true;
+                button.textContent = 'Accepting...';
+
+                const jobRef = doc(db, AppState.jobsPath, jobId);
+                const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
+
+                const batch = writeBatch(db);
+                batch.update(jobRef, { status: 'in-progress', assignedDriverId: AppState.myDriverProfile.id });
+                
+                if (AppState.isSharingLocation) {
+                    batch.update(driverLocRef, { status: 'On Trip' });
                 }
-            });
-        }
 
-        function showJobOffer(job) {
-            jobOfferDetails.innerHTML = `
-                <p><strong class="text-gray-100">From:</strong> ${job.origin}</p>
-                <p><strong class="text-gray-100">To:</strong> ${job.destination}</p>
-                <p class="mt-2 italic"><strong class="text-gray-100">Note:</strong> ${job.note || 'N/A'}</p>
-            `;
-            acceptJobBtn.dataset.jobId = job.id;
-            acceptJobBtn.dataset.jobOrigin = job.origin;
-            acceptJobBtn.dataset.jobDestination = job.destination;
-            declineJobBtn.dataset.jobId = job.id;
-            jobOfferModal.classList.remove('hidden');
-        }
-        
-        acceptJobBtn.addEventListener('click', async (e) => {
-            const { jobId, jobOrigin, jobDestination } = e.target.dataset;
-            const jobRef = doc(db, AppState.jobsPath, jobId);
-            const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
-            const batch = writeBatch(db);
-            batch.update(jobRef, { status: 'in-progress', assignedDriverId: AppState.myDriverProfile.id });
-            batch.update(driverLocRef, { status: 'On Trip' });
-            await batch.commit();
-            jobOfferModal.classList.add('hidden');
-            listenForMyJob();
-            calculateAndDisplayRoute(getSimulatedLocation(), jobOrigin);
+                try {
+                    await batch.commit();
+                    showToast("Job accepted!", "success");
+                    listenForMyJob();
+                    calculateAndDisplayRoute(getSimulatedLocation(), jobOrigin);
+                } catch (error) {
+                    console.error("Error accepting job:", error);
+                    showToast("Could not accept job.", "error");
+                    button.disabled = false;
+                    button.textContent = 'Accept';
+                }
+            }
         });
-        
-        declineJobBtn.addEventListener('click', async (e) => {
-            const jobId = e.target.dataset.jobId;
-            const jobRef = doc(db, AppState.jobsPath, jobId);
-            await updateDoc(jobRef, {
-                declinedBy: arrayUnion(AppState.myDriverProfile.id)
-            });
-            jobOfferModal.classList.add('hidden');
-            showToast("Job Declined.", "info");
-        });
+
 
         function listenForMyJob() {
             if (AppState.myCurrentJobUnsubscribe) AppState.myCurrentJobUnsubscribe();
+            if (!AppState.myDriverProfile) return;
             const q = query(collection(db, AppState.jobsPath), where("assignedDriverId", "==", AppState.myDriverProfile.id), where("status", "==", "in-progress"), limit(1));
             AppState.myCurrentJobUnsubscribe = onSnapshot(q, (snapshot) => {
                 if (!snapshot.empty) {
                     const job = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
                     currentJobPanel.classList.remove('hidden');
+                    availableJobsPanel.classList.add('hidden'); // Hide available jobs when on a job
                     currentJobDetails.innerHTML = `
                         <p><strong class="text-white">From:</strong> ${job.origin}</p>
                         <p><strong class="text-white">To:</strong> ${job.destination}</p>
@@ -1022,7 +1015,7 @@
                     completeJobBtn.dataset.jobId = job.id;
                 } else {
                     currentJobPanel.classList.add('hidden');
-                    clearRoute();
+                    availableJobsPanel.classList.remove('hidden'); // Show available jobs when not on a job
                 }
             });
         }
@@ -1033,7 +1026,9 @@
             const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
             const batch = writeBatch(db);
             batch.update(jobRef, { status: 'completed' });
-            batch.update(driverLocRef, { status: 'Available' });
+            if (AppState.isSharingLocation) {
+                batch.update(driverLocRef, { status: 'Available' });
+            }
             await batch.commit();
             showToast("Job Complete!", "success");
         });
