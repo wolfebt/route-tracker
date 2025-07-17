@@ -73,21 +73,20 @@
 
     <!-- Fullscreen Loader -->
     <div id="loading-overlay" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-[10001]">
-        <div class="spinner large-spinner"></div>
+        <div class="text-center">
+            <div class="spinner large-spinner mx-auto"></div>
+            <p class="text-gray-400 mt-4">Connecting to Dispatch Center...</p>
+        </div>
     </div>
 
     <!-- Toast Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-[10000]"></div>
 
-    <!-- Auth Container -->
+    <!-- Auth Container (Kept for potential fallback, but should be skipped) -->
     <div id="auth-container" class="hidden flex items-center justify-center h-screen">
         <div class="w-full max-w-sm text-center">
              <h1 class="text-4xl font-bold text-white mb-2">Dispatch Center</h1>
-             <p class="text-gray-400 mb-8">Please sign in to continue</p>
-             <button id="google-signin-btn" class="bg-white text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md hover:bg-gray-200 flex items-center justify-center w-full">
-                 <svg class="w-6 h-6 mr-3" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path></svg>
-                 Sign in with Google
-             </button>
+             <p class="text-gray-400 mb-8">Authentication failed. Please refresh.</p>
         </div>
     </div>
 
@@ -105,12 +104,17 @@
             <div id="sidebar-content">
                 <div class="flex items-center justify-between pb-2 border-b border-gray-700">
                     <h1 class="text-2xl font-bold text-white">Dispatch Center</h1>
-                    <button id="logout-btn" class="text-sm text-red-400 hover:text-red-300">Logout</button>
+                    <div class="flex items-center space-x-4">
+                        <button id="settings-btn" class="text-gray-400 hover:text-white">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </button>
+                        <button id="logout-btn" class="text-sm text-red-400 hover:text-red-300">Logout</button>
+                    </div>
                 </div>
                 
                 <div id="user-info-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                      <h2 id="user-welcome" class="text-lg font-semibold text-gray-200 mb-2">Welcome!</h2>
-                     <p class="text-sm text-gray-400">Your User ID: <span id="userId" class="font-mono"></span></p>
+                     <p class="text-sm text-gray-400">Your User ID: <span id="userId" class="font-mono break-all"></span></p>
                 </div>
 
                 <!-- Dispatcher UI -->
@@ -301,11 +305,15 @@
     </div>
     <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <h3 class="text-xl font-bold text-white mb-4">Settings</h3>
+            <h3 class="text-xl font-bold text-white mb-4">Developer Settings</h3>
             <div id="settings-content" class="space-y-4">
-                <!-- Settings content will be dynamically generated -->
+                 <p class="text-sm text-gray-400">Toggle your driver status for testing. If you enable driver mode for the first time, you will be assigned default values.</p>
+                 <div class="flex justify-around space-x-2 pt-2">
+                    <button id="dev-activate-driver-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full">Activate Driver Role</button>
+                    <button id="dev-deactivate-driver-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 w-full">Deactivate Driver Role</button>
+                 </div>
             </div>
-             <button id="settings-cancel-btn" class="mt-4 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
+             <button id="settings-cancel-btn" class="mt-6 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
         </div>
     </div>
 
@@ -313,19 +321,11 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, limit, getDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase Configuration ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI",
-            authDomain: "route-tracker-e62b1.firebaseapp.com",
-            projectId: "route-tracker-e62b1",
-            storageBucket: "route-tracker-e62b1.appspot.com",
-            messagingSenderId: "1016000331711",
-            appId: "1:1016000331711:web:a122b8a52045ee4e832b0a",
-            measurementId: "G-B476Z21SKP"
-        };
+        // NOTE: The configuration is now handled by environment variables.
         
         // --- Initialize Firebase and Services ---
         let app, auth, db;
@@ -334,7 +334,6 @@
         const loadingOverlay = document.getElementById('loading-overlay');
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
-        const googleSigninBtn = document.getElementById('google-signin-btn');
         const logoutBtn = document.getElementById('logout-btn');
         const settingsBtn = document.getElementById('settings-btn');
 
@@ -413,8 +412,10 @@
         const routeOptionsCancelBtn = document.getElementById('route-options-cancel-btn');
 
         const settingsModal = document.getElementById('settings-modal');
-        const settingsContent = document.getElementById('settings-content');
         const settingsCancelBtn = document.getElementById('settings-cancel-btn');
+        const devActivateDriverBtn = document.getElementById('dev-activate-driver-btn');
+        const devDeactivateDriverBtn = document.getElementById('dev-deactivate-driver-btn');
+
 
         // --- App State ---
         const AppState = {
@@ -479,41 +480,62 @@
         };
 
         async function initializeFirebase() {
+            // Use environment variables for Firebase config and auth
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+            if (!firebaseConfig) {
+                console.error("Firebase config not found.");
+                loadingOverlay.innerHTML = '<p class="text-red-400">Error: Firebase configuration is missing.</p>';
+                return;
+            }
+
             try {
-                const appId = firebaseConfig.appId;
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
+
+                // Define collection paths using the environment app ID
                 AppState.usersPath = `/artifacts/${appId}/public/data/users`;
                 AppState.driversPath = `/artifacts/${appId}/public/data/drivers`;
                 AppState.driverLocationsPath = `/artifacts/${appId}/public/data/driverLocations`;
                 AppState.jobsPath = `/artifacts/${appId}/public/data/jobs`;
                 
+                // Handle authentication
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
                 onAuthStateChanged(auth, async (user) => {
-                    loadingOverlay.classList.add('hidden'); // Hide loader once auth state is known
                     if (user) {
                         AppState.userId = user.uid;
-                        userIdEl.textContent = AppState.userId.substring(0, 8) + '...';
+                        userIdEl.textContent = AppState.userId; // Display full user ID
                         
-                        // Check if user profile exists, if not, create it
                         const userDocRef = doc(db, AppState.usersPath, user.uid);
                         const userDocSnap = await getDoc(userDocRef);
                         if (!userDocSnap.exists()) {
-                            await setDoc(userDocRef, { email: user.email, role: 'dispatcher' }); // Default to dispatcher
+                            await setDoc(userDocRef, { email: user.email || 'anonymous', role: 'dispatcher' });
                         }
 
                         await findMyDriverProfile(AppState.userId);
                         
+                        // Show the main app
+                        loadingOverlay.classList.add('hidden');
                         authContainer.classList.add('hidden');
                         appContainer.classList.remove('hidden');
 
+                        // Start listening to data
                         listenForUsers();
                         listenForDrivers();
                         listenForActiveDrivers();
                         listenForAllJobs();
                     } else {
-                        authContainer.classList.remove('hidden');
+                        // This state should ideally not be reached with auto-signin
+                        loadingOverlay.classList.add('hidden');
                         appContainer.classList.add('hidden');
+                        authContainer.classList.remove('hidden');
                         AppState.myDriverProfile = null;
                         AppState.userId = 'offline';
                     }
@@ -521,7 +543,7 @@
 
             } catch (e) {
                 console.error("Critical Firebase initialization error:", e);
-                showToast("Firebase failed to initialize.", "error");
+                loadingOverlay.innerHTML = `<p class="text-red-400">Critical Error: ${e.message}</p>`;
             }
         }
         
@@ -563,7 +585,6 @@
                 toggleBtn.classList.replace('bg-red-600', 'bg-blue-600');
                 locationStatusEl.textContent = 'Sharing is off';
                 driverStatusControl.classList.add('hidden');
-                clearInterval(AppState.locationInterval);
                 deleteDoc(doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id));
                 if (AppState.userMarker) {
                     AppState.userMarker.setMap(null);
@@ -905,20 +926,41 @@
         
         manualAssignCancelBtn.addEventListener('click', () => manualAssignModal.classList.add('hidden'));
 
-        async function checkForTeamJobs() {
-            if (!AppState.myDriverProfile || driverStatusSelect.value !== 'Available') return;
+        function listenForTeamJobs() {
+            if (AppState.teamJobsUnsubscribe) AppState.teamJobsUnsubscribe(); // Unsubscribe from previous listener
+            if (!AppState.myDriverProfile) return;
+
             const q = query(
-                collection(db, AppState.jobsPath), 
-                where("teamId", "==", AppState.myDriverProfile.teamId), 
-                where("status", "==", "unassigned"),
-                where("declinedBy", "not-in", [AppState.myDriverProfile.id]),
-                limit(1)
+                collection(db, AppState.jobsPath),
+                where("teamId", "==", AppState.myDriverProfile.teamId),
+                where("status", "==", "unassigned")
             );
-            const jobSnapshot = await getDocs(q);
-            if (!jobSnapshot.empty) {
-                const job = { id: jobSnapshot.docs[0].id, ...jobSnapshot.docs[0].data() };
-                showJobOffer(job);
-            }
+
+            AppState.teamJobsUnsubscribe = onSnapshot(q, (snapshot) => {
+                // Don't show new job offers if already in a job, in a modal, or not available.
+                if (currentJobPanel.classList.contains('hidden') === false || 
+                    jobOfferModal.classList.contains('hidden') === false ||
+                    (AppState.isSharingLocation && driverStatusSelect.value !== 'Available')) {
+                    return;
+                }
+
+                const newJobs = [];
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added") {
+                        const job = { id: change.doc.id, ...change.doc.data() };
+                        // Check if the driver has already declined this job
+                        if (!job.declinedBy || !job.declinedBy.includes(AppState.userId)) {
+                           newJobs.push(job);
+                        }
+                    }
+                });
+
+                if (newJobs.length > 0) {
+                    // Sort by creation time to get the oldest one first
+                    newJobs.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+                    showJobOffer(newJobs[0]);
+                }
+            });
         }
 
         function showJobOffer(job) {
@@ -954,8 +996,7 @@
                 declinedBy: arrayUnion(AppState.myDriverProfile.id)
             });
             jobOfferModal.classList.add('hidden');
-            showToast("Job Declined. Checking for other jobs...", "info");
-            checkForTeamJobs(); // Immediately check for another job
+            showToast("Job Declined.", "info");
         });
 
         function listenForMyJob() {
@@ -1046,6 +1087,7 @@
         }
 
         function loadGoogleMapsScript() {
+            // NOTE: It's better to manage API keys securely, but for this context, we'll keep the existing one.
             const apiKey = "AIzaSyCHmVp6ImHZ37mB6XPm4x6pNODgt5PJjjg";
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
@@ -1137,20 +1179,54 @@
             button.querySelector('.btn-text').classList.remove('hidden');
             button.querySelector('.spinner').classList.add('hidden');
         }
-
-        // Auth form switching
-        googleSigninBtn.addEventListener('click', async () => {
-            const provider = new GoogleAuthProvider();
-            try {
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                showModal('Google Sign-In Error', error.message);
-            }
-        });
+        
+        // --- Event Listeners ---
         
         logoutBtn.addEventListener('click', () => {
             signOut(auth);
+            window.location.reload();
         });
+
+        settingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+        });
+
+        settingsCancelBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+
+        devActivateDriverBtn.addEventListener('click', async () => {
+            const driverRef = doc(db, AppState.driversPath, AppState.userId);
+            try {
+                await setDoc(driverRef, { 
+                    name: 'Dev Driver', 
+                    teamId: '007', 
+                    status: 'active' 
+                }, { merge: true });
+                showToast('Driver role activated.', 'success');
+                await findMyDriverProfile(AppState.userId);
+            } catch (error) {
+                showToast(`Error: ${error.message}`, 'error');
+            }
+            settingsModal.classList.add('hidden');
+        });
+
+        devDeactivateDriverBtn.addEventListener('click', async () => {
+            if (AppState.myDriverProfile) {
+                const driverRef = doc(db, AppState.driversPath, AppState.userId);
+                try {
+                    await updateDoc(driverRef, { status: 'inactive' });
+                    showToast('Driver role deactivated.', 'success');
+                    await findMyDriverProfile(AppState.userId);
+                } catch (error) {
+                     showToast(`Error: ${error.message}`, 'error');
+                }
+            } else {
+                showToast('You are not currently in the driver role.', 'info');
+            }
+            settingsModal.classList.add('hidden');
+        });
+
 
         modalCloseBtn.addEventListener('click', () => infoModal.classList.add('hidden'));
         confirmCancelBtn.addEventListener('click', () => confirmModal.classList.add('hidden'));
