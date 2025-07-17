@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Driver Dispatch - Dark</title>
+    <title>Route Tracker - Dark</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -102,18 +102,22 @@
     <div id="loading-overlay" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-[10001]">
         <div class="text-center">
             <div class="spinner large-spinner mx-auto"></div>
-            <p class="text-gray-400 mt-4">Connecting to Dispatch Center...</p>
+            <p class="text-gray-400 mt-4">Connecting to Route Tracker...</p>
         </div>
     </div>
 
     <!-- Toast Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-[10000]"></div>
 
-    <!-- Auth Container (Kept for potential fallback, but should be skipped) -->
+    <!-- Auth Container -->
     <div id="auth-container" class="hidden flex items-center justify-center h-screen">
         <div class="w-full max-w-sm text-center">
-             <h1 class="text-4xl font-bold text-white mb-2">Dispatch Center</h1>
-             <p class="text-gray-400 mb-8">Authentication failed. Please refresh.</p>
+             <h1 class="text-4xl font-bold text-white mb-2">Route Tracker</h1>
+             <p class="text-gray-400 mb-8">Please sign in to continue</p>
+             <button id="google-signin-btn" class="bg-white text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md hover:bg-gray-200 flex items-center justify-center w-full">
+                 <svg class="w-6 h-6 mr-3" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path></svg>
+                 Sign in with Google
+             </button>
         </div>
     </div>
 
@@ -130,7 +134,7 @@
         <div class="w-full md:w-1/3 h-1/2 md:h-full flex flex-col bg-gray-800 p-4 space-y-4 overflow-y-auto">
             <div id="sidebar-content">
                 <div class="flex items-center justify-between pb-2 border-b border-gray-700">
-                    <h1 class="text-2xl font-bold text-white">Dispatch Center</h1>
+                    <h1 class="text-2xl font-bold text-white">Route Tracker</h1>
                     <div class="flex items-center space-x-4">
                         <button id="settings-btn" class="text-gray-400 hover:text-white">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
@@ -300,7 +304,7 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, limit, getDoc, arrayUnion, arrayRemove, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- Initialize Firebase and Services ---
@@ -310,6 +314,7 @@
         const loadingOverlay = document.getElementById('loading-overlay');
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
+        const googleSigninBtn = document.getElementById('google-signin-btn');
         const logoutBtn = document.getElementById('logout-btn');
         const settingsBtn = document.getElementById('settings-btn');
 
@@ -467,14 +472,8 @@
                 AppState.driverLocationsPath = `/artifacts/${appId}/public/data/driverLocations`;
                 AppState.jobsPath = `/artifacts/${appId}/public/data/jobs`;
                 
-                // Handle authentication
-                if (typeof __initial_auth_token !== 'undefined') {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
                 onAuthStateChanged(auth, async (user) => {
+                    loadingOverlay.classList.add('hidden');
                     if (user) {
                         AppState.userId = user.uid;
                         userIdEl.textContent = AppState.userId; // Display full user ID
@@ -488,7 +487,6 @@
                         await findMyDriverProfile(AppState.userId);
                         
                         // Show the main app
-                        loadingOverlay.classList.add('hidden');
                         authContainer.classList.add('hidden');
                         appContainer.classList.remove('hidden');
 
@@ -498,8 +496,7 @@
                         listenForActiveDrivers();
                         listenForAllJobs();
                     } else {
-                        // This state should ideally not be reached with auto-signin
-                        loadingOverlay.classList.add('hidden');
+                        // Show login screen
                         appContainer.classList.add('hidden');
                         authContainer.classList.remove('hidden');
                         AppState.myDriverProfile = null;
@@ -916,6 +913,15 @@
             signOut(auth).catch((error) => console.error('Logout Error:', error));
         });
 
+        googleSigninBtn.addEventListener('click', async () => {
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                showToast('Google Sign-In Error: ' + error.message, 'error');
+            }
+        });
+
         settingsBtn.addEventListener('click', () => {
             renderUserRoleManagement();
             settingsModal.classList.remove('hidden');
@@ -1078,11 +1084,15 @@
 
         deleteDriverBtn.addEventListener('click', () => {
             const driverId = editDriverForm.dataset.driverId;
-            showConfirmModal('Delete Driver?', 'This action is permanent and cannot be undone.', () => {
-                deleteDoc(doc(db, AppState.driversPath, driverId)).then(() => {
-                    showToast('Driver has been permanently deleted.', 'success');
-                    editDriverModal.classList.add('hidden');
-                });
+            showConfirmModal('Delete Driver?', 'This action is permanent and will remove the user entirely. Are you sure?', async () => {
+                const batch = writeBatch(db);
+                const driverRef = doc(db, AppState.driversPath, driverId);
+                const userRef = doc(db, AppState.usersPath, driverId);
+                batch.delete(driverRef);
+                batch.delete(userRef);
+                await batch.commit();
+                showToast('Driver and user have been permanently deleted.', 'success');
+                editDriverModal.classList.add('hidden');
             });
         });
 
@@ -1108,6 +1118,7 @@
                 const selectedUserId = e.target.dataset.userId;
                 const newRole = e.target.value;
                 const driverRef = doc(db, AppState.driversPath, selectedUserId);
+                const userRef = doc(db, AppState.usersPath, selectedUserId);
 
                 if (newRole === 'driver') {
                     try {
@@ -1115,6 +1126,7 @@
                             name: `Driver-${selectedUserId.substring(0,4)}`, 
                             status: 'active'
                         }, { merge: true });
+                        await updateDoc(userRef, { role: 'driver' });
                         showToast('User promoted to Driver.', 'success');
                     } catch (error) {
                         showToast(`Error: ${error.message}`, 'error');
@@ -1122,6 +1134,7 @@
                 } else { // dispatcher
                     try {
                         await updateDoc(driverRef, { status: 'inactive' });
+                        await updateDoc(userRef, { role: 'dispatcher' });
                         showToast('Driver demoted to Dispatcher.', 'success');
                     } catch (error) {
                          // Ignore error if driver doc doesn't exist
