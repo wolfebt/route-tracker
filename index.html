@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Dispatch - Dark</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        #map { height: 100%; width: 100%; }
+        /* Custom scrollbar for dark theme */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; } /* gray-800 */
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; } /* gray-600 */
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; } /* gray-500 */
+        
+        /* Style for disabled buttons */
+        button:disabled {
+            background-color: #4b5563; /* gray-600 */
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        /* Styling for Google Places Autocomplete dropdown */
+        .pac-container {
+            background-color: #1f2937; /* gray-800 */
+            border-radius: 0.5rem;
+            border: 1px solid #4b5563; /* gray-600 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            z-index: 9999 !important; /* Ensure it's above modals */
+        }
+        .pac-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            color: #d1d5db; /* gray-300 */
+            border-top: 1px solid #374151; /* gray-700 */
+        }
+        .pac-item:first-child {
+            border-top: none;
+        }
+        .pac-item:hover {
+            background-color: #374151; /* gray-700 */
+        }
+        .pac-item-query {
+            color: #f9fafb; /* gray-50 */
+            font-weight: 500;
+        }
+        .pac-matched {
+            color: #60a5fa; /* blue-400 */
+        }
+        .mode-btn {
+            flex-grow: 1;
+            padding: 0.5rem;
+            border: 1px solid #4b5563; /* gray-600 */
+            color: #9ca3af; /* gray-400 */
+            background-color: transparent;
+        }
+        .mode-btn.active {
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
+            border-color: #4f46e5;
+        }
+        .mode-btn:first-child { border-radius: 0.375rem 0 0 0.375rem; }
+        .mode-btn:last-child { border-radius: 0 0.375rem 0.375rem 0; }
+        
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            width: 1rem;
+            height: 1rem;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Auth Container -->
+    <div id="auth-container" class="flex items-center justify-center h-screen">
+        <div class="w-full max-w-md">
+            <form id="login-form" class="bg-gray-800 shadow-md rounded-lg px-8 pt-6 pb-8 mb-4">
+                <h2 class="text-2xl font-bold text-white text-center mb-6">Login</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-300 text-sm font-bold mb-2" for="login-email">Email</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:shadow-outline" id="login-email" type="email" placeholder="Email">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-300 text-sm font-bold mb-2" for="login-password">Password</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 text-white mb-3 leading-tight focus:outline-none focus:shadow-outline" id="login-password" type="password" placeholder="******************">
+                </div>
+                <div class="flex items-center justify-between">
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center justify-center w-24" type="submit">
+                        <span class="btn-text">Sign In</span>
+                        <span class="spinner hidden ml-2"></span>
+                    </button>
+                    <a id="show-signup" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800" href="#">
+                        Create Account
+                    </a>
+                </div>
+            </form>
+            <form id="signup-form" class="hidden bg-gray-800 shadow-md rounded-lg px-8 pt-6 pb-8 mb-4">
+                <h2 class="text-2xl font-bold text-white text-center mb-6">Sign Up</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-300 text-sm font-bold mb-2" for="signup-email">Email</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:shadow-outline" id="signup-email" type="email" placeholder="Email">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-300 text-sm font-bold mb-2" for="signup-password">Password</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 bg-gray-700 text-white mb-3 leading-tight focus:outline-none focus:shadow-outline" id="signup-password" type="password" placeholder="******************">
+                </div>
+                <div class="flex items-center justify-between">
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center justify-center w-24" type="submit">
+                        <span class="btn-text">Sign Up</span>
+                        <span class="spinner hidden ml-2"></span>
+                    </button>
+                    <a id="show-login" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800" href="#">
+                        Already have an account?
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="app-container" class="hidden flex flex-col md:flex-row h-screen">
+        <!-- Map View -->
+        <div id="map-container" class="w-full md:w-2/3 h-1/2 md:h-full">
+            <div id="map" class="rounded-lg shadow-md bg-gray-700 flex items-center justify-center">
+                <p class="text-gray-400">Loading Map...</p>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="w-full md:w-1/3 h-1/2 md:h-full flex flex-col bg-gray-800 p-4 space-y-4 overflow-y-auto">
+            <div id="sidebar-content">
+                <div class="flex items-center justify-between pb-2 border-b border-gray-700">
+                    <h1 class="text-2xl font-bold text-white">Dispatch Center</h1>
+                    <button id="logout-btn" class="text-sm text-red-400 hover:text-red-300">Logout</button>
+                </div>
+                
+                <div id="user-info-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                     <h2 id="user-welcome" class="text-lg font-semibold text-gray-200 mb-2">Welcome!</h2>
+                     <p class="text-sm text-gray-400">Your User ID: <span id="userId" class="font-mono"></span></p>
+                </div>
+
+                <!-- Dispatcher UI -->
+                <div id="dispatch-ui" class="hidden">
+                    <div id="management-actions-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                        <h2 class="text-lg font-semibold text-gray-200 mb-2">Management Actions</h2>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="open-promote-driver-modal-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Promote User</button>
+                            <button id="open-create-job-modal-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Create Job</button>
+                        </div>
+                    </div>
+                    <div id="drivers-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                        <h3 class="text-lg font-semibold text-gray-200 mb-2">Drivers</h3>
+                        <ul id="drivers-list" class="space-y-2"></ul>
+                    </div>
+                    <div id="job-dashboard-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                        <h3 class="text-lg font-semibold text-gray-200 mb-2">Job Dashboard</h3>
+                        <ul id="jobs-list" class="space-y-2"></ul>
+                    </div>
+                </div>
+
+                <!-- Driver UI -->
+                <div id="driver-ui" class="hidden">
+                    <div id="current-job-panel" class="hidden bg-blue-900 border border-blue-700 p-4 rounded-lg shadow-sm mt-4">
+                        <h3 class="text-lg font-semibold text-white mb-2">My Current Job</h3>
+                        <div id="current-job-details" class="text-sm text-blue-200 space-y-1"></div>
+                        <button id="complete-job-btn" class="w-full mt-3 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Complete Job</button>
+                    </div>
+                    <div id="location-sharing-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                        <h2 class="text-lg font-semibold text-gray-200 mb-2">My Location Sharing</h2>
+                        <div class="flex items-center justify-between mb-3">
+                            <span id="location-status" class="text-sm text-gray-400">Sharing is off</span>
+                            <button id="toggle-share-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Start Sharing
+                            </button>
+                        </div>
+                        <div id="driver-status-control" class="hidden">
+                            <label for="driver-status-select" class="block text-sm font-medium text-gray-300">My Status:</label>
+                            <select id="driver-status-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md text-white">
+                                <option>Available</option>
+                                <option>On Break</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-xl font-bold text-white"></h3>
+                <button id="modal-close-btn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            <div>
+                <p id="modal-message" class="text-gray-300"></p>
+            </div>
+        </div>
+    </div>
+    <div id="promote-driver-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+            <form id="promote-driver-form">
+                <h3 class="text-xl font-bold text-white mb-4">Promote User to Driver</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="user-select" class="block text-sm font-medium text-gray-300">Select User:</label>
+                        <select id="user-select" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md text-white"></select>
+                    </div>
+                    <input type="text" id="promote-driver-name-input" placeholder="Driver's Full Name" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="promote-team-id-input" placeholder="Assign Team ID" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="promote-driver-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 flex items-center justify-center w-28">
+                            <span class="btn-text">Promote</span>
+                            <span class="spinner hidden ml-2"></span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="create-job-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+            <form id="create-job-form">
+                <h3 class="text-xl font-bold text-white mb-4">Create New Job</h3>
+                <div class="space-y-4">
+                    <input type="text" id="job-origin-input" placeholder="Job Origin" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="job-destination-input" placeholder="Job Destination" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <textarea id="job-note-input" placeholder="Job Notes (optional)" rows="2" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    <div>
+                        <label for="assign-team-select" class="block text-sm font-medium text-gray-300">Assign to Team:</label>
+                        <select id="assign-team-select" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md text-white"></select>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="create-job-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center w-32">
+                            <span class="btn-text">Create Job</span>
+                            <span class="spinner hidden ml-2"></span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="job-offer-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+            <h3 class="text-xl font-bold text-white mb-4">New Job Offer</h3>
+            <div id="job-offer-details" class="text-gray-300 mb-4 space-y-1"></div>
+            <div class="flex justify-end space-x-2">
+                <button id="decline-job-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Decline</button>
+                <button id="accept-job-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Accept</button>
+            </div>
+        </div>
+    </div>
+    <div id="manual-assign-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+            <form id="manual-assign-form">
+                <h3 class="text-xl font-bold text-white mb-4">Manually Assign Job</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="manual-assign-driver-select" class="block text-sm font-medium text-gray-300">Select an available driver:</label>
+                        <select id="manual-assign-driver-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md text-white">
+                        </select>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="manual-assign-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center w-48">
+                            <span class="btn-text">Confirm Assignment</span>
+                            <span class="spinner hidden ml-2"></span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+            <h3 id="confirm-modal-title" class="text-xl font-bold text-white mb-4">Are you sure?</h3>
+            <p id="confirm-modal-message" class="text-gray-300 mb-4"></p>
+            <div class="flex justify-end space-x-2">
+                <button id="confirm-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
+                <button id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <div id="job-details-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Job Details</h3>
+                <button id="job-details-close-btn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            <div id="job-details-content" class="text-gray-300 space-y-2"></div>
+        </div>
+    </div>
+    <div id="edit-driver-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+            <form id="edit-driver-form">
+                <h3 class="text-xl font-bold text-white mb-4">Manage Driver</h3>
+                <div class="space-y-4">
+                    <input type="text" id="edit-driver-name-input" placeholder="Driver Name" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="edit-team-id-input" placeholder="Team ID" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="flex justify-between items-center">
+                         <button type="button" id="deactivate-driver-btn" class="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-700">Deactivate</button>
+                         <div class="space-x-2">
+                            <button type="button" id="edit-driver-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
+                            <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 flex items-center justify-center w-36">
+                                <span class="btn-text">Save Changes</span>
+                                <span class="spinner hidden ml-2"></span>
+                            </button>
+                         </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, limit, getDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Configuration ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // --- Initialize Firebase and Services ---
+        let app, auth, db;
+        
+        // --- UI Elements ---
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const showSignup = document.getElementById('show-signup');
+        const showLogin = document.getElementById('show-login');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        const toggleBtn = document.getElementById('toggle-share-btn');
+        const locationStatusEl = document.getElementById('location-status');
+        const userIdEl = document.getElementById('userId');
+        const driversListEl = document.getElementById('drivers-list');
+        const jobsListEl = document.getElementById('jobs-list');
+        const dispatchUi = document.getElementById('dispatch-ui');
+        const driverUi = document.getElementById('driver-ui');
+        const driverInfoPanel = document.getElementById('driver-info-panel');
+        const driverWelcomeEl = document.getElementById('driver-welcome');
+        const locationSharingPanel = document.getElementById('location-sharing-panel');
+        const driverStatusControl = document.getElementById('driver-status-control');
+        const driverStatusSelect = document.getElementById('driver-status-select');
+        
+        // Modals and their controls
+        const infoModal = document.getElementById('info-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        const promoteDriverModal = document.getElementById('promote-driver-modal');
+        const openPromoteDriverModalBtn = document.getElementById('open-promote-driver-modal-btn');
+        const promoteDriverForm = document.getElementById('promote-driver-form');
+        const userSelect = document.getElementById('user-select');
+        const promoteDriverNameInput = document.getElementById('promote-driver-name-input');
+        const promoteTeamIdInput = document.getElementById('promote-team-id-input');
+        const promoteDriverCancelBtn = document.getElementById('promote-driver-cancel-btn');
+
+        const createJobModal = document.getElementById('create-job-modal');
+        const openCreateJobModalBtn = document.getElementById('open-create-job-modal-btn');
+        const createJobForm = document.getElementById('create-job-form');
+        const jobOriginInput = document.getElementById('job-origin-input');
+        const jobDestinationInput = document.getElementById('job-destination-input');
+        const jobNoteInput = document.getElementById('job-note-input');
+        const assignTeamSelect = document.getElementById('assign-team-select');
+        const createJobCancelBtn = document.getElementById('create-job-cancel-btn');
+
+        const jobOfferModal = document.getElementById('job-offer-modal');
+        const jobOfferDetails = document.getElementById('job-offer-details');
+        const acceptJobBtn = document.getElementById('accept-job-btn');
+        const declineJobBtn = document.getElementById('decline-job-btn');
+
+        const manualAssignModal = document.getElementById('manual-assign-modal');
+        const manualAssignForm = document.getElementById('manual-assign-form');
+        const manualAssignDriverSelect = document.getElementById('manual-assign-driver-select');
+        const manualAssignCancelBtn = document.getElementById('manual-assign-cancel-btn');
+        
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmModalTitle = document.getElementById('confirm-modal-title');
+        const confirmModalMessage = document.getElementById('confirm-modal-message');
+        const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+        const confirmActionBtn = document.getElementById('confirm-action-btn');
+
+        const jobDetailsModal = document.getElementById('job-details-modal');
+        const jobDetailsContent = document.getElementById('job-details-content');
+        const jobDetailsCloseBtn = document.getElementById('job-details-close-btn');
+
+        const editDriverModal = document.getElementById('edit-driver-modal');
+        const editDriverForm = document.getElementById('edit-driver-form');
+        const editDriverNameInput = document.getElementById('edit-driver-name-input');
+        const editTeamIdInput = document.getElementById('edit-team-id-input');
+        const deactivateDriverBtn = document.getElementById('deactivate-driver-btn');
+        const editDriverCancelBtn = document.getElementById('edit-driver-cancel-btn');
+
+        const currentJobPanel = document.getElementById('current-job-panel');
+        const currentJobDetails = document.getElementById('current-job-details');
+        const completeJobBtn = document.getElementById('complete-job-btn');
+
+        // --- App State ---
+        const AppState = {
+            userId: 'offline',
+            map: null,
+            userMarker: null,
+            driverMapMarkers: {},
+            isSharingLocation: false,
+            locationInterval: null,
+            allDrivers: [],
+            allUsers: [],
+            activeDrivers: [],
+            myDriverProfile: null,
+            myCurrentJobUnsubscribe: null,
+            directionsService: null,
+            directionsRenderer: null,
+            // Firestore collection paths
+            usersPath: '',
+            driversPath: '',
+            driverLocationsPath: '',
+            jobsPath: '',
+            // Location Simulation Variables
+            currentSimulatedLat: 38.0366,
+            currentSimulatedLng: -87.3717
+        };
+
+        // --- Main App Initialization ---
+        function initMap() {
+            const mapElement = document.getElementById("map");
+            if (!window.google || !window.google.maps) {
+                console.error("Google Maps script not loaded or API object not available.");
+                mapElement.innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Error</p><p class="text-gray-400">Could not load Google Maps.</p></div>`;
+                return;
+            }
+            mapElement.innerHTML = ''; // Clear placeholder text
+            const mapOptions = {
+                center: { lat: 38.0366, lng: -87.3717 },
+                zoom: 12,
+                disableDefaultUI: true,
+                styles: [ /* Dark mode styles */
+                    { elementType: "geometry", stylers: [{ color: "#242f3e" }] }, { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] }, { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] }, { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] }, { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] }, { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] }, { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] }, { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] }, { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] }, { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] }, { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] }, { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] }, { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] }, { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] }, { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] },
+                ],
+            };
+            AppState.map = new google.maps.Map(mapElement, mapOptions);
+            AppState.directionsService = new google.maps.DirectionsService();
+            AppState.directionsRenderer = new google.maps.DirectionsRenderer({
+                map: AppState.map,
+                polylineOptions: { strokeColor: '#4285F4', strokeWeight: 6, strokeOpacity: 0.8 },
+                suppressMarkers: true // We use our own markers
+            });
+            
+            const autocompleteOptions = {
+                fields: ["address_components", "geometry", "icon", "name"],
+                strictBounds: false,
+            };
+            const jobOriginAutocomplete = new google.maps.places.Autocomplete(jobOriginInput, autocompleteOptions);
+            const jobDestinationAutocomplete = new google.maps.places.Autocomplete(jobDestinationInput, autocompleteOptions);
+            jobOriginAutocomplete.bindTo("bounds", AppState.map);
+            jobDestinationAutocomplete.bindTo("bounds", AppState.map);
+        };
+
+        async function initializeFirebase() {
+            if (!firebaseConfig.apiKey) { showToast("Firebase configuration is missing.", "error"); return; }
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                AppState.usersPath = `/artifacts/${appId}/public/data/users`;
+                AppState.driversPath = `/artifacts/${appId}/public/data/drivers`;
+                AppState.driverLocationsPath = `/artifacts/${appId}/public/data/driverLocations`;
+                AppState.jobsPath = `/artifacts/${appId}/public/data/jobs`;
+                
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        AppState.userId = user.uid;
+                        userIdEl.textContent = AppState.userId.substring(0, 8) + '...';
+                        await findMyDriverProfile(AppState.userId);
+                        
+                        authContainer.classList.add('hidden');
+                        appContainer.classList.remove('hidden');
+
+                        listenForUsers();
+                        listenForDrivers();
+                        listenForActiveDrivers();
+                        listenForAllJobs();
+                    } else {
+                        authContainer.classList.remove('hidden');
+                        appContainer.classList.add('hidden');
+                        AppState.myDriverProfile = null;
+                        AppState.userId = 'offline';
+                    }
+                });
+
+            } catch (e) {
+                console.error("Critical Firebase initialization error:", e);
+                showToast("Firebase failed to initialize.", "error");
+            }
+        }
+        
+        async function findMyDriverProfile(uid) {
+            const driverRef = doc(db, AppState.driversPath, uid);
+            const driverSnap = await getDoc(driverRef);
+            if (driverSnap.exists() && driverSnap.data().status !== 'inactive') {
+                AppState.myDriverProfile = { id: driverSnap.id, ...driverSnap.data() };
+                console.log("Operating as driver:", AppState.myDriverProfile.name);
+                listenForMyJob();
+            } else {
+                AppState.myDriverProfile = null;
+                console.log("This user is not a registered driver or is inactive.");
+            }
+            renderUIForRole();
+        }
+
+        function listenForUsers() {
+             const usersRef = collection(db, AppState.usersPath);
+             onSnapshot(usersRef, (snapshot) => {
+                AppState.allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+             });
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            if (!AppState.myDriverProfile) return;
+            AppState.isSharingLocation = !AppState.isSharingLocation;
+            if (AppState.isSharingLocation) {
+                toggleBtn.textContent = 'Stop Sharing';
+                toggleBtn.classList.replace('bg-blue-600', 'bg-red-600');
+                locationStatusEl.textContent = 'Sharing is on';
+                driverStatusControl.classList.remove('hidden');
+                shareLocation();
+                AppState.locationInterval = setInterval(shareLocation, 5000);
+            } else {
+                toggleBtn.textContent = 'Start Sharing';
+                toggleBtn.classList.replace('bg-red-600', 'bg-blue-600');
+                locationStatusEl.textContent = 'Sharing is off';
+                driverStatusControl.classList.add('hidden');
+                clearInterval(AppState.locationInterval);
+                deleteDoc(doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id));
+                if (AppState.userMarker) {
+                    AppState.userMarker.setMap(null);
+                    AppState.userMarker = null;
+                }
+            }
+        });
+
+        function getSimulatedLocation() {
+            AppState.currentSimulatedLat += (Math.random() - 0.5) * 0.005;
+            AppState.currentSimulatedLng += (Math.random() - 0.5) * 0.005;
+            return { lat: AppState.currentSimulatedLat, lng: AppState.currentSimulatedLng };
+        }
+
+        function shareLocation() {
+            const newPos = getSimulatedLocation();
+            if (AppState.map && !AppState.userMarker) {
+                AppState.userMarker = new google.maps.Marker({ 
+                    position: newPos, map: AppState.map, title: 'You (Simulated)', 
+                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 } 
+                });
+            } else if (AppState.map && AppState.userMarker) {
+                AppState.userMarker.setPosition(newPos);
+            }
+            if (AppState.map) AppState.map.setCenter(newPos);
+            if (AppState.myDriverProfile) {
+                const locationData = { 
+                    location: new GeoPoint(newPos.lat, newPos.lng), 
+                    timestamp: serverTimestamp(),
+                    status: driverStatusSelect.value
+                };
+                setDoc(doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id), locationData, { merge: true });
+            }
+        }
+        
+        driverStatusSelect.addEventListener('change', () => {
+            if (AppState.isSharingLocation && AppState.myDriverProfile) {
+                const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
+                updateDoc(driverLocRef, { status: driverStatusSelect.value });
+            }
+        });
+
+        function listenForDrivers() {
+            const q = query(collection(db, AppState.driversPath), where("status", "!=", "inactive"));
+            onSnapshot(q, (snapshot) => {
+                AppState.allDrivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderDriversList();
+                populateTeamSelect();
+            });
+        }
+        
+        function populateTeamSelect() {
+            const teams = [...new Set(AppState.allDrivers.map(d => d.teamId))];
+            assignTeamSelect.innerHTML = '';
+            teams.forEach(teamId => {
+                const option = document.createElement('option');
+                option.value = teamId;
+                option.textContent = `Team ${teamId}`;
+                assignTeamSelect.appendChild(option);
+            });
+        }
+
+        function listenForActiveDrivers() {
+            const locationsRef = collection(db, AppState.driverLocationsPath);
+            onSnapshot(locationsRef, (snapshot) => {
+                AppState.activeDrivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderDriversList();
+                
+                snapshot.docChanges().forEach((change) => {
+                    const driverId = change.doc.id;
+                    const docData = change.doc.data();
+                    if (driverId === (AppState.myDriverProfile ? AppState.myDriverProfile.id : '') || !AppState.map) return;
+                    
+                    const position = { lat: docData.location.latitude, lng: docData.location.longitude };
+                    if (change.type === "added" || change.type === "modified") {
+                        if (!AppState.driverMapMarkers[driverId]) {
+                            AppState.driverMapMarkers[driverId] = new google.maps.Marker({ position, map: AppState.map, label: { text: driverId.substring(0, 2).toUpperCase(), color: "white", fontWeight: 'bold' }, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#f39c12', fillOpacity: 1, strokeColor: 'black', strokeWeight: 2 } });
+                        } else {
+                            AppState.driverMapMarkers[driverId].setPosition(position);
+                        }
+                    } else if (change.type === "removed") {
+                        if (AppState.driverMapMarkers[driverId]) {
+                            AppState.driverMapMarkers[driverId].setMap(null);
+                            delete AppState.driverMapMarkers[driverId];
+                        }
+                    }
+                });
+            });
+        }
+
+        function renderDriversList() {
+            driversListEl.innerHTML = '';
+            if (AppState.allDrivers.length === 0) {
+                driversListEl.innerHTML = '<li class="text-gray-400 text-sm">No active drivers.</li>';
+                return;
+            }
+            AppState.allDrivers.forEach(driver => {
+                const activeInfo = AppState.activeDrivers.find(d => d.id === driver.id);
+                const isActive = !!activeInfo;
+                const li = document.createElement('li');
+                const borderClass = isActive ? 'border-l-4 border-green-500' : 'border-l-4 border-gray-700';
+                li.className = `flex justify-between items-center bg-gray-800 p-2 rounded-md ${borderClass}`;
+                
+                const status = activeInfo ? activeInfo.status : 'Offline';
+                let statusColor = 'bg-gray-500';
+                if (status === 'Available') statusColor = 'bg-green-500';
+                if (status === 'On Trip') statusColor = 'bg-yellow-500';
+                if (status === 'On Break') statusColor = 'bg-orange-500';
+
+                li.innerHTML = `
+                    <div>
+                        <p class="text-sm font-bold text-gray-200">${driver.name}</p>
+                        <p class="text-xs font-mono text-gray-400">Team: ${driver.teamId}</p>
+                         <p class="text-xs font-mono text-gray-500">${driver.id}</p>
+                    </div>
+                    <div class="flex items-center">
+                         <span class="text-xs font-semibold text-gray-400 mr-2">${status}</span>
+                         <span class="w-3 h-3 rounded-full ${statusColor} mr-2"></span>
+                         <button data-driver-id="${driver.id}" class="manage-driver-btn px-2 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Manage</button>
+                    </div>
+                `;
+                driversListEl.appendChild(li);
+            });
+        }
+        
+        driversListEl.addEventListener('click', (e) => {
+            if (e.target.classList.contains('manage-driver-btn')) {
+                const driverId = e.target.dataset.driverId;
+                openEditDriverModal(driverId);
+            }
+        });
+
+        function openEditDriverModal(driverId) {
+            const driver = AppState.allDrivers.find(d => d.id === driverId);
+            if (!driver) {
+                showToast('Driver not found.', 'error');
+                return;
+            }
+            editDriverForm.dataset.driverId = driverId;
+            editDriverNameInput.value = driver.name;
+            editTeamIdInput.value = driver.teamId;
+            editDriverModal.classList.remove('hidden');
+        }
+
+        editDriverForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const driverId = e.target.dataset.driverId;
+            const name = editDriverNameInput.value.trim();
+            const teamId = editTeamIdInput.value.trim();
+            if (!driverId || !name || !teamId) {
+                showToast('All fields are required.', 'error');
+                return;
+            }
+            const driverRef = doc(db, AppState.driversPath, driverId);
+            await updateDoc(driverRef, { name, teamId });
+            showToast('Driver details updated.', 'success');
+            editDriverModal.classList.add('hidden');
+        });
+
+        deactivateDriverBtn.addEventListener('click', async () => {
+            const driverId = editDriverForm.dataset.driverId;
+            showConfirmModal(
+                'Deactivate Driver?',
+                'This will remove the driver from active lists. They can be reactivated later. Are you sure?',
+                async () => {
+                    const driverRef = doc(db, AppState.driversPath, driverId);
+                    await updateDoc(driverRef, { status: 'inactive' });
+                    showToast('Driver has been deactivated.', 'success');
+                    editDriverModal.classList.add('hidden');
+                }
+            );
+        });
+
+        function listenForAllJobs() {
+            const jobsRef = collection(db, AppState.jobsPath);
+            onSnapshot(jobsRef, (snapshot) => {
+                const allJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                const statusOrder = { 'unassigned': 1, 'in-progress': 2, 'completed': 3 };
+                allJobs.sort((a, b) => {
+                    const orderA = statusOrder[a.status] || 4;
+                    const orderB = statusOrder[b.status] || 4;
+                    if (orderA !== orderB) return orderA - orderB;
+                    const timeA = a.createdAt ? a.createdAt.toMillis() : 0;
+                    const timeB = b.createdAt ? b.createdAt.toMillis() : 0;
+                    return timeB - timeA;
+                });
+
+                renderAllJobsList(allJobs);
+            });
+        }
+
+        function renderAllJobsList(jobs) {
+            jobsListEl.innerHTML = '';
+            if (jobs.length === 0) {
+                jobsListEl.innerHTML = '<li class="text-gray-400 text-sm">No jobs in the system.</li>';
+                return;
+            }
+
+            jobs.forEach(job => {
+                const li = document.createElement('li');
+                li.dataset.jobId = job.id;
+                let content = '';
+                let styleClasses = 'bg-gray-800 p-2 rounded-md text-sm cursor-pointer hover:bg-gray-700';
+
+                switch(job.status) {
+                    case 'unassigned':
+                        styleClasses += ' border-l-4 border-yellow-500';
+                        content = `
+                            <p class="text-gray-400"><strong class="text-gray-200">Team:</strong> ${job.teamId}</p>
+                            <p class="text-gray-400"><strong class="text-gray-200">From:</strong> ${job.origin}</p>
+                            <p class="text-gray-400"><strong class="text-gray-200">To:</strong> ${job.destination}</p>
+                            <p class="text-gray-400 mt-1 italic"><strong class="text-gray-200">Note:</strong> ${job.note || 'N/A'}</p>
+                            <button data-job-id="${job.id}" class="manual-assign-btn w-full mt-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">Manually Assign</button>
+                        `;
+                        break;
+                    case 'in-progress':
+                        const inProgressDriver = AppState.allDrivers.find(d => d.id === job.assignedDriverId);
+                        const inProgressDriverName = inProgressDriver ? inProgressDriver.name : 'Unknown';
+                        styleClasses += ' border-l-4 border-green-500';
+                        content = `
+                            <p class="text-gray-400"><strong class="text-gray-200">Driver:</strong> ${inProgressDriverName}</p>
+                            <p class="text-gray-400"><strong class="text-gray-200">To:</strong> ${job.destination}</p>
+                            <p class="text-gray-400 mt-1 italic"><strong class="text-gray-200">Note:</strong> ${job.note || 'N/A'}</p>
+                            <button data-job-id="${job.id}" data-driver-id="${job.assignedDriverId}" class="reassign-job-btn w-full mt-2 px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">Cancel/Reassign</button>
+                        `;
+                        break;
+                    case 'completed':
+                         const completedDriver = AppState.allDrivers.find(d => d.id === job.assignedDriverId);
+                         const completedDriverName = completedDriver ? completedDriver.name : 'Unknown';
+                         styleClasses += ' border-l-4 border-gray-600 opacity-60';
+                         content = `
+                            <p class="text-gray-400"><strong class="text-gray-200">Driver:</strong> ${completedDriverName}</p>
+                            <p class="text-gray-400"><strong class="text-gray-200">Trip:</strong> ${job.origin} to ${job.destination}</p>
+                            <p class="text-gray-400 mt-1 italic"><strong class="text-gray-200">Note:</strong> ${job.note || 'N/A'}</p>
+                         `;
+                        break;
+                }
+                li.className = styleClasses;
+                li.innerHTML = content;
+                jobsListEl.appendChild(li);
+            });
+        }
+
+        jobsListEl.addEventListener('click', async (e) => {
+            const target = e.target;
+            const jobLi = target.closest('li[data-job-id]');
+            if (!jobLi) return;
+
+            const jobId = jobLi.dataset.jobId;
+
+            if (target.classList.contains('manual-assign-btn')) {
+                openManualAssignModal(jobId);
+            } else if (target.classList.contains('reassign-job-btn')) {
+                const driverId = target.dataset.driverId;
+                showConfirmModal(
+                    'Cancel & Reassign Job?', 
+                    'This will remove the job from the current driver and make it available again. Are you sure?', 
+                    () => { reassignJob(jobId, driverId); }
+                );
+            } else {
+                const jobRef = doc(db, AppState.jobsPath, jobId);
+                const jobSnap = await getDoc(jobRef);
+                if (jobSnap.exists()) {
+                    showJobDetailsModal(jobSnap.data(), jobId);
+                }
+            }
+        });
+
+        async function reassignJob(jobId, driverId) {
+            if (!jobId || !driverId) {
+                showToast('Missing job or driver information.', 'error');
+                return;
+            }
+            const jobRef = doc(db, AppState.jobsPath, jobId);
+            const driverLocRef = doc(db, AppState.driverLocationsPath, driverId);
+
+            const batch = writeBatch(db);
+
+            batch.update(jobRef, {
+                status: 'unassigned',
+                assignedDriverId: null,
+                declinedBy: arrayUnion(driverId)
+            });
+
+            batch.update(driverLocRef, { status: 'Available' });
+
+            try {
+                await batch.commit();
+                showToast('Job has been reassigned and is now open.', 'success');
+            } catch (error) {
+                console.error("Error reassigning job: ", error);
+                showToast('Could not reassign the job.', 'error');
+            }
+        }
+
+        function openManualAssignModal(jobId) {
+            manualAssignDriverSelect.innerHTML = '';
+            const availableDrivers = AppState.allDrivers.filter(d => {
+                const activeInfo = AppState.activeDrivers.find(ad => ad.id === d.id);
+                return activeInfo && activeInfo.status === 'Available';
+            });
+
+            if (availableDrivers.length === 0) {
+                showModal('No Drivers Available', 'There are no drivers online and available.');
+                return;
+            }
+
+            availableDrivers.forEach(driver => {
+                const option = document.createElement('option');
+                option.value = driver.id;
+                option.textContent = `${driver.name} (Team: ${driver.teamId})`;
+                manualAssignDriverSelect.appendChild(option);
+            });
+            
+            manualAssignForm.dataset.jobId = jobId;
+            manualAssignModal.classList.remove('hidden');
+        }
+
+        manualAssignForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const button = e.submitter;
+            showSpinner(button);
+            const jobId = e.target.dataset.jobId;
+            const driverId = manualAssignDriverSelect.value;
+            if (jobId && driverId) {
+                const driver = AppState.allDrivers.find(d => d.id === driverId);
+                const jobRef = doc(db, AppState.jobsPath, jobId);
+                const driverLocRef = doc(db, AppState.driverLocationsPath, driverId);
+                const batch = writeBatch(db);
+                batch.update(jobRef, { status: 'in-progress', assignedDriverId: driverId });
+                batch.update(driverLocRef, { status: 'On Trip' });
+                await batch.commit();
+                showToast(`Job manually assigned to ${driver.name}.`, 'success');
+            }
+            hideSpinner(button);
+            manualAssignModal.classList.add('hidden');
+        });
+        
+        manualAssignCancelBtn.addEventListener('click', () => manualAssignModal.classList.add('hidden'));
+
+        async function checkForTeamJobs() {
+            if (!AppState.myDriverProfile || driverStatusSelect.value !== 'Available') return;
+            const q = query(
+                collection(db, AppState.jobsPath), 
+                where("teamId", "==", AppState.myDriverProfile.teamId), 
+                where("status", "==", "unassigned"),
+                where("declinedBy", "not-in", [AppState.myDriverProfile.id]),
+                limit(1)
+            );
+            const jobSnapshot = await getDocs(q);
+            if (!jobSnapshot.empty) {
+                const job = { id: jobSnapshot.docs[0].id, ...jobSnapshot.docs[0].data() };
+                showJobOffer(job);
+            }
+        }
+
+        function showJobOffer(job) {
+            jobOfferDetails.innerHTML = `
+                <p><strong class="text-gray-100">From:</strong> ${job.origin}</p>
+                <p><strong class="text-gray-100">To:</strong> ${job.destination}</p>
+                <p class="mt-2 italic"><strong class="text-gray-100">Note:</strong> ${job.note || 'N/A'}</p>
+            `;
+            acceptJobBtn.dataset.jobId = job.id;
+            acceptJobBtn.dataset.jobOrigin = job.origin;
+            acceptJobBtn.dataset.jobDestination = job.destination;
+            declineJobBtn.dataset.jobId = job.id;
+            jobOfferModal.classList.remove('hidden');
+        }
+        
+        acceptJobBtn.addEventListener('click', async (e) => {
+            const { jobId, jobOrigin, jobDestination } = e.target.dataset;
+            const jobRef = doc(db, AppState.jobsPath, jobId);
+            const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
+            const batch = writeBatch(db);
+            batch.update(jobRef, { status: 'in-progress', assignedDriverId: AppState.myDriverProfile.id });
+            batch.update(driverLocRef, { status: 'On Trip' });
+            await batch.commit();
+            jobOfferModal.classList.add('hidden');
+            listenForMyJob();
+            calculateAndDisplayRoute(getSimulatedLocation(), jobOrigin);
+        });
+        
+        declineJobBtn.addEventListener('click', async (e) => {
+            const jobId = e.target.dataset.jobId;
+            const jobRef = doc(db, AppState.jobsPath, jobId);
+            await updateDoc(jobRef, {
+                declinedBy: arrayUnion(AppState.myDriverProfile.id)
+            });
+            jobOfferModal.classList.add('hidden');
+            showToast("Job Declined. Checking for other jobs...", "info");
+            checkForTeamJobs(); // Immediately check for another job
+        });
+
+        function listenForMyJob() {
+            if (AppState.myCurrentJobUnsubscribe) AppState.myCurrentJobUnsubscribe();
+            const q = query(collection(db, AppState.jobsPath), where("assignedDriverId", "==", AppState.myDriverProfile.id), where("status", "==", "in-progress"), limit(1));
+            AppState.myCurrentJobUnsubscribe = onSnapshot(q, (snapshot) => {
+                if (!snapshot.empty) {
+                    const job = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+                    currentJobPanel.classList.remove('hidden');
+                    currentJobDetails.innerHTML = `
+                        <p><strong class="text-white">From:</strong> ${job.origin}</p>
+                        <p><strong class="text-white">To:</strong> ${job.destination}</p>
+                        <p class="mt-1 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
+                    `;
+                    completeJobBtn.dataset.jobId = job.id;
+                } else {
+                    currentJobPanel.classList.add('hidden');
+                    clearRoute();
+                }
+            });
+        }
+
+        completeJobBtn.addEventListener('click', async (e) => {
+            const jobId = e.target.dataset.jobId;
+            const jobRef = doc(db, AppState.jobsPath, jobId);
+            const driverLocRef = doc(db, AppState.driverLocationsPath, AppState.myDriverProfile.id);
+            const batch = writeBatch(db);
+            batch.update(jobRef, { status: 'completed' });
+            batch.update(driverLocRef, { status: 'Available' });
+            await batch.commit();
+            showToast("Job Complete!", "success");
+        });
+
+        promoteDriverForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const button = e.submitter;
+            showSpinner(button);
+            const selectedUserId = userSelect.value;
+            const name = promoteDriverNameInput.value.trim();
+            const team = promoteTeamIdInput.value.trim();
+            if (!selectedUserId || !name || !team) { showToast('Please fill all fields.', 'error'); hideSpinner(button); return; }
+            const newDriverRef = doc(db, AppState.driversPath, selectedUserId);
+            await setDoc(newDriverRef, { name, teamId: team, status: 'active' });
+            showToast(`User has been promoted to driver: ${name}.`, 'success');
+            promoteDriverForm.reset();
+            promoteDriverModal.classList.add('hidden');
+            hideSpinner(button);
+        });
+
+        createJobForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const button = e.submitter;
+            showSpinner(button);
+            const origin = jobOriginInput.value.trim();
+            const destination = jobDestinationInput.value.trim();
+            const teamId = assignTeamSelect.value;
+            const note = jobNoteInput.value.trim();
+            if (!origin || !destination || !teamId) { showToast('Please fill out all required fields.', 'error'); hideSpinner(button); return; }
+            const jobData = { origin, destination, teamId, note, status: 'unassigned', createdAt: serverTimestamp(), declinedBy: [] };
+            await addDoc(collection(db, AppState.jobsPath), jobData);
+            showToast('New job has been created.', 'success');
+            createJobForm.reset();
+            createJobModal.classList.add('hidden');
+            hideSpinner(button);
+        });
+
+        function calculateAndDisplayRoute(origin, destination) {
+            if (!origin || !destination) return;
+            const request = {
+                origin: origin,
+                destination: destination,
+                travelMode: 'DRIVING'
+            };
+            AppState.directionsService.route(request, (result, status) => {
+                if (status == 'OK') {
+                    AppState.directionsRenderer.setDirections(result);
+                } else {
+                    console.error('Directions request failed due to ' + status);
+                    showToast(`Could not display route. Status: ${status}`, 'error');
+                }
+            });
+        }
+
+        function clearRoute() {
+            if (AppState.directionsRenderer) {
+                AppState.directionsRenderer.setDirections({ routes: [] });
+            }
+        }
+
+        function loadGoogleMapsScript() {
+            const apiKey = "AIzaSyCHmVp6ImHZ37mB6XPm4x6pNODgt5PJjjg";
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+            script.async = true;
+            script.defer = true;
+            script.onload = () => { console.log("Google Maps script loaded successfully."); initMap(); };
+            script.onerror = () => { console.error("Error loading the Google Maps script."); document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Script Error</p></div>`; };
+            document.head.appendChild(script);
+        }
+
+        function showModal(title, message) {
+            infoModal.classList.remove('hidden');
+            modalTitle.textContent = title;
+            modalMessage.innerHTML = message;
+        }
+
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 100);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+        
+        function showConfirmModal(title, message, onConfirm) {
+            confirmModalTitle.textContent = title;
+            confirmModalMessage.textContent = message;
+            
+            const newConfirmBtn = confirmActionBtn.cloneNode(true);
+            confirmActionBtn.parentNode.replaceChild(newConfirmBtn, confirmActionBtn);
+            
+            newConfirmBtn.addEventListener('click', () => {
+                onConfirm();
+                confirmModal.classList.add('hidden');
+            });
+
+            confirmModal.classList.remove('hidden');
+        }
+
+        function showJobDetailsModal(job) {
+            const driver = AppState.allDrivers.find(d => d.id === job.assignedDriverId);
+            const driverName = driver ? driver.name : 'N/A';
+            const createdTime = job.createdAt ? job.createdAt.toDate().toLocaleString() : 'N/A';
+            
+            jobDetailsContent.innerHTML = `
+                <p><strong>Status:</strong> ${job.status}</p>
+                <p><strong>Team:</strong> ${job.teamId}</p>
+                <p><strong>From:</strong> ${job.origin}</p>
+                <p><strong>To:</strong> ${job.destination}</p>
+                <p><strong>Assigned Driver:</strong> ${driverName}</p>
+                <p><strong>Created:</strong> ${createdTime}</p>
+                <p class="mt-2 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
+            `;
+            jobDetailsModal.classList.remove('hidden');
+        }
+
+        function renderUIForRole() {
+            if (AppState.myDriverProfile) { // Is a driver
+                dispatchUi.classList.add('hidden');
+                driverUi.classList.remove('hidden');
+                document.getElementById('user-welcome').textContent = `Welcome, ${AppState.myDriverProfile.name}!`;
+                locationSharingPanel.classList.remove('hidden');
+            } else { // Is a dispatcher
+                dispatchUi.classList.remove('hidden');
+                driverUi.classList.add('hidden');
+                document.getElementById('user-welcome').textContent = 'Welcome, Dispatcher!';
+            }
+        }
+        
+        function showSpinner(button) {
+            button.disabled = true;
+            button.querySelector('.btn-text').classList.add('hidden');
+            button.querySelector('.spinner').classList.remove('hidden');
+        }
+
+        function hideSpinner(button) {
+            button.disabled = false;
+            button.querySelector('.btn-text').classList.remove('hidden');
+            button.querySelector('.spinner').classList.add('hidden');
+        }
+
+        // Auth form switching
+        showSignup.addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); });
+        showLogin.addEventListener('click', (e) => { e.preventDefault(); signupForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const button = e.submitter;
+            showSpinner(button);
+            const email = loginForm['login-email'].value;
+            const password = loginForm['login-password'].value;
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch(err) {
+                showModal('Login Error', err.message)
+            } finally {
+                hideSpinner(button);
+            }
+        });
+
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const button = e.submitter;
+            showSpinner(button);
+            const email = signupForm['signup-email'].value;
+            const password = signupForm['signup-password'].value;
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const userDocRef = doc(db, AppState.usersPath, userCredential.user.uid);
+                await setDoc(userDocRef, { email: userCredential.user.email, role: 'dispatcher' });
+            } catch(err) {
+                showModal('Sign Up Error', err.message);
+            } finally {
+                hideSpinner(button);
+            }
+        });
+        
+        logoutBtn.addEventListener('click', () => {
+            signOut(auth);
+        });
+
+        modalCloseBtn.addEventListener('click', () => infoModal.classList.add('hidden'));
+        confirmCancelBtn.addEventListener('click', () => confirmModal.classList.add('hidden'));
+        jobDetailsCloseBtn.addEventListener('click', () => jobDetailsModal.classList.add('hidden'));
+        openPromoteDriverModalBtn.addEventListener('click', () => {
+            userSelect.innerHTML = '';
+            const nonDrivers = AppState.allUsers.filter(u => !AppState.allDrivers.some(d => d.id === u.id));
+            if(nonDrivers.length === 0) {
+                showModal('No Users to Promote', 'There are no registered users who are not already drivers.');
+                return;
+            }
+            nonDrivers.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = user.email;
+                userSelect.appendChild(option);
+            });
+            promoteDriverModal.classList.remove('hidden')
+        });
+        promoteDriverCancelBtn.addEventListener('click', () => promoteDriverModal.classList.add('hidden'));
+        openCreateJobModalBtn.addEventListener('click', () => createJobModal.classList.remove('hidden'));
+        createJobCancelBtn.addEventListener('click', () => createJobModal.classList.add('hidden'));
+        editDriverCancelBtn.addEventListener('click', () => editDriverModal.classList.add('hidden'));
+
+        window.onload = () => {
+            initializeFirebase();
+            loadGoogleMapsScript();
+        };
+
+    </script>
+    
+</body>
+</html>
