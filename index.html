@@ -439,9 +439,18 @@
         };
 
         async function initializeFirebase() {
-            // NOTE FOR PRODUCTION: The Firebase config should be provided via environment variables.
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : null;
+            const hardcodedFirebaseConfig = {
+                apiKey: "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI",
+                authDomain: "route-tracker-e62b1.firebaseapp.com",
+                projectId: "route-tracker-e62b1",
+                storageBucket: "route-tracker-e62b1.firebasestorage.app",
+                messagingSenderId: "1016000331711",
+                appId: "1:1016000331711:web:a122b8a52045ee4e832b0a",
+                measurementId: "G-B476Z21SKP"
+            };
+
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : hardcodedFirebaseConfig;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.appId;
 
             if (!firebaseConfig || !appId) {
                 console.error("Firebase config or App ID not found. This application cannot run without it.");
@@ -1208,7 +1217,7 @@
                             status: 'active'
                         }, { merge: true });
                         await updateDoc(userRef, { role: 'driver' });
-                        showToast('User promoted to Driver.', 'success');
+                        showToast('User set to Driver.', 'success');
                     } catch (error) {
                         showToast(`Error: ${error.message}`, 'error');
                     }
@@ -1216,7 +1225,7 @@
                     try {
                         await updateDoc(driverRef, { status: 'inactive' });
                         await updateDoc(userRef, { role: 'dispatcher' });
-                        showToast('Driver demoted to Dispatcher.', 'success');
+                        showToast('Driver set to Dispatcher.', 'success');
                     } catch (error) {
                     }
                 }
