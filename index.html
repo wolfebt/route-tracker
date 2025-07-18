@@ -882,9 +882,8 @@
         }
 
         function loadGoogleMapsScript() {
-            // IMPORTANT: The key below has expired. 
-            // You must replace "YOUR_GOOGLE_MAPS_API_KEY" with a new, valid API key from your Google Cloud Console.
-            const apiKey = AIzaSyDUzkfgu-6zuMHoH-UV5vzFQySSjwAD9u8;
+            // IMPORTANT: The key below was missing quotes. I have added them.
+            const apiKey = "AIzaSyDUzkfgu-6zuMHoH-UV5vzFQySSjwAD9u8";
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
             script.async = true;
