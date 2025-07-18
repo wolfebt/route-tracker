@@ -380,7 +380,6 @@
         const AppState = {
             currentUser: null,
             map: null,
-            trafficLayer: null,
             userMarker: null,
             driverMapMarkers: {},
             isSharingLocation: false,
@@ -394,7 +393,9 @@
             driversPath: '',
             jobsPath: '',
             directionsService: null,
-            directionsRenderer: null,
+            jobRouteRenderers: {}, // Store renderers per job
+            jobColors: {}, // Store colors per job
+            routeColors: ['#FF5733', '#33FF57', '#3357FF', '#FF33A1', '#A133FF', '#33FFA1', '#FFC300', '#C70039'],
             unsubscribes: [],
             currentJobChatUnsubscribe: null,
         };
@@ -418,13 +419,6 @@
             };
             AppState.map = new google.maps.Map(mapElement, mapOptions);
             AppState.directionsService = new google.maps.DirectionsService();
-            AppState.directionsRenderer = new google.maps.DirectionsRenderer({
-                map: AppState.map,
-                polylineOptions: { strokeColor: '#4285F4', strokeWeight: 6, strokeOpacity: 0.8 },
-                suppressMarkers: true 
-            });
-            AppState.trafficLayer = new google.maps.TrafficLayer();
-            AppState.trafficLayer.setMap(AppState.map);
             
             const autocompleteOptions = {
                 fields: ["address_components", "geometry", "icon", "name"],
@@ -451,7 +445,7 @@
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
             if (!firebaseConfig || !appId) {
-                console.error("Firebase config or App ID not found. This application cannot run without it.");
+                console.error("Firebase config or App ID not found.");
                 loadingOverlay.innerHTML = '<p class="text-red-400">Error: Application configuration is missing.</p>';
                 return;
             }
@@ -460,7 +454,6 @@
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
-
                 await enableIndexedDbPersistence(db);
 
                 AppState.usersPath = `/artifacts/${appId}/public/data/users`;
@@ -472,17 +465,11 @@
                     if (user) {
                         await setupUserSession(user);
                     } else {
-                        // Use custom token or anonymous sign-in if available
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            try {
-                                await signInWithCustomToken(auth, __initial_auth_token);
-                                // The onAuthStateChanged listener will be triggered again
-                            } catch (error) {
-                                console.error("Custom token sign-in failed, trying anonymous:", error);
-                                await signInAnonymously(auth);
-                            }
+                            try { await signInWithCustomToken(auth, __initial_auth_token); } 
+                            catch (error) { await signInAnonymously(auth); }
                         } else {
-                           cleanupUserSession(); // Show Google Sign-in if no other method works
+                           cleanupUserSession();
                         }
                     }
                 });
@@ -494,63 +481,38 @@
         }
 
         async function setupUserSession(user) {
+            AppState.unsubscribes.forEach(unsub => unsub());
+            AppState.unsubscribes = [];
+
             const userDocRef = doc(db, AppState.usersPath, user.uid);
             
             AppState.unsubscribes.push(onSnapshot(userDocRef, (userDocSnap) => {
                 if (!userDocSnap.exists()) {
-                    const defaultPermissions = {
-                        canCreateJob: true,
-                        canDeleteJob: false,
-                        canManageDrivers: user.uid === SUPER_ADMIN_UID,
-                        isDriver: false
-                    };
                     setDoc(userDocRef, { 
                         email: user.email || user.uid, 
                         name: user.displayName || `User-${user.uid.substring(0, 4)}`,
-                        permissions: defaultPermissions
+                        permissions: { canCreateJob: true, canDeleteJob: false, canManageDrivers: user.uid === SUPER_ADMIN_UID, isDriver: false }
                     });
                 } else {
                     AppState.currentUser = { id: user.uid, ...userDocSnap.data() };
-
-                    // Ensure Super Admin always has management rights, correcting if necessary.
-                    if (user.uid === SUPER_ADMIN_UID && !AppState.currentUser.permissions.canManageDrivers) {
-                        console.log("Correcting Super Admin permissions...");
-                        const userRef = doc(db, AppState.usersPath, user.uid);
-                        updateDoc(userRef, { "permissions.canManageDrivers": true })
-                            .catch(err => console.error("Failed to correct Super Admin permissions:", err));
-                        // The onSnapshot will re-trigger with the correct permissions.
-                        return; // Avoid rendering with incorrect permissions temporarily
-                    }
-                    
-                    userIdEl.textContent = AppState.currentUser.id; 
-                    userWelcomeEl.textContent = `Welcome, ${AppState.currentUser.name}!`;
-                    renderUIForPermissions();
-                    
-                    if (checkPermission('isDriver')) {
-                        startAutomaticLocationSharing();
-                    } else {
-                        stopAutomaticLocationSharing();
-                    }
+                    renderUI();
                 }
             }));
             
             authContainer.classList.add('hidden');
             appContainer.classList.remove('hidden');
 
-            // Start other listeners
             AppState.unsubscribes.push(onSnapshot(collection(db, AppState.usersPath), (snapshot) => {
                 AppState.allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             }));
             AppState.unsubscribes.push(onSnapshot(collection(db, AppState.driversPath), (snapshot) => {
-                handleActiveDriversUpdate(snapshot);
+                AppState.activeDrivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderMapObjects();
             }));
             AppState.unsubscribes.push(onSnapshot(collection(db, AppState.jobsPath), (snapshot) => {
                 AppState.allJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderAllJobsList();
-                if (checkPermission('isDriver')) {
-                    listenForMyJob();
-                    listenForOpenJobs();
-                }
+                renderUI();
+                renderMapObjects();
             }));
         }
 
@@ -559,6 +521,7 @@
             AppState.unsubscribes.forEach(unsub => unsub());
             AppState.unsubscribes = [];
             AppState.currentUser = null;
+            clearAllMapObjects();
             appContainer.classList.add('hidden');
             authContainer.classList.remove('hidden');
         }
@@ -568,7 +531,7 @@
         }
         
         function startAutomaticLocationSharing() {
-            if (AppState.locationInterval) return; // Already sharing
+            if (AppState.locationInterval) return;
             AppState.isSharingLocation = true;
             shareLocation(); 
             AppState.locationInterval = setInterval(shareLocation, 15000); 
@@ -582,11 +545,6 @@
             if (AppState.currentUser) {
                 deleteDoc(doc(db, AppState.driversPath, AppState.currentUser.id));
             }
-            if (AppState.userMarker) {
-                AppState.userMarker.setMap(null);
-                AppState.userMarker = null;
-            }
-            AppState.isSharingLocation = false;
         }
 
         function shareLocation() {
@@ -594,25 +552,9 @@
                 showToast("Geolocation is not supported by your browser.", "error");
                 return;
             }
-
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    const newPos = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
-                    };
-
-                    if (AppState.map && !AppState.userMarker) {
-                        AppState.userMarker = new google.maps.Marker({
-                            position: newPos,
-                            map: AppState.map,
-                            title: 'Your Location',
-                            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
-                        });
-                    } else if (AppState.map && AppState.userMarker) {
-                        AppState.userMarker.setPosition(newPos);
-                    }
-
+                    const newPos = { lat: position.coords.latitude, lng: position.coords.longitude };
                     if (checkPermission('isDriver')) {
                         const locationData = {
                             location: new GeoPoint(newPos.lat, newPos.lng),
@@ -621,16 +563,9 @@
                             name: AppState.currentUser.name
                         };
                         setDoc(doc(db, AppState.driversPath, AppState.currentUser.id), locationData, { merge: true });
-
-                        const myCurrentJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.includes(AppState.currentUser.id));
-                        if(myCurrentJob){
-                            calculateAndDisplayRoute(newPos, myCurrentJob.destination, myCurrentJob.id);
-                        }
                     }
                 },
-                (error) => {
-                    showToast(`Geolocation Error: ${error.message}`, "error");
-                },
+                (error) => showToast(`Geolocation Error: ${error.message}`, "error"),
                 { enableHighAccuracy: true }
             );
         }
@@ -641,90 +576,19 @@
                 updateDoc(driverLocRef, { status: driverStatusSelect.value });
             }
         });
-
-        function handleActiveDriversUpdate(snapshot) {
-            const activeDriverDocs = snapshot.docs;
-            AppState.activeDrivers = activeDriverDocs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderDriversList();
-
-            if (!AppState.map) return;
-
-            const activeDriverIds = new Set(activeDriverDocs.map(doc => doc.id));
-
-            for (const driverId in AppState.driverMapMarkers) {
-                if (!activeDriverIds.has(driverId)) {
-                    AppState.driverMapMarkers[driverId].setMap(null);
-                    delete AppState.driverMapMarkers[driverId];
-                }
-            }
-
-            activeDriverDocs.forEach(doc => {
-                const driverId = doc.id;
-                const docData = doc.data();
-
-                if (driverId === AppState.currentUser?.id) return;
-
-                const position = { lat: docData.location.latitude, lng: docData.location.longitude };
-
-                if (AppState.driverMapMarkers[driverId]) {
-                    AppState.driverMapMarkers[driverId].setPosition(position);
-                } else {
-                    AppState.driverMapMarkers[driverId] = new google.maps.Marker({
-                        position,
-                        map: AppState.map,
-                        label: { text: docData.name ? docData.name.substring(0, 2).toUpperCase() : 'DR', color: "white", fontWeight: 'bold' },
-                        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#f39c12', fillOpacity: 1, strokeColor: 'black', strokeWeight: 2 }
-                    });
-                }
-            });
-        }
-
-        function renderDriversList() {
-            driversListEl.innerHTML = '';
-            if (AppState.activeDrivers.length === 0) {
-                driversListEl.innerHTML = '<li class="text-gray-400 text-sm">No active drivers.</li>';
-                return;
-            }
-            AppState.activeDrivers.forEach(driver => {
-                const li = document.createElement('li');
-                const borderClass = 'border-l-4 border-green-500';
-                li.className = `flex justify-between items-center bg-gray-800 p-2 rounded-md ${borderClass}`;
-                
-                const status = driver.status || 'Online';
-                let statusColor = 'bg-gray-500';
-                if (status === 'Available') statusColor = 'bg-green-500';
-                if (status === 'On Trip') statusColor = 'bg-yellow-500';
-                if (status === 'On Break') statusColor = 'bg-orange-500';
-
-                li.innerHTML = `
-                    <div>
-                        <p class="text-sm font-bold text-gray-200">${driver.name || 'Unnamed Driver'}</p>
-                        <p class="text-xs text-gray-400">ETA: ${driver.eta || 'N/A'}</p>
-                    </div>
-                    <div class="flex items-center">
-                         <span class="text-xs font-semibold text-gray-400 mr-2">${status}</span>
-                         <span class="w-3 h-3 rounded-full ${statusColor} mr-2"></span>
-                    </div>
-                `;
-                driversListEl.appendChild(li);
-            });
-        }
         
-        function listenForAllJobs() {
-            const jobsRef = collection(db, AppState.jobsPath);
-            const unsubscribe = onSnapshot(jobsRef, (snapshot) => {
-                AppState.allJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderAllJobsList();
-            });
-            AppState.unsubscribes.push(unsubscribe);
+        function getJobColor(jobId) {
+            if (!AppState.jobColors[jobId]) {
+                const colorIndex = Object.keys(AppState.jobColors).length % AppState.routeColors.length;
+                AppState.jobColors[jobId] = AppState.routeColors[colorIndex];
+            }
+            return AppState.jobColors[jobId];
         }
 
         function renderAllJobsList() {
             const isArchivedView = AppState.activeJobTab === 'archive';
             const searchTerm = jobSearchInput.value.toLowerCase();
-
             let jobsToRender = AppState.allJobs.filter(job => !!job.archived === isArchivedView);
-
             if (searchTerm) {
                 jobsToRender = jobsToRender.filter(job => 
                     (job.jobName || '').toLowerCase().includes(searchTerm) ||
@@ -732,56 +596,26 @@
                     (job.destination || '').toLowerCase().includes(searchTerm)
                 );
             }
-
-            const statusOrder = { 'unassigned': 1, 'in-progress': 2, 'completed': 3 };
-            jobsToRender.sort((a, b) => {
-                const orderA = statusOrder[a.status] || 4;
-                const orderB = statusOrder[b.status] || 4;
-                if (orderA !== orderB) return orderA - orderB;
-                const timeA = a.createdAt ? a.createdAt.toMillis() : 0;
-                const timeB = b.createdAt ? b.createdAt.toMillis() : 0;
-                return timeB - timeA;
-            });
-
-            jobsListEl.innerHTML = '';
-            if (jobsToRender.length === 0) {
-                jobsListEl.innerHTML = `<li class="text-gray-400 text-sm">No jobs found.</li>`;
-                return;
-            }
-
+            jobsToRender.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            jobsListEl.innerHTML = jobsToRender.length === 0 ? `<li class="text-gray-400 text-sm">No jobs found.</li>` : '';
             jobsToRender.forEach(job => {
                 const li = document.createElement('li');
                 li.dataset.jobId = job.id;
-                let styleClasses = 'bg-gray-800 p-3 rounded-md text-sm cursor-pointer hover:bg-gray-700';
-
-                const assignedDrivers = job.assignedDrivers || [];
-                const assignedDriverNames = assignedDrivers
-                    .map(driverId => {
-                        const driver = AppState.allUsers.find(u => u.id === driverId);
-                        return driver ? driver.name : 'Unknown';
-                    })
-                    .join(', ');
-
-                const openings = `${assignedDrivers.length} of ${job.driversNeeded}`;
-                const baseContent = `
+                const jobColor = getJobColor(job.id);
+                li.className = 'bg-gray-800 p-3 rounded-md text-sm cursor-pointer hover:bg-gray-700 border-l-4';
+                li.style.borderColor = job.status === 'in-progress' ? jobColor : 'transparent';
+                const assignedDrivers = (job.assignedDrivers || []).map(id => AppState.allUsers.find(u => u.id === id)?.name || 'Unknown').join(', ');
+                li.innerHTML = `
                     <p class="font-bold text-white">${job.jobName || 'Unnamed Job'}</p>
                     <p class="text-gray-400"><strong class="text-gray-200">From:</strong> ${job.origin}</p>
                     <p class="text-gray-400"><strong class="text-gray-200">To:</strong> ${job.destination}</p>
-                    <p class="text-gray-400"><strong class="text-gray-200">Openings:</strong> ${openings}</p>
-                    ${assignedDriverNames ? `<p class="text-gray-400"><strong class="text-gray-200">Drivers:</strong> ${assignedDriverNames}</p>` : ''}
+                    <p class="text-gray-400"><strong class="text-gray-200">Openings:</strong> ${ (job.assignedDrivers || []).length} of ${job.driversNeeded}</p>
+                    ${assignedDrivers ? `<p class="text-gray-400"><strong class="text-gray-200">Drivers:</strong> ${assignedDrivers}</p>` : ''}
+                    ${checkPermission('canDeleteJob') ? `<div class="grid grid-cols-2 gap-2 mt-2">
+                        <button data-job-id="${job.id}" class="archive-job-btn w-full px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Archive</button>
+                        <button data-job-id="${job.id}" class="delete-job-btn w-full px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>
+                    </div>` : ''}
                 `;
-                
-                const archiveButton = `<button data-job-id="${job.id}" class="archive-job-btn w-full mt-2 px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Archive</button>`;
-                const deleteButton = `<button data-job-id="${job.id}" class="delete-job-btn w-full mt-2 px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>`;
-                const actionButtons = isArchivedView ? deleteButton : `<div class="grid grid-cols-2 gap-2">${archiveButton}${deleteButton}</div>`;
-
-                switch(job.status) {
-                    case 'unassigned': styleClasses += ' border-l-4 border-yellow-500'; break;
-                    case 'in-progress': styleClasses += ' border-l-4 border-green-500'; break;
-                    case 'completed': styleClasses += ' border-l-4 border-gray-600 opacity-80'; break;
-                }
-                li.className = styleClasses;
-                li.innerHTML = baseContent + (checkPermission('canDeleteJob') ? actionButtons : '');
                 jobsListEl.appendChild(li);
             });
         }
@@ -794,50 +628,26 @@
 
         async function archiveJob(jobId) {
             if (!checkPermission('canDeleteJob')) return;
-            const jobRef = doc(db, AppState.jobsPath, jobId);
-            await updateDoc(jobRef, { archived: true });
+            await updateDoc(doc(db, AppState.jobsPath, jobId), { archived: true });
             showToast('Job has been archived.', 'success');
         }
 
-        function listenForOpenJobs() {
-            const q = query(
-                collection(db, AppState.jobsPath),
-                where("status", "in", ["unassigned", "in-progress"]),
-                where("archived", "==", false)
-            );
-
-            const unsubscribe = onSnapshot(q, (snapshot) => {
-                const openJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const availableJobs = openJobs.filter(job => {
-                    const assignedDrivers = job.assignedDrivers || [];
-                    const isFull = assignedDrivers.length >= job.driversNeeded;
-                    const alreadyOnJob = assignedDrivers.includes(AppState.currentUser?.id);
-                    return !isFull && !alreadyOnJob;
-                });
-                renderAvailableJobsList(availableJobs);
+        function renderAvailableJobsList() {
+            const availableJobs = AppState.allJobs.filter(job => {
+                const assignedDrivers = job.assignedDrivers || [];
+                return !job.archived && assignedDrivers.length < job.driversNeeded && !assignedDrivers.includes(AppState.currentUser?.id);
             });
-            AppState.unsubscribes.push(unsubscribe);
-        }
-
-        function renderAvailableJobsList(jobs) {
-            availableJobsList.innerHTML = '';
-            if (jobs.length === 0) {
-                availableJobsList.innerHTML = '<li class="text-gray-400 text-sm p-2">No job postings currently available.</li>';
-                return;
-            }
-
-            jobs.forEach(job => {
+            availableJobsList.innerHTML = availableJobs.length === 0 ? '<li class="text-gray-400 text-sm p-2">No job postings currently available.</li>' : '';
+            availableJobs.forEach(job => {
                 const li = document.createElement('li');
                 li.className = 'bg-gray-800 p-3 rounded-md';
-                const assignedCount = (job.assignedDrivers || []).length;
-                
                 li.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="font-bold text-white">${job.jobName || 'Unnamed Job'}</p>
                             <p class="text-gray-300"><strong class="text-white">From:</strong> ${job.origin}</p>
                             <p class="text-gray-300"><strong class="text-white">To:</strong> ${job.destination}</p>
-                            <p class="text-gray-300"><strong class="text-white">Openings:</strong> ${assignedCount} of ${job.driversNeeded}</p>
+                            <p class="text-gray-300"><strong class="text-white">Openings:</strong> ${(job.assignedDrivers || []).length} of ${job.driversNeeded}</p>
                             <p class="text-gray-400 mt-1 italic text-xs">${job.note || 'No notes'}</p>
                         </div>
                         <button data-job-id="${job.id}" class="accept-job-btn ml-2 px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 flex-shrink-0">Accept</button>
@@ -847,80 +657,147 @@
             });
         }
         
-        function calculateAndDisplayRoute(origin, destination, jobId) {
-            if (!AppState.directionsService || !AppState.directionsRenderer) return;
+        function clearAllMapObjects() {
+            // Clear routes
+            for (const jobId in AppState.jobRouteRenderers) {
+                AppState.jobRouteRenderers[jobId].setMap(null);
+            }
+            AppState.jobRouteRenderers = {};
+            
+            // Clear driver markers
+            for (const driverId in AppState.driverMapMarkers) {
+                AppState.driverMapMarkers[driverId].setMap(null);
+            }
+            AppState.driverMapMarkers = {};
 
+            // Clear user marker
+            if (AppState.userMarker) {
+                AppState.userMarker.setMap(null);
+                AppState.userMarker = null;
+            }
+        }
+
+        function renderMapObjects() {
+            if (!AppState.map || !AppState.currentUser) return;
+
+            clearAllMapObjects();
+
+            // Draw user's own location marker if they are a driver
+            if (checkPermission('isDriver')) {
+                const myLocationData = AppState.activeDrivers.find(d => d.id === AppState.currentUser.id);
+                if (myLocationData) {
+                    const pos = { lat: myLocationData.location.latitude, lng: myLocationData.location.longitude };
+                    AppState.userMarker = new google.maps.Marker({
+                        position: pos, map: AppState.map, title: 'Your Location',
+                        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
+                    });
+                }
+            }
+
+            // Draw other driver markers (for dispatchers)
+            AppState.activeDrivers.forEach(driver => {
+                if (driver.id === AppState.currentUser.id) return;
+                const position = { lat: driver.location.latitude, lng: driver.location.longitude };
+                AppState.driverMapMarkers[driver.id] = new google.maps.Marker({
+                    position, map: AppState.map,
+                    label: { text: driver.name ? driver.name.substring(0, 2).toUpperCase() : 'DR', color: "white", fontWeight: 'bold' },
+                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#f39c12', fillOpacity: 1, strokeColor: 'black', strokeWeight: 2 }
+                });
+            });
+
+            // Draw routes based on role
+            if (checkPermission('isDriver')) {
+                const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.includes(AppState.currentUser.id));
+                if (myJob) {
+                    const myLocation = AppState.activeDrivers.find(d => d.id === AppState.currentUser.id)?.location;
+                    drawRouteForJob(myJob, myLocation);
+                }
+            } else { // Dispatcher view
+                const inProgressJobs = AppState.allJobs.filter(job => job.status === 'in-progress' && job.assignedDrivers?.length > 0);
+                inProgressJobs.forEach(job => {
+                    const driverId = job.assignedDrivers[0]; // Route from first assigned driver
+                    const driver = AppState.activeDrivers.find(d => d.id === driverId);
+                    drawRouteForJob(job, driver?.location);
+                });
+            }
+        }
+
+        function drawRouteForJob(job, driverLocation) {
+            const jobId = job.id;
+            const jobColor = getJobColor(jobId);
+            const renderer = new google.maps.DirectionsRenderer({
+                map: AppState.map, suppressMarkers: true, preserveViewport: true,
+                polylineOptions: { strokeColor: jobColor, strokeWeight: 5, strokeOpacity: 0.8 },
+            });
+            AppState.jobRouteRenderers[jobId] = renderer;
+
+            const origin = driverLocation ? { lat: driverLocation.latitude, lng: driverLocation.longitude } : job.origin;
+            
             AppState.directionsService.route(
-                {
-                    origin: origin,
-                    destination: destination,
-                    travelMode: google.maps.TravelMode.DRIVING
-                },
+                { origin: origin, destination: job.destination, travelMode: google.maps.TravelMode.DRIVING },
                 (response, status) => {
                     if (status === "OK") {
-                        AppState.directionsRenderer.setDirections(response);
-                        const route = response.routes[0];
-                        if (route && route.legs[0]) {
-                            const leg = route.legs[0];
-                            const eta = leg.duration.text;
-                            const jobDetails = document.getElementById('current-job-details');
-                            let etaEl = jobDetails.querySelector('.eta-display');
-                            if (!etaEl) {
-                                etaEl = document.createElement('p');
-                                etaEl.className = 'eta-display font-bold text-green-300';
-                                jobDetails.appendChild(etaEl);
-                            }
-                            etaEl.innerHTML = `<strong class="text-white">ETA:</strong> ${eta}`;
-                            
-                            const driverLocRef = doc(db, AppState.driversPath, AppState.currentUser.id);
-                            updateDoc(driverLocRef, { eta: eta });
-
-                            if (leg.distance.value <= 200) { // 200 meters for geofencing
-                                completeJob(jobId, true); 
-                            }
+                        renderer.setDirections(response);
+                        const leg = response.routes[0]?.legs[0];
+                        if (leg && checkPermission('isDriver')) {
+                            if (leg.distance.value <= 200) { completeJob(jobId, true); }
                         }
-                    } else {
-                        showToast("Directions request failed due to " + status, "error");
+                    } else { 
+                        // console.warn(`Route for ${job.jobName} failed: ${status}`);
+                        // If routing fails, clear the renderer for this job to avoid showing a stale route
+                        if(AppState.jobRouteRenderers[jobId]) {
+                            AppState.jobRouteRenderers[jobId].setMap(null);
+                            delete AppState.jobRouteRenderers[jobId];
+                        }
                     }
                 }
             );
         }
+        
+        function renderUI() {
+            if (!AppState.currentUser) return;
+            
+            // Update user welcome message
+            userWelcomeEl.textContent = `Welcome, ${AppState.currentUser.name}!`;
+            userIdEl.textContent = AppState.currentUser.id;
 
-        function clearRoute() {
-            if (AppState.directionsRenderer) {
-                AppState.directionsRenderer.setDirections({ routes: [] });
+            // Toggle UI sections based on role
+            const isDriver = checkPermission('isDriver');
+            driverUi.classList.toggle('hidden', !isDriver);
+            dispatchUi.classList.toggle('hidden', isDriver);
+            
+            if (isDriver) {
+                startAutomaticLocationSharing();
+                updateDriverJobPanels();
+            } else {
+                stopAutomaticLocationSharing();
+                renderAllJobsList();
             }
+            
+            // Toggle management/settings buttons based on permissions
+            managementActionsPanel.classList.toggle('hidden', !checkPermission('canCreateJob'));
+            settingsBtn.classList.toggle('hidden', !checkPermission('canManageDrivers'));
         }
 
-        function listenForMyJob() {
-            const q = query(collection(db, AppState.jobsPath), where("assignedDrivers", "array-contains", AppState.currentUser?.id), where("status", "==", "in-progress"));
-            const unsubscribe = onSnapshot(q, (snapshot) => {
-                if (!snapshot.empty) {
-                    const job = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-                    currentJobPanel.classList.remove('hidden');
-                    availableJobsPanel.classList.add('hidden'); 
-                    currentJobDetails.innerHTML = `
-                        <p class="font-bold text-white">${job.jobName || 'Unnamed Job'}</p>
-                        <p><strong class="text-white">From:</strong> ${job.origin}</p>
-                        <p><strong class="text-white">To:</strong> ${job.destination}</p>
-                        <p class="mt-1 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
-                    `;
-                    completeJobBtn.dataset.jobId = job.id;
-                    startNavigationBtn.dataset.destination = job.destination;
-
-                    if (AppState.isSharingLocation && AppState.userMarker) {
-                        const currentPosition = AppState.userMarker.getPosition();
-                        calculateAndDisplayRoute(currentPosition, job.destination, job.id);
-                    } else {
-                        clearRoute();
-                    }
-                } else {
-                    currentJobPanel.classList.add('hidden');
-                    availableJobsPanel.classList.remove('hidden'); 
-                    clearRoute();
-                }
-            });
-            AppState.unsubscribes.push(unsubscribe);
+        function updateDriverJobPanels() {
+            if (!checkPermission('isDriver')) return;
+            const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.includes(AppState.currentUser.id));
+            if (myJob) {
+                currentJobPanel.classList.remove('hidden');
+                availableJobsPanel.classList.add('hidden'); 
+                currentJobDetails.innerHTML = `
+                    <p class="font-bold text-white">${myJob.jobName || 'Unnamed Job'}</p>
+                    <p><strong class="text-white">From:</strong> ${myJob.origin}</p>
+                    <p><strong class="text-white">To:</strong> ${myJob.destination}</p>
+                    <p class="mt-1 italic"><strong class="text-white">Note:</strong> ${myJob.note || 'N/A'}</p>
+                `;
+                completeJobBtn.dataset.jobId = myJob.id;
+                startNavigationBtn.dataset.destination = myJob.destination;
+            } else {
+                currentJobPanel.classList.add('hidden');
+                availableJobsPanel.classList.remove('hidden'); 
+            }
+            renderAvailableJobsList();
         }
 
         function loadGoogleMapsScript() {
@@ -940,12 +817,9 @@
             toast.className = `p-4 mb-2 rounded-md shadow-lg text-white ${type === 'error' ? 'bg-red-600' : type === 'success' ? 'bg-green-600' : 'bg-blue-600'}`;
             toast.textContent = message;
             toastContainer.appendChild(toast);
-
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
-                setTimeout(() => {
-                    toast.remove();
-                }, 300);
+                setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
 
@@ -957,11 +831,7 @@
         }
 
         function showJobDetailsModal(job) {
-            const assignedDrivers = (job.assignedDrivers || [])
-                .map(id => AppState.allUsers.find(u => u.id === id)?.name || 'Unknown')
-                .join(', ');
-            const createdTime = job.createdAt ? job.createdAt.toDate().toLocaleString() : 'N/A';
-            
+            const assignedDrivers = (job.assignedDrivers || []).map(id => AppState.allUsers.find(u => u.id === id)?.name || 'Unknown').join(', ');
             jobDetailsContent.innerHTML = `
                 <p><strong>Job Name:</strong> ${job.jobName || 'N/A'}</p>
                 <p><strong>Status:</strong> ${job.status}</p>
@@ -969,81 +839,44 @@
                 <p><strong>To:</strong> ${job.destination}</p>
                 <p><strong>Drivers Needed:</strong> ${job.driversNeeded}</p>
                 <p><strong>Assigned Drivers:</strong> ${assignedDrivers || 'None'}</p>
-                <p><strong>Created:</strong> ${createdTime}</p>
+                <p><strong>Created:</strong> ${job.createdAt ? job.createdAt.toDate().toLocaleString() : 'N/A'}</p>
                 <p class="mt-2 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
             `;
-
             jobHistoryLog.innerHTML = '';
             if (job.log && job.log.length > 0) {
                 job.log.forEach(entry => {
                     const li = document.createElement('li');
-                    const entryTime = entry.timestamp ? entry.timestamp.toDate().toLocaleString() : '';
-                    li.textContent = `[${entryTime}] ${entry.text}`;
+                    li.textContent = `[${entry.timestamp ? entry.timestamp.toDate().toLocaleString() : ''}] ${entry.text}`;
                     jobHistoryLog.appendChild(li);
                 });
             } else {
                 jobHistoryLog.innerHTML = '<li>No history entries.</li>';
             }
-
             jobChatForm.dataset.jobId = job.id;
             listenForJobMessages(job.id);
             jobDetailsModal.classList.remove('hidden');
         }
-
-        function renderUIForPermissions() {
-            // Reset UI states
-            dispatchUi.classList.add('hidden');
-            driverUi.classList.add('hidden');
-            settingsBtn.classList.add('hidden');
-            managementActionsPanel.classList.add('hidden'); // Hide by default
-
-            // Determine primary role UI
-            if (checkPermission('isDriver')) {
-                driverUi.classList.remove('hidden');
-            } else {
-                dispatchUi.classList.remove('hidden');
-                // For dispatchers, check for specific action permissions
-                if (checkPermission('canCreateJob')) {
-                    managementActionsPanel.classList.remove('hidden');
-                }
-            }
-
-            // Check for secondary permissions like settings
-            if (checkPermission('canManageDrivers')) {
-                settingsBtn.classList.remove('hidden');
-            }
-        }
         
         function showSpinner(button) {
             button.disabled = true;
-            const btnText = button.querySelector('.btn-text');
-            const spinner = button.querySelector('.spinner');
-            if (btnText) btnText.classList.add('hidden');
-            if (spinner) spinner.classList.remove('hidden');
+            button.querySelector('.btn-text').classList.add('hidden');
+            button.querySelector('.spinner').classList.remove('hidden');
         }
 
         function hideSpinner(button) {
             button.disabled = false;
-            const btnText = button.querySelector('.btn-text');
-            const spinner = button.querySelector('.spinner');
-            if (btnText) btnText.classList.remove('hidden');
-            if (spinner) spinner.classList.add('hidden');
+            button.querySelector('.btn-text').classList.remove('hidden');
+            button.querySelector('.spinner').classList.add('hidden');
         }
         
         // --- Event Listeners ---
-        
-        logoutBtn.addEventListener('click', async () => {
-            await stopAutomaticLocationSharing();
+        logoutBtn.addEventListener('click', () => {
             signOut(auth).catch((error) => console.error('Logout Error:', error));
+            cleanupUserSession();
         });
 
-        googleSigninBtn.addEventListener('click', async () => {
-            const provider = new GoogleAuthProvider();
-            try {
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                showToast('Google Sign-In Error: ' + error.message, 'error');
-            }
+        googleSigninBtn.addEventListener('click', () => {
+            signInWithPopup(auth, new GoogleAuthProvider()).catch(error => showToast('Google Sign-In Error: ' + error.message, 'error'));
         });
 
         profileBtn.addEventListener('click', () => {
@@ -1055,21 +888,16 @@
             e.preventDefault();
             const newName = profileNameInput.value.trim();
             if (newName && newName !== AppState.currentUser.name) {
-                const userDocRef = doc(db, AppState.usersPath, AppState.currentUser.id);
-                await updateDoc(userDocRef, { name: newName });
+                await updateDoc(doc(db, AppState.usersPath, AppState.currentUser.id), { name: newName });
                 showToast('Profile updated!', 'success');
             }
             profileModal.classList.add('hidden');
         });
 
-        profileCancelBtn.addEventListener('click', () => profileModal.classList.add('hidden'));
-
         settingsBtn.addEventListener('click', () => {
             renderUserRoleManagement();
             settingsModal.classList.remove('hidden');
         });
-        
-        settingsCancelBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
         openCreateJobModalBtn.addEventListener('click', () => {
             const availableDrivers = AppState.allUsers.filter(u => u.permissions?.isDriver && !AppState.activeDrivers.some(d => d.id === u.id && d.status === 'On Trip'));
@@ -1082,7 +910,6 @@
             });
             createJobModal.classList.remove('hidden');
         });
-        createJobCancelBtn.addEventListener('click', () => createJobModal.classList.add('hidden'));
 
         jobDashboardPanel.addEventListener('click', (e) => {
             if (e.target.matches('.tab-btn')) {
@@ -1100,13 +927,12 @@
             if (button) {
                 const jobId = button.dataset.jobId;
                 if (button.classList.contains('delete-job-btn')) {
-                    showConfirmModal('Delete Job?', 'This action is permanent and cannot be undone. Are you sure?', () => deleteJob(jobId));
+                    showConfirmModal('Delete Job?', 'This action is permanent.', () => deleteJob(jobId));
                 } else if (button.classList.contains('archive-job-btn')) {
                     archiveJob(jobId);
                 }
             } else if (e.target.closest('li[data-job-id]')) {
-                const jobId = e.target.closest('li[data-job-id]').dataset.jobId;
-                const job = AppState.allJobs.find(j => j.id === jobId);
+                const job = AppState.allJobs.find(j => j.id === e.target.closest('li[data-job-id]').dataset.jobId);
                 if (job) showJobDetailsModal(job);
             }
         });
@@ -1115,42 +941,26 @@
             if (e.target.classList.contains('accept-job-btn')) {
                 const button = e.target;
                 const { jobId } = button.dataset;
-
                 button.disabled = true;
                 button.textContent = 'Accepting...';
-
                 const jobRef = doc(db, AppState.jobsPath, jobId);
-                
                 try {
                     await runTransaction(db, async (transaction) => {
                         const jobDoc = await transaction.get(jobRef);
                         if (!jobDoc.exists()) throw "Job does not exist!";
-                        
                         const jobData = jobDoc.data();
-                        const assignedDrivers = jobData.assignedDrivers || [];
-
-                        if (assignedDrivers.includes(AppState.currentUser.id)) throw "You have already accepted this job.";
-                        if (assignedDrivers.length >= jobData.driversNeeded) throw "All driver slots for this job are now filled.";
-                        
-                        const newAssignedDrivers = [...assignedDrivers, AppState.currentUser.id];
-                        const isNowFull = newAssignedDrivers.length >= jobData.driversNeeded;
-                        
-                        const newLogEntry = { text: `Accepted by ${AppState.currentUser.name}`, timestamp: serverTimestamp() };
-
+                        if ((jobData.assignedDrivers || []).length >= jobData.driversNeeded) throw "All driver slots are filled.";
                         transaction.update(jobRef, { 
-                            status: isNowFull ? 'in-progress' : 'unassigned',
+                            status: (jobData.assignedDrivers || []).length + 1 >= jobData.driversNeeded ? 'in-progress' : 'unassigned',
                             assignedDrivers: arrayUnion(AppState.currentUser.id),
-                            log: arrayUnion(newLogEntry)
+                            log: arrayUnion({ text: `Accepted by ${AppState.currentUser.name}`, timestamp: serverTimestamp() })
                         });
-
                         if (AppState.isSharingLocation) {
-                            const driverLocRef = doc(db, AppState.driversPath, AppState.currentUser.id);
-                            transaction.update(driverLocRef, { status: 'On Trip' });
+                            transaction.update(doc(db, AppState.driversPath, AppState.currentUser.id), { status: 'On Trip' });
                         }
                     });
                     showToast("Job accepted!", "success");
                 } catch (error) {
-                    console.error("Error accepting job:", error);
                     showToast(error.toString(), "error");
                     button.disabled = false;
                     button.textContent = 'Accept';
@@ -1164,94 +974,56 @@
                 await runTransaction(db, async (transaction) => {
                     const jobDoc = await transaction.get(jobRef);
                     if (!jobDoc.exists()) throw "Job not found";
-                    
                     const jobData = jobDoc.data();
-                    const assignedDrivers = jobData.assignedDrivers || [];
-                    
-                    if (!assignedDrivers.includes(AppState.currentUser.id)) {
-                        return; // Already completed or not on job
-                    }
-
-                    const remainingDrivers = assignedDrivers.filter(id => id !== AppState.currentUser.id);
-                    const newLogEntry = { text: `Completed by ${AppState.currentUser.name}`, timestamp: serverTimestamp() };
-
+                    if (!jobData.assignedDrivers.includes(AppState.currentUser.id)) return;
+                    const remainingDrivers = jobData.assignedDrivers.filter(id => id !== AppState.currentUser.id);
+                    const updateData = {
+                        assignedDrivers: arrayRemove(AppState.currentUser.id),
+                        log: arrayUnion({ text: `Completed by ${AppState.currentUser.name}`, timestamp: serverTimestamp() })
+                    };
                     if (remainingDrivers.length === 0) {
-                        transaction.update(jobRef, { status: 'completed', assignedDrivers: arrayRemove(AppState.currentUser.id), log: arrayUnion(newLogEntry) });
-                    } else {
-                        transaction.update(jobRef, { assignedDrivers: arrayRemove(AppState.currentUser.id), log: arrayUnion(newLogEntry) });
+                        updateData.status = 'completed';
                     }
-
+                    transaction.update(jobRef, updateData);
                     if (AppState.isSharingLocation) {
-                        const driverLocRef = doc(db, AppState.driversPath, AppState.currentUser.id);
-                        transaction.update(driverLocRef, { status: 'Available', eta: '' });
+                        transaction.update(doc(db, AppState.driversPath, AppState.currentUser.id), { status: 'Available', eta: '' });
                     }
                 });
-                showToast(isAuto ? "Arrived at destination! Job auto-completed." : "You have completed your part of the job!", "success");
+                showToast(isAuto ? "Arrived! Job auto-completed." : "Job part completed!", "success");
             } catch (error) {
-                console.error("Error completing job:", error);
                 showToast("Could not complete job.", "error");
             }
         }
 
-        completeJobBtn.addEventListener('click', (e) => {
-            const jobId = e.target.dataset.jobId;
-            completeJob(jobId);
-        });
+        completeJobBtn.addEventListener('click', (e) => completeJob(e.target.dataset.jobId));
+        startNavigationBtn.addEventListener('click', (e) => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(e.target.dataset.destination)}&travelmode=driving`, '_blank'));
 
-        startNavigationBtn.addEventListener('click', (e) => {
-            const destination = e.target.dataset.destination;
-            if (destination) {
-                const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`;
-                window.open(url, '_blank');
-            }
-        });
-
-        // Form Submissions
         createJobForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!checkPermission('canCreateJob')) return;
             const button = document.getElementById('create-job-submit-btn');
             showSpinner(button);
-
             try {
-                const jobName = jobNameInput.value.trim();
-                const origin = jobOriginInput.value.trim();
-                const destination = jobDestinationInput.value.trim();
-                const driversNeeded = parseInt(driversNeededInput.value, 10);
-                const note = jobNoteInput.value.trim();
-                const assignedDriverId = assignDriverSelect.value;
-
-                if (!jobName || !origin || !destination || !driversNeeded) {
-                    showToast('Please fill out all required fields.', 'error');
-                    return; 
-                }
-                
-                const initialLog = [{ text: `Created by ${AppState.currentUser.name}`, timestamp: serverTimestamp() }];
                 const jobData = { 
-                    jobName, origin, destination, note, 
-                    driversNeeded, 
-                    assignedDrivers: [], 
-                    createdAt: serverTimestamp(), 
-                    declinedBy: [], 
-                    archived: false,
-                    log: initialLog
+                    jobName: jobNameInput.value.trim(), origin: jobOriginInput.value.trim(), destination: jobDestinationInput.value.trim(),
+                    note: jobNoteInput.value.trim(), driversNeeded: parseInt(driversNeededInput.value, 10),
+                    assignedDrivers: [], createdAt: serverTimestamp(), archived: false,
+                    log: [{ text: `Created by ${AppState.currentUser.name}`, timestamp: serverTimestamp() }]
                 };
-
+                const assignedDriverId = assignDriverSelect.value;
                 if (assignedDriverId) {
                     jobData.assignedDrivers.push(assignedDriverId);
                     jobData.status = 'in-progress';
-                    const assignedDriver = AppState.allUsers.find(u => u.id === assignedDriverId);
-                    jobData.log.push({ text: `Assigned to ${assignedDriver.name}`, timestamp: serverTimestamp() });
+                    const driver = AppState.allUsers.find(u => u.id === assignedDriverId);
+                    jobData.log.push({ text: `Assigned to ${driver.name}`, timestamp: serverTimestamp() });
                 } else {
                     jobData.status = 'unassigned';
                 }
-
                 await addDoc(collection(db, AppState.jobsPath), jobData);
-                showToast('New job has been created.', 'success');
+                showToast('New job created.', 'success');
                 createJobForm.reset();
                 createJobModal.classList.add('hidden');
             } catch (error) {
-                console.error("Error creating job:", error);
                 showToast(`Error: ${error.message}`, 'error');
             } finally {
                 hideSpinner(button);
@@ -1261,30 +1033,18 @@
         function renderUserRoleManagement() {
             userRoleList.innerHTML = '';
             const permissions = ['isDriver', 'canCreateJob', 'canDeleteJob', 'canManageDrivers'];
-
             AppState.allUsers.forEach(user => {
                 const li = document.createElement('li');
                 li.className = 'bg-gray-700 p-3 rounded';
-                
                 let checkboxesHTML = permissions.map(perm => {
                     const isChecked = user.permissions?.[perm] === true;
                     const isDisabled = user.id === SUPER_ADMIN_UID && perm === 'canManageDrivers';
-                    return `
-                        <label class="flex items-center space-x-2">
-                            <input type="checkbox" data-user-id="${user.id}" data-permission="${perm}" 
-                                   class="permission-checkbox bg-gray-600 border-gray-500 rounded" 
-                                   ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
-                            <span class="text-sm">${perm}</span>
-                        </label>
-                    `;
+                    return `<label class="flex items-center space-x-2">
+                        <input type="checkbox" data-user-id="${user.id}" data-permission="${perm}" class="permission-checkbox bg-gray-600 border-gray-500 rounded" ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
+                        <span class="text-sm">${perm}</span>
+                    </label>`;
                 }).join('');
-
-                li.innerHTML = `
-                    <p class="text-sm font-bold text-gray-200 truncate mb-2">${user.email || user.id}</p>
-                    <div class="grid grid-cols-2 gap-2">
-                        ${checkboxesHTML}
-                    </div>
-                `;
+                li.innerHTML = `<p class="text-sm font-bold text-gray-200 truncate mb-2">${user.email || user.id}</p><div class="grid grid-cols-2 gap-2">${checkboxesHTML}</div>`;
                 userRoleList.appendChild(li);
             });
         }
@@ -1293,41 +1053,26 @@
             if (e.target.classList.contains('permission-checkbox')) {
                 const { userId, permission } = e.target.dataset;
                 const isChecked = e.target.checked;
-
-                const userDocRef = doc(db, AppState.usersPath, userId);
-                const permissionPath = `permissions.${permission}`;
-
-                await updateDoc(userDocRef, { [permissionPath]: isChecked });
-
+                await updateDoc(doc(db, AppState.usersPath, userId), { [`permissions.${permission}`]: isChecked });
                 if (permission === 'isDriver' && !isChecked) {
                     await deleteDoc(doc(db, AppState.driversPath, userId));
                 }
-
                 showToast('Permissions updated.', 'success');
             }
         });
 
         function listenForJobMessages(jobId) {
-            if (AppState.currentJobChatUnsubscribe) {
-                AppState.currentJobChatUnsubscribe();
-            }
+            if (AppState.currentJobChatUnsubscribe) AppState.currentJobChatUnsubscribe();
             const messagesRef = collection(db, AppState.jobsPath, jobId, 'messages');
-            const q = query(messagesRef);
-            
-            AppState.currentJobChatUnsubscribe = onSnapshot(q, (snapshot) => {
+            AppState.currentJobChatUnsubscribe = onSnapshot(query(messagesRef), (snapshot) => {
                 jobChatBox.innerHTML = '';
-                const messages = snapshot.docs.map(d => d.data());
-                messages.sort((a, b) => a.timestamp - b.timestamp);
+                const messages = snapshot.docs.map(d => d.data()).sort((a,b) => a.timestamp - b.timestamp);
                 messages.forEach(msg => {
                     const msgEl = document.createElement('div');
                     const isMe = msg.senderId === AppState.currentUser.id;
                     msgEl.className = `flex ${isMe ? 'justify-end' : 'justify-start'} mb-2`;
-                    msgEl.innerHTML = `
-                        <div class="rounded-lg px-3 py-2 ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}">
-                            <p class="text-sm font-bold">${msg.senderName}</p>
-                            <p class="text-sm">${msg.text}</p>
-                        </div>
-                    `;
+                    msgEl.innerHTML = `<div class="rounded-lg px-3 py-2 ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}">
+                        <p class="text-sm font-bold">${msg.senderName}</p><p class="text-sm">${msg.text}</p></div>`;
                     jobChatBox.appendChild(msgEl);
                 });
                 jobChatBox.scrollTop = jobChatBox.scrollHeight;
@@ -1339,13 +1084,9 @@
             const jobId = e.target.dataset.jobId;
             const text = jobChatInput.value.trim();
             if (!text || !jobId) return;
-
-            const messagesRef = collection(db, AppState.jobsPath, jobId, 'messages');
-            await addDoc(messagesRef, {
-                text,
-                senderId: AppState.currentUser.id,
-                senderName: AppState.currentUser.name,
-                timestamp: serverTimestamp()
+            await addDoc(collection(db, AppState.jobsPath, jobId, 'messages'), {
+                text, senderId: AppState.currentUser.id,
+                senderName: AppState.currentUser.name, timestamp: serverTimestamp()
             });
             jobChatInput.value = '';
         });
@@ -1366,9 +1107,7 @@
             AppState.confirmCallback = null;
         });
         confirmActionBtn.addEventListener('click', () => {
-            if (typeof AppState.confirmCallback === 'function') {
-                AppState.confirmCallback();
-            }
+            if (typeof AppState.confirmCallback === 'function') AppState.confirmCallback();
             confirmModal.classList.add('hidden');
             AppState.confirmCallback = null;
         });
