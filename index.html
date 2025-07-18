@@ -68,7 +68,7 @@
             to { transform: rotate(360deg); }
         }
         .tab-btn.active {
-            border-bottom-color: #4f46e5; /* indigo-600 */
+            border-bottom-color: #0d9488; /* teal-600 */
             color: #e5e7eb; /* gray-200 */
         }
 
@@ -156,14 +156,8 @@
                     <div id="management-actions-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                         <h2 class="text-lg font-semibold text-gray-200 mb-2">Management Actions</h2>
                         <div id="dispatcher-actions" class="grid grid-cols-1 gap-2">
-                            <button id="open-create-job-modal-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Create Job</button>
+                            <button id="open-create-job-modal-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Create Job</button>
                         </div>
-                    </div>
-                    <div id="drivers-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="text-lg font-semibold text-gray-200">Drivers</h3>
-                        </div>
-                        <ul id="drivers-list" class="space-y-2"></ul>
                     </div>
                     <div id="job-dashboard-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                         <div class="flex border-b border-gray-700">
@@ -174,6 +168,12 @@
                             <input type="text" id="job-search-input" placeholder="Search jobs..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                         <ul id="jobs-list" class="space-y-2 mt-4"></ul>
+                    </div>
+                    <div id="drivers-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-lg font-semibold text-gray-200">Drivers</h3>
+                        </div>
+                        <ul id="drivers-list" class="space-y-2"></ul>
                     </div>
                 </div>
 
@@ -195,7 +195,7 @@
                         <h2 class="text-lg font-semibold text-gray-200 mb-2">My Status</h2>
                         <div id="driver-status-control">
                             <label for="driver-status-select" class="block text-sm font-medium text-gray-300">Current Status:</label>
-                            <select id="driver-status-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md text-white">
+                            <select id="driver-status-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border-gray-600 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md text-white">
                                 <option>Available</option>
                                 <option>On Break</option>
                             </select>
@@ -216,7 +216,7 @@
                 </div>
                 <div class="flex justify-end space-x-2 mt-6">
                     <button type="button" id="profile-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
+                    <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Save</button>
                 </div>
             </form>
         </div>
@@ -242,7 +242,7 @@
                     </div>
                     <div class="flex justify-end space-x-2">
                         <button type="button" id="create-job-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center w-32">
+                        <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 flex items-center justify-center w-32">
                             <span class="btn-text">Create Job</span>
                             <span class="spinner hidden ml-2"></span>
                         </button>
