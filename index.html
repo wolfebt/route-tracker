@@ -273,6 +273,14 @@
                     <h4 class="text-lg font-semibold text-white mb-2">Job History</h4>
                     <ul id="job-history-log" class="space-y-1 text-sm text-gray-400"></ul>
                 </div>
+                 <div class="mt-4">
+                    <h4 class="text-lg font-semibold text-white mb-2">Messages</h4>
+                    <div id="job-chat-box" class="h-40 bg-gray-900 rounded-md p-2 overflow-y-auto"></div>
+                    <form id="job-chat-form" class="mt-2 flex space-x-2">
+                        <input type="text" id="job-chat-input" placeholder="Type a message..." class="flex-grow px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Send</button>
+                    </form>
+                </div>
             </div>
             <div class="mt-6 flex justify-end space-x-2">
                 <button id="print-job-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Print</button>
@@ -361,6 +369,9 @@
         const jobDetailsModal = document.getElementById('job-details-modal');
         const jobDetailsContent = document.getElementById('job-details-content');
         const jobHistoryLog = document.getElementById('job-history-log');
+        const jobChatBox = document.getElementById('job-chat-box');
+        const jobChatForm = document.getElementById('job-chat-form');
+        const jobChatInput = document.getElementById('job-chat-input');
         const jobDetailsCloseBtn = document.getElementById('job-details-close-btn');
         const printJobBtn = document.getElementById('print-job-btn');
 
@@ -385,6 +396,7 @@
             directionsService: null,
             directionsRenderer: null,
             unsubscribes: [],
+            currentJobChatUnsubscribe: null,
         };
 
         // --- Main App Initialization ---
@@ -946,6 +958,8 @@
                 jobHistoryLog.innerHTML = '<li>No history entries.</li>';
             }
 
+            jobChatForm.dataset.jobId = job.id;
+            listenForJobMessages(job.id);
             jobDetailsModal.classList.remove('hidden');
         }
 
@@ -1254,11 +1268,60 @@
             }
         });
 
+        function listenForJobMessages(jobId) {
+            if (AppState.currentJobChatUnsubscribe) {
+                AppState.currentJobChatUnsubscribe();
+            }
+            const messagesRef = collection(db, AppState.jobsPath, jobId, 'messages');
+            const q = query(messagesRef);
+            
+            AppState.currentJobChatUnsubscribe = onSnapshot(q, (snapshot) => {
+                jobChatBox.innerHTML = '';
+                const messages = snapshot.docs.map(d => d.data());
+                messages.sort((a, b) => a.timestamp - b.timestamp);
+                messages.forEach(msg => {
+                    const msgEl = document.createElement('div');
+                    const isMe = msg.senderId === AppState.currentUser.id;
+                    msgEl.className = `flex ${isMe ? 'justify-end' : 'justify-start'} mb-2`;
+                    msgEl.innerHTML = `
+                        <div class="rounded-lg px-3 py-2 ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}">
+                            <p class="text-sm font-bold">${msg.senderName}</p>
+                            <p class="text-sm">${msg.text}</p>
+                        </div>
+                    `;
+                    jobChatBox.appendChild(msgEl);
+                });
+                jobChatBox.scrollTop = jobChatBox.scrollHeight;
+            });
+        }
+
+        jobChatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const jobId = e.target.dataset.jobId;
+            const text = jobChatInput.value.trim();
+            if (!text || !jobId) return;
+
+            const messagesRef = collection(db, AppState.jobsPath, jobId, 'messages');
+            await addDoc(messagesRef, {
+                text,
+                senderId: AppState.currentUser.id,
+                senderName: AppState.currentUser.name,
+                timestamp: serverTimestamp()
+            });
+            jobChatInput.value = '';
+        });
+
         // Modal Close Buttons
         profileCancelBtn.addEventListener('click', () => profileModal.classList.add('hidden'));
         settingsCancelBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
         createJobCancelBtn.addEventListener('click', () => createJobModal.classList.add('hidden'));
-        jobDetailsCloseBtn.addEventListener('click', () => jobDetailsModal.classList.add('hidden'));
+        jobDetailsCloseBtn.addEventListener('click', () => {
+            if (AppState.currentJobChatUnsubscribe) {
+                AppState.currentJobChatUnsubscribe();
+                AppState.currentJobChatUnsubscribe = null;
+            }
+            jobDetailsModal.classList.add('hidden');
+        });
         confirmCancelBtn.addEventListener('click', () => {
             confirmModal.classList.add('hidden');
             AppState.confirmCallback = null;
