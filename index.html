@@ -242,7 +242,7 @@
                     </div>
                     <div class="flex justify-end space-x-2">
                         <button type="button" id="create-job-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 flex items-center justify-center w-32">
+                        <button type="submit" id="create-job-submit-btn" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 flex items-center justify-center w-32">
                             <span class="btn-text">Create Job</span>
                             <span class="spinner hidden ml-2"></span>
                         </button>
@@ -1210,42 +1210,52 @@
         createJobForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!checkPermission('canCreateJob')) return;
-            const button = e.submitter;
+            const button = document.getElementById('create-job-submit-btn');
             showSpinner(button);
-            const jobName = jobNameInput.value.trim();
-            const origin = jobOriginInput.value.trim();
-            const destination = jobDestinationInput.value.trim();
-            const driversNeeded = parseInt(driversNeededInput.value, 10);
-            const note = jobNoteInput.value.trim();
-            const assignedDriverId = assignDriverSelect.value;
 
-            if (!jobName || !origin || !destination || !driversNeeded) { showToast('Please fill out all required fields.', 'error'); hideSpinner(button); return; }
-            
-            const initialLog = [{ text: `Created by ${AppState.currentUser.name}`, timestamp: serverTimestamp() }];
-            const jobData = { 
-                jobName, origin, destination, note, 
-                driversNeeded, 
-                assignedDrivers: [], 
-                createdAt: serverTimestamp(), 
-                declinedBy: [], 
-                archived: false,
-                log: initialLog
-            };
+            try {
+                const jobName = jobNameInput.value.trim();
+                const origin = jobOriginInput.value.trim();
+                const destination = jobDestinationInput.value.trim();
+                const driversNeeded = parseInt(driversNeededInput.value, 10);
+                const note = jobNoteInput.value.trim();
+                const assignedDriverId = assignDriverSelect.value;
 
-            if (assignedDriverId) {
-                jobData.assignedDrivers.push(assignedDriverId);
-                jobData.status = 'in-progress';
-                const assignedDriver = AppState.allUsers.find(u => u.id === assignedDriverId);
-                jobData.log.push({ text: `Assigned to ${assignedDriver.name}`, timestamp: serverTimestamp() });
-            } else {
-                jobData.status = 'unassigned';
+                if (!jobName || !origin || !destination || !driversNeeded) {
+                    showToast('Please fill out all required fields.', 'error');
+                    return; 
+                }
+                
+                const initialLog = [{ text: `Created by ${AppState.currentUser.name}`, timestamp: serverTimestamp() }];
+                const jobData = { 
+                    jobName, origin, destination, note, 
+                    driversNeeded, 
+                    assignedDrivers: [], 
+                    createdAt: serverTimestamp(), 
+                    declinedBy: [], 
+                    archived: false,
+                    log: initialLog
+                };
+
+                if (assignedDriverId) {
+                    jobData.assignedDrivers.push(assignedDriverId);
+                    jobData.status = 'in-progress';
+                    const assignedDriver = AppState.allUsers.find(u => u.id === assignedDriverId);
+                    jobData.log.push({ text: `Assigned to ${assignedDriver.name}`, timestamp: serverTimestamp() });
+                } else {
+                    jobData.status = 'unassigned';
+                }
+
+                await addDoc(collection(db, AppState.jobsPath), jobData);
+                showToast('New job has been created.', 'success');
+                createJobForm.reset();
+                createJobModal.classList.add('hidden');
+            } catch (error) {
+                console.error("Error creating job:", error);
+                showToast(`Error: ${error.message}`, 'error');
+            } finally {
+                hideSpinner(button);
             }
-
-            await addDoc(collection(db, AppState.jobsPath), jobData);
-            showToast('New job has been created.', 'success');
-            createJobForm.reset();
-            createJobModal.classList.add('hidden');
-            hideSpinner(button);
         });
 
         function renderUserRoleManagement() {
