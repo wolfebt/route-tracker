@@ -935,8 +935,17 @@
             cleanupUserSession();
         });
 
-        googleSigninBtn.addEventListener('click', () => {
-            signInWithPopup(auth, new GoogleAuthProvider()).catch(error => showToast('Google Sign-In Error: ' + error.message, 'error'));
+        googleSigninBtn.addEventListener('click', async () => {
+            try {
+                await signInWithPopup(auth, new GoogleAuthProvider());
+            } catch (error) {
+                console.error("Google Sign-In Error:", error);
+                if (error.code === 'auth/invalid-credential') {
+                    showToast('Google Sign-In Error: Please contact support about a project configuration issue.', 'error');
+                } else {
+                    showToast('Google Sign-In Error: ' + error.message, 'error');
+                }
+            }
         });
 
         settingsBtn.addEventListener('click', () => {
