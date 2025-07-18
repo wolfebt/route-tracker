@@ -448,21 +448,22 @@
         };
 
         async function initializeFirebase() {
+             // Using a placeholder for the Firebase config. 
+             // The app will use the __firebase_config variable if it's available in the environment.
             const hardcodedFirebaseConfig = {
-                apiKey: "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI",
-                authDomain: "route-tracker-e62b1.firebaseapp.com",
-                projectId: "route-tracker-e62b1",
-                storageBucket: "route-tracker-e62b1.appspot.com",
-                messagingSenderId: "1016000331711",
-                appId: "1:1016000331711:web:a122b8a52045ee4e832b0a",
-                measurementId: "G-B476Z21SKP"
+                apiKey: "YOUR_FIREBASE_API_KEY",
+                authDomain: "your-project-id.firebaseapp.com",
+                projectId: "your-project-id",
+                storageBucket: "your-project-id.appspot.com",
+                messagingSenderId: "your-sender-id",
+                appId: "your-app-id"
             };
 
             const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : hardcodedFirebaseConfig;
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-            if (!firebaseConfig || !appId) {
-                console.error("Firebase config or App ID not found.");
+            if (!firebaseConfig || !appId || firebaseConfig.apiKey.startsWith("YOUR_")) {
+                console.error("Firebase config or App ID not found or is a placeholder.");
                 loadingOverlay.innerHTML = '<p class="text-red-400">Error: Application configuration is missing.</p>';
                 return;
             }
@@ -881,7 +882,9 @@
         }
 
         function loadGoogleMapsScript() {
-            const apiKey = "AIzaSyCHmVp6ImHZ37mB6XPm4x6pNODgt5PJjjg";
+            // IMPORTANT: The key below has expired. 
+            // You must replace "YOUR_GOOGLE_MAPS_API_KEY" with a new, valid API key from your Google Cloud Console.
+            const apiKey = AIzaSyDUzkfgu-6zuMHoH-UV5vzFQySSjwAD9u8;
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
             script.async = true;
