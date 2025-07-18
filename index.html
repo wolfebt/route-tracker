@@ -599,6 +599,11 @@
                             name: AppState.currentUser.name
                         };
                         setDoc(doc(db, AppState.driversPath, AppState.currentUser.id), locationData, { merge: true });
+
+                        const myCurrentJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.includes(AppState.currentUser.id));
+                        if(myCurrentJob){
+                            calculateAndDisplayRoute(newPos, myCurrentJob.destination, myCurrentJob.id);
+                        }
                     }
                 },
                 (error) => {
