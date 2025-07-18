@@ -956,6 +956,18 @@
             profileModal.classList.add('hidden');
         });
 
+        openCreateJobModalBtn.addEventListener('click', () => {
+            const availableDrivers = AppState.allUsers.filter(u => u.permissions?.isDriver && !AppState.activeDrivers.some(d => d.id === u.id && d.status === 'On Trip'));
+            assignDriverSelect.innerHTML = '<option value="">Post as open job</option>';
+            availableDrivers.forEach(driver => {
+                const option = document.createElement('option');
+                option.value = driver.id;
+                option.textContent = driver.name;
+                assignDriverSelect.appendChild(option);
+            });
+            createJobModal.classList.remove('hidden');
+        });
+
         jobDashboardPanel.addEventListener('click', (e) => {
             if (e.target.matches('.tab-btn')) {
                 jobDashboardPanel.querySelector('.tab-btn.active').classList.remove('active');
@@ -1049,22 +1061,34 @@
             const button = document.getElementById('create-job-submit-btn');
             showSpinner(button);
             try {
-                const jobData = { 
-                    jobName: jobNameInput.value.trim(), origin: jobOriginInput.value.trim(), destination: jobDestinationInput.value.trim(),
-                    note: jobNoteInput.value.trim(), driversNeeded: parseInt(driversNeededInput.value, 10),
-                    assignedDrivers: [], createdAt: serverTimestamp(), archived: false,
-                    log: [{ text: `Created by ${AppState.currentUser.name}`, timestamp: new Date() }]
+                const initialJobData = { 
+                    jobName: jobNameInput.value.trim(), 
+                    origin: jobOriginInput.value.trim(), 
+                    destination: jobDestinationInput.value.trim(),
+                    note: jobNoteInput.value.trim(), 
+                    driversNeeded: parseInt(driversNeededInput.value, 10),
+                    assignedDrivers: [], 
+                    createdAt: serverTimestamp(),
+                    archived: false,
+                    status: 'unassigned'
                 };
+                
                 const assignedDriverId = assignDriverSelect.value;
                 if (assignedDriverId) {
-                    jobData.assignedDrivers.push(assignedDriverId);
-                    jobData.status = 'in-progress';
-                    const driver = AppState.allUsers.find(u => u.id === assignedDriverId);
-                    jobData.log.push({ text: `Assigned to ${driver.name}`, timestamp: new Date() });
-                } else {
-                    jobData.status = 'unassigned';
+                    initialJobData.assignedDrivers.push(assignedDriverId);
+                    initialJobData.status = 'in-progress';
                 }
-                await addDoc(collection(db, AppState.jobsPath), jobData);
+
+                const docRef = await addDoc(collection(db, AppState.jobsPath), initialJobData);
+
+                let logEntries = [{ text: `Created by ${AppState.currentUser.name}`, timestamp: serverTimestamp() }];
+                if (assignedDriverId) {
+                    const driver = AppState.allUsers.find(u => u.id === assignedDriverId);
+                    logEntries.push({ text: `Assigned to ${driver.name}`, timestamp: serverTimestamp() });
+                }
+                
+                await updateDoc(docRef, { log: arrayUnion(...logEntries) });
+
                 showToast('New job created.', 'success');
                 createJobForm.reset();
                 createJobModal.classList.add('hidden');
