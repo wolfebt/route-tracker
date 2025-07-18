@@ -480,7 +480,27 @@
                 onAuthStateChanged(auth, async (user) => {
                     loadingOverlay.classList.add('hidden');
                     if (user) {
-                        await setupUserSession(user);
+                        if (navigator.geolocation) {
+                            navigator.permissions.query({ name: 'geolocation' }).then(async (permissionStatus) => {
+                                if (permissionStatus.state === 'granted') {
+                                    await setupUserSession(user);
+                                } else if (permissionStatus.state === 'prompt') {
+                                    navigator.geolocation.getCurrentPosition(
+                                        async () => { await setupUserSession(user); },
+                                        () => {
+                                            showToast("Geolocation is required for this app.", "error");
+                                            cleanupUserSession();
+                                        }
+                                    );
+                                } else {
+                                    showToast("Geolocation is denied. Please enable it in browser settings.", "error");
+                                    cleanupUserSession();
+                                }
+                            });
+                        } else {
+                            showToast("Geolocation is not supported by your browser.", "error");
+                            cleanupUserSession();
+                        }
                     } else {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                             try { 
