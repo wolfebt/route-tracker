@@ -179,8 +179,9 @@
                     <div id="current-job-panel" class="hidden bg-blue-900 border border-blue-700 p-4 rounded-lg shadow-sm mt-4">
                         <h3 class="text-lg font-semibold text-white mb-2">My Current Job</h3>
                         <div id="current-job-details" class="text-sm text-blue-200 space-y-1"></div>
-                        <div class="grid grid-cols-2 gap-2 mt-3">
+                        <div class="grid grid-cols-3 gap-2 mt-3">
                             <button id="start-navigation-btn" class="w-full px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Navigate</button>
+                            <button id="open-job-details-btn" class="w-full px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700">Messages</button>
                             <button id="complete-job-btn" class="w-full px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Complete</button>
                         </div>
                     </div>
@@ -994,6 +995,15 @@
             }
         });
 
+        driverUi.addEventListener('click', (e) => {
+            if (e.target.id === 'open-job-details-btn') {
+                const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.includes(AppState.currentUser.id));
+                if (myJob) {
+                    showJobDetailsModal(myJob);
+                }
+            }
+        });
+
         availableJobsList.addEventListener('click', async (e) => {
             if (e.target.classList.contains('accept-job-btn')) {
                 const button = e.target;
@@ -1008,7 +1018,7 @@
                         const jobData = jobDoc.data();
                         if ((jobData.assignedDrivers || []).length >= jobData.driversNeeded) throw "All driver slots are filled.";
                         
-                        const newLogEntry = { text: `Accepted by ${AppState.currentUser.name}`, timestamp: serverTimestamp() };
+                        const newLogEntry = { text: `Accepted by ${AppState.currentUser.name}`, timestamp: new Date() };
                         const updateData = {
                             status: (jobData.assignedDrivers || []).length + 1 >= jobData.driversNeeded ? 'in-progress' : 'unassigned',
                             assignedDrivers: arrayUnion(AppState.currentUser.id),
@@ -1046,7 +1056,7 @@
                     const remainingDrivers = jobData.assignedDrivers.filter(id => id !== AppState.currentUser.id);
                     const updateData = {
                         assignedDrivers: arrayRemove(AppState.currentUser.id),
-                        log: arrayUnion({ text: `Completed by ${AppState.currentUser.name}`, timestamp: serverTimestamp() })
+                        log: arrayUnion({ text: `Completed by ${AppState.currentUser.name}`, timestamp: new Date() })
                     };
                     if (remainingDrivers.length === 0) {
                         updateData.status = 'completed';
