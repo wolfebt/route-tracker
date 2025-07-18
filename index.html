@@ -1053,14 +1053,14 @@
                     jobName: jobNameInput.value.trim(), origin: jobOriginInput.value.trim(), destination: jobDestinationInput.value.trim(),
                     note: jobNoteInput.value.trim(), driversNeeded: parseInt(driversNeededInput.value, 10),
                     assignedDrivers: [], createdAt: serverTimestamp(), archived: false,
-                    log: [{ text: `Created by ${AppState.currentUser.name}`, timestamp: serverTimestamp() }]
+                    log: [{ text: `Created by ${AppState.currentUser.name}`, timestamp: new Date() }]
                 };
                 const assignedDriverId = assignDriverSelect.value;
                 if (assignedDriverId) {
                     jobData.assignedDrivers.push(assignedDriverId);
                     jobData.status = 'in-progress';
                     const driver = AppState.allUsers.find(u => u.id === assignedDriverId);
-                    jobData.log.push({ text: `Assigned to ${driver.name}`, timestamp: serverTimestamp() });
+                    jobData.log.push({ text: `Assigned to ${driver.name}`, timestamp: new Date() });
                 } else {
                     jobData.status = 'unassigned';
                 }
