@@ -303,7 +303,7 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, getDoc, arrayUnion, arrayRemove, runTransaction, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- Initialize Firebase and Services ---
@@ -325,7 +325,6 @@
         const jobDashboardPanel = document.getElementById('job-dashboard-panel');
         const jobSearchInput = document.getElementById('job-search-input');
         const dispatchUi = document.getElementById('dispatch-ui');
-        const dispatcherActions = document.getElementById('dispatcher-actions');
         const driverUi = document.getElementById('driver-ui');
         const userWelcomeEl = document.getElementById('user-welcome');
         const driverStatusPanel = document.getElementById('driver-status-panel');
@@ -333,6 +332,7 @@
         const driverStatusSelect = document.getElementById('driver-status-select');
         const availableJobsPanel = document.getElementById('available-jobs-panel');
         const availableJobsList = document.getElementById('available-jobs-list');
+        const managementActionsPanel = document.getElementById('management-actions-panel');
         
         // Modals
         const profileModal = document.getElementById('profile-modal');
@@ -441,14 +441,14 @@
                 apiKey: "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI",
                 authDomain: "route-tracker-e62b1.firebaseapp.com",
                 projectId: "route-tracker-e62b1",
-                storageBucket: "route-tracker-e62b1.firebasestorage.app",
+                storageBucket: "route-tracker-e62b1.appspot.com",
                 messagingSenderId: "1016000331711",
                 appId: "1:1016000331711:web:a122b8a52045ee4e832b0a",
                 measurementId: "G-B476Z21SKP"
             };
 
             const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : hardcodedFirebaseConfig;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.appId;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
             if (!firebaseConfig || !appId) {
                 console.error("Firebase config or App ID not found. This application cannot run without it.");
@@ -472,7 +472,18 @@
                     if (user) {
                         await setupUserSession(user);
                     } else {
-                        cleanupUserSession();
+                        // Use custom token or anonymous sign-in if available
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            try {
+                                await signInWithCustomToken(auth, __initial_auth_token);
+                                // The onAuthStateChanged listener will be triggered again
+                            } catch (error) {
+                                console.error("Custom token sign-in failed, trying anonymous:", error);
+                                await signInAnonymously(auth);
+                            }
+                        } else {
+                           cleanupUserSession(); // Show Google Sign-in if no other method works
+                        }
                     }
                 });
 
@@ -500,6 +511,17 @@
                     });
                 } else {
                     AppState.currentUser = { id: user.uid, ...userDocSnap.data() };
+
+                    // Ensure Super Admin always has management rights, correcting if necessary.
+                    if (user.uid === SUPER_ADMIN_UID && !AppState.currentUser.permissions.canManageDrivers) {
+                        console.log("Correcting Super Admin permissions...");
+                        const userRef = doc(db, AppState.usersPath, user.uid);
+                        updateDoc(userRef, { "permissions.canManageDrivers": true })
+                            .catch(err => console.error("Failed to correct Super Admin permissions:", err));
+                        // The onSnapshot will re-trigger with the correct permissions.
+                        return; // Avoid rendering with incorrect permissions temporarily
+                    }
+                    
                     userIdEl.textContent = AppState.currentUser.id; 
                     userWelcomeEl.textContent = `Welcome, ${AppState.currentUser.name}!`;
                     renderUIForPermissions();
@@ -969,24 +991,26 @@
         }
 
         function renderUIForPermissions() {
-            // Reset UI
+            // Reset UI states
             dispatchUi.classList.add('hidden');
             driverUi.classList.add('hidden');
             settingsBtn.classList.add('hidden');
-            dispatcherActions.classList.add('hidden');
+            managementActionsPanel.classList.add('hidden'); // Hide by default
 
+            // Determine primary role UI
             if (checkPermission('isDriver')) {
                 driverUi.classList.remove('hidden');
             } else {
                 dispatchUi.classList.remove('hidden');
+                // For dispatchers, check for specific action permissions
+                if (checkPermission('canCreateJob')) {
+                    managementActionsPanel.classList.remove('hidden');
+                }
             }
 
+            // Check for secondary permissions like settings
             if (checkPermission('canManageDrivers')) {
                 settingsBtn.classList.remove('hidden');
-            }
-            
-            if (checkPermission('canCreateJob')) {
-                dispatcherActions.classList.remove('hidden');
             }
         }
         
