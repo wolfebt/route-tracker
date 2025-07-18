@@ -962,7 +962,10 @@
                 console.error("Google Sign-In Error:", error);
                 if (error.code === 'auth/invalid-credential') {
                     showToast('Google Sign-In Error: Please contact support about a project configuration issue.', 'error');
-                } else {
+                } else if (error.code === 'auth/unauthorized-domain') {
+                    showToast('Error: This domain is not authorized for sign-in. Please add it to the Firebase console.', 'error');
+                }
+                else {
                     showToast('Google Sign-In Error: ' + error.message, 'error');
                 }
             }
@@ -1135,8 +1138,7 @@
                     assignedDrivers: [], 
                     createdAt: serverTimestamp(),
                     archived: false,
-                    status: 'unassigned',
-                    log: [] // Start with an empty log
+                    status: 'unassigned'
                 };
                 
                 const assignedDriverId = assignDriverSelect.value;
@@ -1153,7 +1155,7 @@
                     logEntries.push({ text: `Assigned to ${driver.name}`, timestamp: new Date() });
                 }
                 
-                await updateDoc(docRef, { log: arrayUnion(...logEntries) });
+                await updateDoc(docRef, { log: logEntries });
 
                 showToast('New job created.', 'success');
                 createJobForm.reset();
