@@ -477,9 +477,12 @@
                 AppState.driversPath = `/artifacts/${appId}/public/data/driverLocations`;
                 AppState.jobsPath = `/artifacts/${appId}/public/data/jobs`;
                 
+                let isInitialAuthCheck = true;
+
                 onAuthStateChanged(auth, async (user) => {
                     loadingOverlay.classList.add('hidden');
                     if (user) {
+                        isInitialAuthCheck = false;
                         if (navigator.geolocation) {
                             navigator.permissions.query({ name: 'geolocation' }).then(async (permissionStatus) => {
                                 if (permissionStatus.state === 'granted') {
@@ -501,28 +504,27 @@
                             showToast("Geolocation is not supported by your browser.", "error");
                             cleanupUserSession();
                         }
-                    } else {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            try { 
-                                await signInWithCustomToken(auth, __initial_auth_token); 
-                            } catch (error) {
-                                console.error("Custom token sign-in failed, trying anonymous:", error);
-                                try {
+                    } else { // User is null
+                        if (isInitialAuthCheck) {
+                            isInitialAuthCheck = false; // Prevent re-running auto-login
+                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                try { 
+                                    await signInWithCustomToken(auth, __initial_auth_token); 
+                                } catch (error) {
+                                    console.error("Custom token sign-in failed, trying anonymous:", error);
+                                    await signInAnonymously(auth).catch(anonError => console.error("Anonymous sign-in also failed:", anonError));
+                                }
+                            } else {
+                               try {
                                     await signInAnonymously(auth);
                                 } catch (anonError) {
-                                    console.error("Anonymous sign-in also failed:", anonError);
+                                    console.error("Anonymous sign-in failed:", anonError);
                                     showToast("Could not sign you in automatically.", "error");
-                                    cleanupUserSession();
                                 }
                             }
                         } else {
-                           try {
-                                await signInAnonymously(auth);
-                            } catch (anonError) {
-                                console.error("Anonymous sign-in failed:", anonError);
-                                showToast("Could not sign you in automatically.", "error");
-                                cleanupUserSession();
-                            }
+                            // This block runs on explicit logout, after the initial check is done.
+                            cleanupUserSession();
                         }
                     }
                 });
@@ -597,7 +599,8 @@
                 AppState.locationInterval = null;
             }
             if (AppState.currentUser) {
-                deleteDoc(doc(db, AppState.driversPath, AppState.currentUser.id));
+                const driverLocRef = doc(db, AppState.driversPath, AppState.currentUser.id);
+                deleteDoc(driverLocRef).catch(err => console.log("No location to delete or error:", err));
             }
         }
 
@@ -950,9 +953,14 @@
         }
         
         // --- Event Listeners ---
-        logoutBtn.addEventListener('click', () => {
-            signOut(auth).catch((error) => console.error('Logout Error:', error));
-            cleanupUserSession();
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                // The onAuthStateChanged listener will now handle the cleanup correctly.
+            } catch (error) {
+                console.error('Logout Error:', error);
+                showToast('Error logging out.', 'error');
+            }
         });
 
         googleSigninBtn.addEventListener('click', async () => {
