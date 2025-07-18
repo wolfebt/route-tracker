@@ -240,7 +240,7 @@
                     <div class="flex justify-end space-x-2">
                         <button type="button" id="create-job-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
                         <button type="submit" id="create-job-submit-btn" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 flex items-center justify-center w-32">
-                            <span class="btn-text">Create Job</span>
+                            <span class="btn-text">Add</span>
                             <span class="spinner hidden ml-2"></span>
                         </button>
                     </div>
@@ -1007,11 +1007,21 @@
                         if (!jobDoc.exists()) throw "Job does not exist!";
                         const jobData = jobDoc.data();
                         if ((jobData.assignedDrivers || []).length >= jobData.driversNeeded) throw "All driver slots are filled.";
-                        transaction.update(jobRef, { 
+                        
+                        const newLogEntry = { text: `Accepted by ${AppState.currentUser.name}`, timestamp: serverTimestamp() };
+                        const updateData = {
                             status: (jobData.assignedDrivers || []).length + 1 >= jobData.driversNeeded ? 'in-progress' : 'unassigned',
                             assignedDrivers: arrayUnion(AppState.currentUser.id),
-                            log: arrayUnion({ text: `Accepted by ${AppState.currentUser.name}`, timestamp: serverTimestamp() })
-                        });
+                        };
+
+                        if (jobData.log) {
+                            updateData.log = arrayUnion(newLogEntry);
+                        } else {
+                            updateData.log = [newLogEntry];
+                        }
+                        
+                        transaction.update(jobRef, updateData);
+
                         if (AppState.isSharingLocation) {
                             transaction.update(doc(db, AppState.driversPath, AppState.currentUser.id), { status: 'On Trip' });
                         }
@@ -1087,7 +1097,7 @@
                     logEntries.push({ text: `Assigned to ${driver.name}`, timestamp: serverTimestamp() });
                 }
                 
-                await updateDoc(docRef, { log: arrayUnion(...logEntries) });
+                await updateDoc(docRef, { log: logEntries });
 
                 showToast('New job created.', 'success');
                 createJobForm.reset();
