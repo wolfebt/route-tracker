@@ -732,17 +732,17 @@
                 const jobColor = getJobColor(job.id);
                 
                 let statusClass = 'bg-gray-800 hover:bg-gray-700';
-                let borderColor = 'border-transparent';
+                let borderColorClass = 'border-transparent';
 
                 if (job.status === 'pending-completion') {
                     statusClass = 'bg-green-900 hover:bg-green-800';
                 } else if (job.status === 'in-progress') {
-                    borderColor = `border-[${jobColor}]`;
+                    li.style.borderColor = jobColor;
                 } else if (job.status === 'completed') {
-                    borderColor = 'border-gray-600';
+                    borderColorClass = 'border-gray-600';
                 }
 
-                li.className = `p-3 rounded-md text-sm cursor-pointer border-l-4 ${statusClass} ${borderColor}`;
+                li.className = `p-3 rounded-md text-sm cursor-pointer border-l-4 ${statusClass} ${borderColorClass}`;
                 
                 const assignedDrivers = (job.assignedDrivers || []).map(id => AppState.allUsers.find(u => u.id === id)?.name || 'Unknown').join(', ');
                 
@@ -750,10 +750,17 @@
                 if (job.status === 'pending-completion' && checkPermission('canCreateJob')) {
                     actionButtons = `<button data-job-id="${job.id}" class="finalize-job-btn w-full mt-2 px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-500">Finalize</button>`;
                 } else if (checkPermission('canDeleteJob')) {
-                    actionButtons = `<div class="grid grid-cols-2 gap-2 mt-2">
-                        <button data-job-id="${job.id}" class="archive-job-btn w-full px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Archive</button>
-                        <button data-job-id="${job.id}" class="delete-job-btn w-full px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>
-                    </div>`;
+                    if (isArchivedView) {
+                         actionButtons = `<div class="grid grid-cols-2 gap-2 mt-2">
+                            <button data-job-id="${job.id}" class="unarchive-job-btn w-full px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Unarchive</button>
+                            <button data-job-id="${job.id}" class="delete-job-btn w-full px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>
+                        </div>`;
+                    } else {
+                        actionButtons = `<div class="grid grid-cols-2 gap-2 mt-2">
+                            <button data-job-id="${job.id}" class="archive-job-btn w-full px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Archive</button>
+                            <button data-job-id="${job.id}" class="delete-job-btn w-full px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>
+                        </div>`;
+                    }
                 }
 
                 li.innerHTML = `
@@ -778,6 +785,12 @@
             if (!checkPermission('canDeleteJob')) return;
             await updateDoc(doc(db, AppState.jobsPath, jobId), { archived: true });
             showToast('Job has been archived.', 'success');
+        }
+
+        async function unarchiveJob(jobId) {
+            if (!checkPermission('canDeleteJob')) return;
+            await updateDoc(doc(db, AppState.jobsPath, jobId), { archived: false });
+            showToast('Job has been unarchived.', 'success');
         }
 
         function renderAvailableJobsList() {
@@ -1237,6 +1250,8 @@
                     showConfirmModal('Delete Job?', 'This action is permanent.', () => deleteJob(jobId));
                 } else if (button.classList.contains('archive-job-btn')) {
                     archiveJob(jobId);
+                } else if (button.classList.contains('unarchive-job-btn')) {
+                    unarchiveJob(jobId);
                 } else if (button.classList.contains('finalize-job-btn')) {
                     showCommentModal('Add Closing Comment', (comment) => {
                         closeOutJob(jobId, comment);
