@@ -958,6 +958,33 @@
             button.querySelector('.spinner').classList.add('hidden');
         }
         
+        async function deleteUserFromDb(userId) {
+            if (!checkPermission('canManageDrivers')) {
+                showToast('You do not have permission to delete users.', 'error');
+                return;
+            }
+
+            try {
+                // This only deletes Firestore data, not the actual Firebase Auth user.
+                // Deleting the auth user requires a backend function for security.
+                const userDocRef = doc(db, AppState.usersPath, userId);
+                const driverLocRef = doc(db, AppState.driversPath, userId);
+
+                await deleteDoc(userDocRef);
+                await deleteDoc(driverLocRef).catch(() => {}); // Ignore error if driver doc doesn't exist
+
+                showToast('User data deleted successfully.', 'success');
+                
+                // Manually remove the user from the local state to update UI immediately
+                AppState.allUsers = AppState.allUsers.filter(u => u.id !== userId);
+                renderUserRoleManagement(); // Re-render the list in the modal
+
+            } catch (error) {
+                console.error("Error deleting user:", error);
+                showToast('Failed to delete user data.', 'error');
+            }
+        }
+
         // --- Event Listeners ---
         logoutBtn.addEventListener('click', async () => {
             try {
@@ -1186,19 +1213,47 @@
             const permissions = ['isDriver', 'canCreateJob', 'canDeleteJob', 'canManageDrivers'];
             AppState.allUsers.forEach(user => {
                 const li = document.createElement('li');
-                li.className = 'bg-gray-700 p-3 rounded';
+                li.className = 'bg-gray-700 p-3 rounded relative';
+                
+                const isCurrentUser = user.id === AppState.currentUser.id;
+                const isSuperAdmin = user.id === SUPER_ADMIN_UID;
+
+                let deleteButtonHTML = '';
+                if (!isCurrentUser && !isSuperAdmin) {
+                    deleteButtonHTML = `<button data-user-id="${user.id}" data-user-email="${user.email || user.id}" class="delete-user-btn p-1 rounded-full hover:bg-red-800 absolute top-2 right-2" title="Delete User">
+                        <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>`;
+                }
+
                 let checkboxesHTML = permissions.map(perm => {
                     const isChecked = user.permissions?.[perm] === true;
-                    const isDisabled = user.id === SUPER_ADMIN_UID && perm === 'canManageDrivers';
+                    const isDisabled = isSuperAdmin && perm === 'canManageDrivers';
                     return `<label class="flex items-center space-x-2">
                         <input type="checkbox" data-user-id="${user.id}" data-permission="${perm}" class="permission-checkbox bg-gray-600 border-gray-500 rounded" ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
                         <span class="text-sm">${perm}</span>
                     </label>`;
                 }).join('');
-                li.innerHTML = `<p class="text-sm font-bold text-gray-200 truncate mb-2">${user.email || user.id}</p><div class="grid grid-cols-2 gap-2">${checkboxesHTML}</div>`;
+
+                li.innerHTML = `
+                    <p class="text-sm font-bold text-gray-200 truncate mb-2 pr-8">${user.email || user.id}</p>
+                    ${deleteButtonHTML}
+                    <div class="grid grid-cols-2 gap-2">${checkboxesHTML}</div>
+                `;
                 userRoleList.appendChild(li);
             });
         }
+
+        userRoleList.addEventListener('click', async (e) => {
+            const deleteBtn = e.target.closest('.delete-user-btn');
+            if (deleteBtn) {
+                const { userId, userEmail } = deleteBtn.dataset;
+                showConfirmModal(
+                    'Delete User?', 
+                    `This will delete all database records for "${userEmail}". The user will need to sign in again to be re-created. This action cannot be undone.`, 
+                    () => deleteUserFromDb(userId)
+                );
+            }
+        });
 
         userRoleList.addEventListener('change', async (e) => {
             if (e.target.classList.contains('permission-checkbox')) {
