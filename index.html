@@ -812,9 +812,12 @@
 
             clearAllMapObjects();
 
+            const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+            const recentDrivers = AppState.activeDrivers.filter(driver => driver.timestamp && driver.timestamp.toMillis() > fiveMinutesAgo);
+
             // Draw user's own location marker if they are a driver
             if (checkPermission('isDriver')) {
-                const myLocationData = AppState.activeDrivers.find(d => d.id === AppState.currentUser.id);
+                const myLocationData = recentDrivers.find(d => d.id === AppState.currentUser.id);
                 if (myLocationData) {
                     const pos = { lat: myLocationData.location.latitude, lng: myLocationData.location.longitude };
                     AppState.userMarker = new google.maps.Marker({
@@ -825,7 +828,7 @@
             }
 
             // Draw other driver markers (for dispatchers)
-            AppState.activeDrivers.forEach(driver => {
+            recentDrivers.forEach(driver => {
                 if (driver.id === AppState.currentUser.id) return;
                 const position = { lat: driver.location.latitude, lng: driver.location.longitude };
                 AppState.driverMapMarkers[driver.id] = new google.maps.Marker({
@@ -839,14 +842,14 @@
             if (checkPermission('isDriver')) {
                 const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.includes(AppState.currentUser.id));
                 if (myJob) {
-                    const myLocation = AppState.activeDrivers.find(d => d.id === AppState.currentUser.id)?.location;
+                    const myLocation = recentDrivers.find(d => d.id === AppState.currentUser.id)?.location;
                     drawRouteForJob(myJob, myLocation);
                 }
             } else { // Dispatcher view
                 const inProgressJobs = AppState.allJobs.filter(job => job.status === 'in-progress' && job.assignedDrivers?.length > 0);
                 inProgressJobs.forEach(job => {
                     const driverId = job.assignedDrivers[0]; // Route from first assigned driver
-                    const driver = AppState.activeDrivers.find(d => d.id === driverId);
+                    const driver = recentDrivers.find(d => d.id === driverId);
                     drawRouteForJob(job, driver?.location);
                 });
             }
