@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Route Tracker - Dark</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
         #map { height: 100%; width: 100%; }
@@ -90,7 +90,7 @@
             #job-details-modal > div {
                 max-height: none !important;
             }
-            #job-details-printable h3, #job-details-printable strong, #job-details-printable p, #job-details-printable span, #job-details-printable li {
+            #job-details-printable h3, #job-details-printable strong, #job-details-printable p, #job-details-printable span, #job-details-printable li, .creator-tag-print {
                 color: black !important;
             }
             #job-details-printable button, #job-details-printable form {
@@ -151,76 +151,83 @@
 
         <!-- Sidebar -->
         <div class="w-full md:w-1/3 h-1/2 md:h-full flex flex-col bg-gray-800 p-4 space-y-4 overflow-y-auto border-l-2 border-teal-600">
-            <div id="sidebar-content">
-                <div class="flex items-center justify-between pb-2 border-b border-gray-700">
-                    <h1 class="text-2xl font-bold text-white">Route Tracker</h1>
-                    <div class="flex items-center space-x-4">
-                        <button id="settings-btn" class="text-gray-400 hover:text-white">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        </button>
-                        <button id="logout-btn" class="text-sm text-red-400 hover:text-red-300">Logout</button>
-                    </div>
-                </div>
-                
-                <div id="user-info-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                     <h2 id="user-welcome" class="text-lg font-semibold text-gray-200 mb-2">Welcome!</h2>
-                     <p class="text-sm text-gray-400">Your User ID: <span id="userId" class="font-mono break-all"></span></p>
-                </div>
-
-                <!-- Dispatcher UI -->
-                <div id="dispatch-ui" class="hidden">
-                    <div id="management-actions-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                        <h2 class="text-lg font-semibold text-gray-200 mb-2">Management Actions</h2>
-                        <div id="dispatcher-actions" class="grid grid-cols-1 gap-2">
-                            <button id="open-create-job-modal-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Create Job</button>
-                        </div>
-                    </div>
-                    <div id="job-dashboard-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                        <div class="flex border-b border-gray-700">
-                            <button data-tab="current" class="tab-btn flex-1 py-2 text-center font-semibold text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-300 active">Current</button>
-                            <button data-tab="archive" class="tab-btn flex-1 py-2 text-center font-semibold text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-300">Archive</button>
-                        </div>
-                        <div class="mt-4 space-y-2">
-                            <input type="text" id="job-search-input" placeholder="Search jobs..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <ul id="jobs-list" class="space-y-2 mt-4"></ul>
-                    </div>
-                    <div id="drivers-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="text-lg font-semibold text-gray-200">Drivers</h3>
-                            <button id="refresh-drivers-btn" class="p-1 rounded-full hover:bg-gray-700" title="Refresh List">
-                                <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg>
+            <div id="sidebar-content" class="flex flex-col h-full">
+                <div>
+                    <div class="flex items-center justify-between pb-2 border-b border-gray-700">
+                        <h1 class="text-2xl font-bold text-white">Route Tracker</h1>
+                        <div class="flex items-center space-x-4">
+                            <button id="settings-btn" class="text-gray-400 hover:text-white">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                             </button>
+                            <button id="logout-btn" class="text-sm text-red-400 hover:text-red-300">Logout</button>
                         </div>
-                        <ul id="drivers-list" class="space-y-2"></ul>
+                    </div>
+                    
+                    <div id="user-info-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                         <h2 id="user-welcome" class="text-lg font-semibold text-gray-200 mb-2">Welcome!</h2>
+                         <p class="text-sm text-gray-400">Your User ID: <span id="userId" class="font-mono break-all"></span></p>
+                    </div>
+
+                    <!-- Dispatcher UI -->
+                    <div id="dispatch-ui" class="hidden">
+                        <div id="management-actions-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                            <h2 class="text-lg font-semibold text-gray-200 mb-2">Management Actions</h2>
+                            <div id="dispatcher-actions" class="grid grid-cols-1 gap-2">
+                                <button id="open-create-job-modal-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Create Job</button>
+                            </div>
+                        </div>
+                        <div id="job-dashboard-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                            <div class="flex border-b border-gray-700">
+                                <button data-tab="current" class="tab-btn flex-1 py-2 text-center font-semibold text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-300 active">Current</button>
+                                <button data-tab="archive" class="tab-btn flex-1 py-2 text-center font-semibold text-gray-400 border-b-2 border-transparent hover:border-gray-500 hover:text-gray-300">Archive</button>
+                            </div>
+                            <div class="mt-4 space-y-2">
+                                <input type="text" id="job-search-input" placeholder="Search jobs..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <ul id="jobs-list" class="space-y-2 mt-4"></ul>
+                        </div>
+                        <div id="drivers-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-lg font-semibold text-gray-200">Drivers</h3>
+                                <button id="refresh-drivers-btn" class="p-1 rounded-full hover:bg-gray-700" title="Refresh List">
+                                    <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg>
+                                </button>
+                            </div>
+                            <ul id="drivers-list" class="space-y-2"></ul>
+                        </div>
+                    </div>
+
+                    <!-- Driver UI -->
+                    <div id="driver-ui" class="hidden">
+                        <div id="current-job-panel" class="hidden bg-blue-900 border border-blue-700 p-4 rounded-lg shadow-sm mt-4 cursor-pointer">
+                            <h3 class="text-lg font-semibold text-white mb-2">My Current Job</h3>
+                            <div id="current-job-details" class="text-sm text-blue-200 space-y-1"></div>
+                            <div class="grid grid-cols-3 gap-2 mt-3">
+                                <button id="start-navigation-btn" class="w-full px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Navigate</button>
+                                <button id="open-job-details-btn" class="w-full px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700">Messages</button>
+                                <button id="complete-job-btn" class="w-full px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Complete</button>
+                            </div>
+                        </div>
+                        <div id="available-jobs-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                            <h3 class="text-lg font-semibold text-gray-200 mb-2">Open Job Postings</h3>
+                            <ul id="available-jobs-list" class="space-y-2"></ul>
+                        </div>
+                        <div id="driver-status-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                            <h2 class="text-lg font-semibold text-gray-200 mb-2">My Status</h2>
+                            <div id="driver-status-control">
+                                <label for="driver-status-select" class="block text-sm font-medium text-gray-300">Current Status:</label>
+                                <select id="driver-status-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border-gray-600 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md text-white">
+                                    <option>Available</option>
+                                    <option>On Break</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <!-- Driver UI -->
-                <div id="driver-ui" class="hidden">
-                    <div id="current-job-panel" class="hidden bg-blue-900 border border-blue-700 p-4 rounded-lg shadow-sm mt-4 cursor-pointer">
-                        <h3 class="text-lg font-semibold text-white mb-2">My Current Job</h3>
-                        <div id="current-job-details" class="text-sm text-blue-200 space-y-1"></div>
-                        <div class="grid grid-cols-3 gap-2 mt-3">
-                            <button id="start-navigation-btn" class="w-full px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Navigate</button>
-                            <button id="open-job-details-btn" class="w-full px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700">Messages</button>
-                            <button id="complete-job-btn" class="w-full px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Complete</button>
-                        </div>
-                    </div>
-                    <div id="available-jobs-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                        <h3 class="text-lg font-semibold text-gray-200 mb-2">Open Job Postings</h3>
-                        <ul id="available-jobs-list" class="space-y-2"></ul>
-                    </div>
-                    <div id="driver-status-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                        <h2 class="text-lg font-semibold text-gray-200 mb-2">My Status</h2>
-                        <div id="driver-status-control">
-                            <label for="driver-status-select" class="block text-sm font-medium text-gray-300">Current Status:</label>
-                            <select id="driver-status-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border-gray-600 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md text-white">
-                                <option>Available</option>
-                                <option>On Break</option>
-                            </select>
-                        </div>
-                    </div>
+                <!-- Creator ID Tag -->
+                <div class="mt-auto pt-4 text-center text-xs font-thin text-gray-500">
+                    <p>Route Tracker</p>
+                    <p>Wolfe.BT@TangentLLC</p>
                 </div>
             </div>
         </div>
@@ -319,6 +326,11 @@
                         <input type="text" id="job-chat-input" placeholder="Type a message..." class="flex-grow px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Send</button>
                     </form>
+                </div>
+                <!-- Creator ID Tag for Print -->
+                <div class="creator-tag-print pt-4 mt-4 border-t border-gray-300 text-center text-xs font-thin">
+                    <p>Route Tracker</p>
+                    <p>Wolfe.BT@TangentLLC</p>
                 </div>
             </div>
             <div class="mt-6 pt-4 border-t border-gray-700 flex justify-between items-center flex-shrink-0">
