@@ -87,6 +87,9 @@
                 background-color: white;
                 color: black;
             }
+            #job-details-modal > div {
+                max-height: none !important;
+            }
             #job-details-printable h3, #job-details-printable strong, #job-details-printable p, #job-details-printable span, #job-details-printable li {
                 color: black !important;
             }
@@ -95,6 +98,8 @@
             }
             #job-chat-box {
                 border: 1px solid #ccc;
+                height: auto !important;
+                overflow-y: visible !important;
             }
             #job-chat-box .chat-message {
                 background-color: transparent !important;
@@ -286,7 +291,7 @@
                 </div>
                  <div class="mt-4">
                     <h4 class="text-lg font-semibold text-white mb-2">Messages</h4>
-                    <div id="job-chat-box" class="h-40 bg-gray-900 rounded-md p-2 overflow-y-auto"></div>
+                    <div id="job-chat-box" class="h-40 border border-gray-700 rounded-md p-2 overflow-y-auto"></div>
                     <form id="job-chat-form" class="mt-2 flex space-x-2">
                         <input type="text" id="job-chat-input" placeholder="Type a message..." class="flex-grow px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Send</button>
