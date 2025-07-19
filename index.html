@@ -188,6 +188,9 @@
                     <div id="drivers-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                         <div class="flex justify-between items-center mb-2">
                             <h3 class="text-lg font-semibold text-gray-200">Drivers</h3>
+                            <button id="refresh-drivers-btn" class="p-1 rounded-full hover:bg-gray-700" title="Refresh List">
+                                <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></svg>
+                            </button>
                         </div>
                         <ul id="drivers-list" class="space-y-2"></ul>
                     </div>
@@ -374,6 +377,7 @@
         
         const userIdEl = document.getElementById('userId');
         const driversListEl = document.getElementById('drivers-list');
+        const refreshDriversBtn = document.getElementById('refresh-drivers-btn');
         const jobsListEl = document.getElementById('jobs-list');
         const jobDashboardPanel = document.getElementById('job-dashboard-panel');
         const jobSearchInput = document.getElementById('job-search-input');
@@ -884,17 +888,28 @@
         
         function renderDriversList() {
             driversListEl.innerHTML = '';
-            if (AppState.activeDrivers.length === 0) {
+            const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+            const recentDrivers = AppState.activeDrivers.filter(driver => driver.timestamp && driver.timestamp.toMillis() > fiveMinutesAgo);
+
+            if (recentDrivers.length === 0) {
                 driversListEl.innerHTML = '<li class="text-gray-400 text-sm">No active drivers.</li>';
                 return;
             }
-            AppState.activeDrivers.forEach(driver => {
+            recentDrivers.forEach(driver => {
                 const li = document.createElement('li');
                 const status = driver.status || 'Online';
                 let statusColor = 'bg-gray-500';
                 if (status === 'Available') statusColor = 'bg-green-500';
                 if (status === 'On Trip') statusColor = 'bg-yellow-500';
                 if (status === 'On Break') statusColor = 'bg-orange-500';
+                
+                let removeButton = '';
+                if (checkPermission('canManageDrivers')) {
+                    removeButton = `<button data-driver-id="${driver.id}" class="remove-driver-btn p-1 rounded-full hover:bg-red-800" title="Remove Driver">
+                        <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>`;
+                }
+
                 li.className = `flex justify-between items-center bg-gray-800 p-2 rounded-md border-l-4 border-green-500`;
                 li.innerHTML = `
                     <div>
@@ -904,6 +919,7 @@
                     <div class="flex items-center">
                         <span class="text-xs font-semibold text-gray-400 mr-2">${status}</span>
                         <span class="w-3 h-3 rounded-full ${statusColor} mr-2"></span>
+                        ${removeButton}
                     </div>
                 `;
                 driversListEl.appendChild(li);
@@ -1423,6 +1439,19 @@
         });
 
         refreshUserRolesBtn.addEventListener('click', renderUserRoleManagement);
+
+        refreshDriversBtn.addEventListener('click', renderDriversList);
+
+        driversListEl.addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('.remove-driver-btn');
+            if (removeBtn && checkPermission('canManageDrivers')) {
+                const driverId = removeBtn.dataset.driverId;
+                showConfirmModal('Remove Driver?', 'This will remove the driver from the active list. They will reappear if they send a new location update.', () => {
+                    deleteDoc(doc(db, AppState.driversPath, driverId));
+                    showToast('Driver removed from active list.', 'success');
+                });
+            }
+        });
 
         function listenForJobMessages(jobId) {
             if (AppState.currentJobChatUnsubscribe) AppState.currentJobChatUnsubscribe();
