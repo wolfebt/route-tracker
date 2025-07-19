@@ -87,11 +87,25 @@
                 background-color: white;
                 color: black;
             }
-            #job-details-printable h3, #job-details-printable strong {
+            #job-details-printable h3, #job-details-printable strong, #job-details-printable p, #job-details-printable span, #job-details-printable li {
                 color: black !important;
             }
-            #job-details-printable button {
+            #job-details-printable button, #job-details-printable form {
                 display: none;
+            }
+            #job-chat-box {
+                border: 1px solid #ccc;
+            }
+            #job-chat-box .chat-message {
+                background-color: transparent !important;
+                padding: 2px 0 !important;
+                border-bottom: 1px dotted #ccc;
+            }
+            #job-chat-box .chat-message > div {
+                 background: none !important;
+            }
+            #job-chat-box .chat-message p {
+                color: black !important;
             }
         }
     </style>
@@ -176,7 +190,7 @@
 
                 <!-- Driver UI -->
                 <div id="driver-ui" class="hidden">
-                    <div id="current-job-panel" class="hidden bg-blue-900 border border-blue-700 p-4 rounded-lg shadow-sm mt-4">
+                    <div id="current-job-panel" class="hidden bg-blue-900 border border-blue-700 p-4 rounded-lg shadow-sm mt-4 cursor-pointer">
                         <h3 class="text-lg font-semibold text-white mb-2">My Current Job</h3>
                         <div id="current-job-details" class="text-sm text-blue-200 space-y-1"></div>
                         <div class="grid grid-cols-3 gap-2 mt-3">
@@ -260,11 +274,10 @@
         </div>
     </div>
     <div id="job-details-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
-        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg mx-4 overflow-y-auto" style="max-height: 90vh;">
-            <div id="job-details-printable">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg mx-4 flex flex-col" style="max-height: 90vh;">
+            <div id="job-details-printable" class="overflow-y-auto">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-2xl font-bold text-white">Job Details</h3>
-                    <button id="job-details-close-btn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
                 </div>
                 <div id="job-details-content" class="text-gray-300 space-y-2"></div>
                 <div class="mt-4">
@@ -280,8 +293,9 @@
                     </form>
                 </div>
             </div>
-            <div class="mt-6 flex justify-end space-x-2">
+            <div class="mt-6 pt-4 border-t border-gray-700 flex justify-between items-center flex-shrink-0">
                 <button id="print-job-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Print</button>
+                <button id="job-details-close-btn" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500">Close</button>
             </div>
         </div>
     </div>
@@ -801,7 +815,7 @@
                 (response, status) => {
                     if (status === "OK") {
                         renderer.setDirections(response);
-                        const leg = response.routes[0]?.legs[0];
+                        const leg = response.routes[0].legs[0];
                         if (leg && checkPermission('isDriver')) {
                             if (leg.distance.value <= 200) { completeJob(jobId, true); }
                         }
@@ -919,6 +933,21 @@
             confirmModal.classList.remove('hidden');
         }
 
+        const handleEscKey = (e) => {
+            if (e.key === 'Escape' && !jobDetailsModal.classList.contains('hidden')) {
+                closeJobDetailsModal();
+            }
+        };
+
+        function closeJobDetailsModal() {
+            if (AppState.currentJobChatUnsubscribe) {
+                AppState.currentJobChatUnsubscribe();
+                AppState.currentJobChatUnsubscribe = null;
+            }
+            jobDetailsModal.classList.add('hidden');
+            document.removeEventListener('keydown', handleEscKey);
+        }
+
         function showJobDetailsModal(job) {
             const assignedDrivers = (job.assignedDrivers || []).map(id => AppState.allUsers.find(u => u.id === id)?.name || 'Unknown').join(', ');
             jobDetailsContent.innerHTML = `
@@ -926,14 +955,33 @@
                 <p><strong>Status:</strong> ${job.status}</p>
                 <p><strong>From:</strong> ${job.origin}</p>
                 <p><strong>To:</strong> ${job.destination}</p>
+                <p><strong>Distance:</strong> <span id="job-details-distance">Calculating...</span></p>
+                <p><strong>Est. Travel Time:</strong> <span id="job-details-duration">Calculating...</span></p>
                 <p><strong>Drivers Needed:</strong> ${job.driversNeeded}</p>
                 <p><strong>Assigned Drivers:</strong> ${assignedDrivers || 'None'}</p>
-                <p><strong>Created:</strong> ${job.createdAt ? job.createdAt.toDate().toLocaleString() : 'N/A'}</p>
                 <p class="mt-2 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
             `;
+
+            AppState.directionsService.route({
+                origin: job.origin,
+                destination: job.destination,
+                travelMode: google.maps.TravelMode.DRIVING
+            }, (response, status) => {
+                const distanceEl = document.getElementById('job-details-distance');
+                const durationEl = document.getElementById('job-details-duration');
+                if (status === 'OK' && distanceEl && durationEl) {
+                    const leg = response.routes[0].legs[0];
+                    distanceEl.textContent = leg.distance.text;
+                    durationEl.textContent = leg.duration.text;
+                } else {
+                    if(distanceEl) distanceEl.textContent = 'N/A';
+                    if(durationEl) durationEl.textContent = 'N/A';
+                }
+            });
+
             jobHistoryLog.innerHTML = '';
             if (job.log && job.log.length > 0) {
-                job.log.forEach(entry => {
+                job.log.sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis()).forEach(entry => {
                     const li = document.createElement('li');
                     li.textContent = `[${entry.timestamp ? entry.timestamp.toDate().toLocaleString() : ''}] ${entry.text}`;
                     jobHistoryLog.appendChild(li);
@@ -944,6 +992,7 @@
             jobChatForm.dataset.jobId = job.id;
             listenForJobMessages(job.id);
             jobDetailsModal.classList.remove('hidden');
+            document.addEventListener('keydown', handleEscKey);
         }
         
         function showSpinner(button) {
@@ -1078,10 +1127,22 @@
                 } else if (button.classList.contains('archive-job-btn')) {
                     archiveJob(jobId);
                 }
-            } else if (e.target.closest('li[data-job-id]')) {
-                const job = AppState.allJobs.find(j => j.id === e.target.closest('li[data-job-id]').dataset.jobId);
+            }
+        });
+
+        jobsListEl.addEventListener('dblclick', (e) => {
+            const li = e.target.closest('li[data-job-id]');
+            if (li) {
+                const job = AppState.allJobs.find(j => j.id === li.dataset.jobId);
                 if (job) showJobDetailsModal(job);
             }
+        });
+
+        currentJobPanel.addEventListener('dblclick', () => {
+             const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.includes(AppState.currentUser.id));
+             if (myJob) {
+                 showJobDetailsModal(myJob);
+             }
         });
 
         driverUi.addEventListener('click', (e) => {
@@ -1278,9 +1339,15 @@
                 messages.forEach(msg => {
                     const msgEl = document.createElement('div');
                     const isMe = msg.senderId === AppState.currentUser.id;
-                    msgEl.className = `flex ${isMe ? 'justify-end' : 'justify-start'} mb-2`;
+                    msgEl.className = `chat-message flex ${isMe ? 'justify-end' : 'justify-start'} mb-2`;
+                    const timestamp = msg.timestamp ? msg.timestamp.toDate().toLocaleString() : 'sending...';
                     msgEl.innerHTML = `<div class="rounded-lg px-3 py-2 ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}">
-                        <p class="text-sm font-bold">${msg.senderName}</p><p class="text-sm">${msg.text}</p></div>`;
+                        <div class="flex justify-between items-center">
+                           <p class="text-sm font-bold">${msg.senderName}</p>
+                           <p class="text-xs ${isMe ? 'text-blue-200' : 'text-gray-400'} ml-3">${timestamp}</p>
+                        </div>
+                        <p class="text-sm mt-1">${msg.text}</p>
+                    </div>`;
                     jobChatBox.appendChild(msgEl);
                 });
                 jobChatBox.scrollTop = jobChatBox.scrollHeight;
@@ -1304,13 +1371,14 @@
         settingsCancelBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
         adminSettingsCancelBtn.addEventListener('click', () => adminSettingsModal.classList.add('hidden'));
         createJobCancelBtn.addEventListener('click', () => createJobModal.classList.add('hidden'));
-        jobDetailsCloseBtn.addEventListener('click', () => {
-            if (AppState.currentJobChatUnsubscribe) {
-                AppState.currentJobChatUnsubscribe();
-                AppState.currentJobChatUnsubscribe = null;
+        
+        jobDetailsCloseBtn.addEventListener('click', closeJobDetailsModal);
+        jobDetailsModal.addEventListener('click', (e) => {
+            if (e.target === jobDetailsModal) {
+                closeJobDetailsModal();
             }
-            jobDetailsModal.classList.add('hidden');
         });
+
         confirmCancelBtn.addEventListener('click', () => {
             confirmModal.classList.add('hidden');
             AppState.confirmCallback = null;
