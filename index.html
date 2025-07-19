@@ -224,6 +224,18 @@
     </div>
 
     <!-- Modals -->
+    <div id="comment-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10003]">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+            <form id="comment-form">
+                <h3 id="comment-modal-title" class="text-xl font-bold text-white mb-4">Add Comment</h3>
+                <textarea id="comment-input" placeholder="Enter your comment..." rows="4" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                <div class="flex justify-end space-x-2 mt-6">
+                    <button type="button" id="comment-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <div id="profile-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
             <form id="profile-form">
@@ -285,6 +297,14 @@
                     <h3 class="text-2xl font-bold text-white">Job Details</h3>
                 </div>
                 <div id="job-details-content" class="text-gray-300 space-y-2"></div>
+                <div id="driver-completion-comment-section" class="mt-4 hidden">
+                    <h4 class="text-lg font-semibold text-white mb-2">Driver's Completion Comment</h4>
+                    <p id="driver-completion-comment" class="text-sm text-gray-400 italic p-2 border border-gray-700 rounded-md"></p>
+                </div>
+                <div id="dispatcher-closing-comment-section" class="mt-4 hidden">
+                    <h4 class="text-lg font-semibold text-white mb-2">Dispatcher's Closing Comment</h4>
+                    <p id="dispatcher-closing-comment" class="text-sm text-gray-400 italic p-2 border border-gray-700 rounded-md"></p>
+                </div>
                 <div class="mt-4">
                     <h4 class="text-lg font-semibold text-white mb-2">Job History</h4>
                     <ul id="job-history-log" class="space-y-1 text-sm text-gray-400"></ul>
@@ -343,7 +363,6 @@
         
         // --- Initialize Firebase and Services ---
         let app, auth, db;
-        const SUPER_ADMIN_UID = 'QbXV0sMecoM7MhikQ4ftseSx0rv2';
         
         // --- UI Elements ---
         const loadingOverlay = document.getElementById('loading-overlay');
@@ -369,6 +388,12 @@
         const managementActionsPanel = document.getElementById('management-actions-panel');
         
         // Modals
+        const commentModal = document.getElementById('comment-modal');
+        const commentForm = document.getElementById('comment-form');
+        const commentModalTitle = document.getElementById('comment-modal-title');
+        const commentInput = document.getElementById('comment-input');
+        const commentCancelBtn = document.getElementById('comment-cancel-btn');
+
         const profileModal = document.getElementById('profile-modal');
         const profileForm = document.getElementById('profile-form');
         const profileNameInput = document.getElementById('profile-name-input');
@@ -410,6 +435,10 @@
 
         const jobDetailsModal = document.getElementById('job-details-modal');
         const jobDetailsContent = document.getElementById('job-details-content');
+        const driverCompletionCommentSection = document.getElementById('driver-completion-comment-section');
+        const driverCompletionComment = document.getElementById('driver-completion-comment');
+        const dispatcherClosingCommentSection = document.getElementById('dispatcher-closing-comment-section');
+        const dispatcherClosingComment = document.getElementById('dispatcher-closing-comment');
         const jobHistoryLog = document.getElementById('job-history-log');
         const jobChatBox = document.getElementById('job-chat-box');
         const jobChatForm = document.getElementById('job-chat-form');
@@ -431,6 +460,7 @@
             activeDrivers: [],
             activeJobTab: 'current',
             confirmCallback: null, 
+            commentCallback: null,
             usersPath: '',
             driversPath: '',
             jobsPath: '',
@@ -571,7 +601,7 @@
                     setDoc(userDocRef, { 
                         email: user.email || user.uid, 
                         name: user.displayName || `User-${user.uid.substring(0, 4)}`,
-                        permissions: { canCreateJob: true, canDeleteJob: false, canManageDrivers: user.uid === SUPER_ADMIN_UID, isDriver: true }
+                        permissions: { canCreateJob: true, canDeleteJob: false, canManageDrivers: false, isDriver: true }
                     });
                 } else {
                     AppState.currentUser = { id: user.uid, ...userDocSnap.data() };
@@ -684,19 +714,33 @@
                 const li = document.createElement('li');
                 li.dataset.jobId = job.id;
                 const jobColor = getJobColor(job.id);
-                li.className = 'bg-gray-800 p-3 rounded-md text-sm cursor-pointer hover:bg-gray-700 border-l-4';
+                
+                let statusClass = 'bg-gray-800 hover:bg-gray-700';
+                if (job.status === 'pending-completion') {
+                    statusClass = 'bg-green-900 hover:bg-green-800';
+                }
+
+                li.className = `p-3 rounded-md text-sm cursor-pointer border-l-4 ${statusClass}`;
                 li.style.borderColor = job.status === 'in-progress' ? jobColor : 'transparent';
                 const assignedDrivers = (job.assignedDrivers || []).map(id => AppState.allUsers.find(u => u.id === id)?.name || 'Unknown').join(', ');
+                
+                let actionButtons = '';
+                if (job.status === 'pending-completion' && checkPermission('canCreateJob')) {
+                    actionButtons = `<button data-job-id="${job.id}" class="finalize-job-btn w-full mt-2 px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-500">Finalize</button>`;
+                } else if(checkPermission('canDeleteJob')) {
+                    actionButtons = `<div class="grid grid-cols-2 gap-2 mt-2">
+                        <button data-job-id="${job.id}" class="archive-job-btn w-full px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Archive</button>
+                        <button data-job-id="${job.id}" class="delete-job-btn w-full px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>
+                    </div>`;
+                }
+
                 li.innerHTML = `
                     <p class="font-bold text-white">${job.jobName || 'Unnamed Job'}</p>
                     <p class="text-gray-400"><strong class="text-gray-200">From:</strong> ${job.origin}</p>
                     <p class="text-gray-400"><strong class="text-gray-200">To:</strong> ${job.destination}</p>
                     <p class="text-gray-400"><strong class="text-gray-200">Openings:</strong> ${ (job.assignedDrivers || []).length} of ${job.driversNeeded}</p>
                     ${assignedDrivers ? `<p class="text-gray-400"><strong class="text-gray-200">Drivers:</strong> ${assignedDrivers}</p>` : ''}
-                    ${checkPermission('canDeleteJob') ? `<div class="grid grid-cols-2 gap-2 mt-2">
-                        <button data-job-id="${job.id}" class="archive-job-btn w-full px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Archive</button>
-                        <button data-job-id="${job.id}" class="delete-job-btn w-full px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>
-                    </div>` : ''}
+                    ${actionButtons}
                 `;
                 jobsListEl.appendChild(li);
             });
@@ -717,7 +761,7 @@
         function renderAvailableJobsList() {
             const availableJobs = AppState.allJobs.filter(job => {
                 const assignedDrivers = job.assignedDrivers || [];
-                return !job.archived && assignedDrivers.length < job.driversNeeded && !assignedDrivers.includes(AppState.currentUser?.id);
+                return !job.archived && job.status === 'unassigned' && assignedDrivers.length < job.driversNeeded && !assignedDrivers.includes(AppState.currentUser?.id);
             });
             availableJobsList.innerHTML = availableJobs.length === 0 ? '<li class="text-gray-400 text-sm p-2">No job postings currently available.</li>' : '';
             availableJobs.forEach(job => {
@@ -822,7 +866,11 @@
                         renderer.setDirections(response);
                         const leg = response.routes[0].legs[0];
                         if (leg && checkPermission('isDriver')) {
-                            if (leg.distance.value <= 200) { completeJob(jobId, true); }
+                            if (leg.distance.value <= 200) { 
+                                showCommentModal('Add Completion Comment', (comment) => {
+                                    completeJob(job.id, comment, true);
+                                });
+                            }
                         }
                     } else { 
                         if(AppState.jobRouteRenderers[jobId]) {
@@ -938,6 +986,13 @@
             confirmModal.classList.remove('hidden');
         }
 
+        function showCommentModal(title, callback) {
+            commentModalTitle.textContent = title;
+            commentInput.value = '';
+            AppState.commentCallback = callback;
+            commentModal.classList.remove('hidden');
+        }
+
         const handleEscKey = (e) => {
             if (e.key === 'Escape' && !jobDetailsModal.classList.contains('hidden')) {
                 closeJobDetailsModal();
@@ -966,6 +1021,20 @@
                 <p><strong>Assigned Drivers:</strong> ${assignedDrivers || 'None'}</p>
                 <p class="mt-2 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
             `;
+
+            if (job.driverCompletionComment) {
+                driverCompletionComment.textContent = job.driverCompletionComment;
+                driverCompletionCommentSection.classList.remove('hidden');
+            } else {
+                driverCompletionCommentSection.classList.add('hidden');
+            }
+
+            if (job.dispatcherClosingComment) {
+                dispatcherClosingComment.textContent = job.dispatcherClosingComment;
+                dispatcherClosingCommentSection.classList.remove('hidden');
+            } else {
+                dispatcherClosingCommentSection.classList.add('hidden');
+            }
 
             AppState.directionsService.route({
                 origin: job.origin,
@@ -1131,6 +1200,10 @@
                     showConfirmModal('Delete Job?', 'This action is permanent.', () => deleteJob(jobId));
                 } else if (button.classList.contains('archive-job-btn')) {
                     archiveJob(jobId);
+                } else if (button.classList.contains('finalize-job-btn')) {
+                    showCommentModal('Add Closing Comment', (comment) => {
+                        closeOutJob(jobId, comment);
+                    });
                 }
             }
         });
@@ -1200,34 +1273,52 @@
             }
         });
         
-        async function completeJob(jobId, isAuto = false) {
-             const jobRef = doc(db, AppState.jobsPath, jobId);
+        async function completeJob(jobId, comment, isAuto = false) {
+            const jobRef = doc(db, AppState.jobsPath, jobId);
             try {
                 await runTransaction(db, async (transaction) => {
                     const jobDoc = await transaction.get(jobRef);
                     if (!jobDoc.exists()) throw "Job not found";
-                    const jobData = jobDoc.data();
-                    if (!jobData.assignedDrivers.includes(AppState.currentUser.id)) return;
-                    const remainingDrivers = jobData.assignedDrivers.filter(id => id !== AppState.currentUser.id);
+                    
                     const updateData = {
-                        assignedDrivers: arrayRemove(AppState.currentUser.id),
-                        log: arrayUnion({ text: `Completed by ${AppState.currentUser.name}`, timestamp: new Date() })
+                        status: 'pending-completion',
+                        driverCompletionComment: comment,
+                        log: arrayUnion({ text: `Marked as pending completion by ${AppState.currentUser.name}`, timestamp: new Date() })
                     };
-                    if (remainingDrivers.length === 0) {
-                        updateData.status = 'completed';
-                    }
+
                     transaction.update(jobRef, updateData);
+
                     if (AppState.isSharingLocation) {
                         transaction.update(doc(db, AppState.driversPath, AppState.currentUser.id), { status: 'Available', eta: '' });
                     }
                 });
-                showToast(isAuto ? "Arrived! Job auto-completed." : "Job part completed!", "success");
+                showToast(isAuto ? "Arrived! Job pending completion." : "Job pending completion!", "success");
             } catch (error) {
                 showToast("Could not complete job.", "error");
             }
         }
 
-        completeJobBtn.addEventListener('click', (e) => completeJob(e.target.dataset.jobId));
+        async function closeOutJob(jobId, comment) {
+            const jobRef = doc(db, AppState.jobsPath, jobId);
+            try {
+                await updateDoc(jobRef, {
+                    status: 'completed',
+                    dispatcherClosingComment: comment,
+                    log: arrayUnion({ text: `Closed out by ${AppState.currentUser.name}`, timestamp: new Date() })
+                });
+                showToast("Job finalized and completed!", "success");
+            } catch (error) {
+                showToast("Could not finalize job.", "error");
+            }
+        }
+
+        completeJobBtn.addEventListener('click', (e) => {
+            const jobId = e.target.dataset.jobId;
+            showCommentModal('Add Completion Comment', (comment) => {
+                completeJob(jobId, comment);
+            });
+        });
+
         startNavigationBtn.addEventListener('click', (e) => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(e.target.dataset.destination)}&travelmode=driving`, '_blank'));
 
         createJobForm.addEventListener('submit', async (e) => {
@@ -1282,10 +1373,9 @@
                 li.className = 'bg-gray-700 p-3 rounded relative';
                 
                 const isCurrentUser = user.id === AppState.currentUser.id;
-                const isSuperAdmin = user.id === SUPER_ADMIN_UID;
 
                 let deleteButtonHTML = '';
-                if (!isCurrentUser && !isSuperAdmin) {
+                if (!isCurrentUser) {
                     deleteButtonHTML = `<button data-user-id="${user.id}" data-user-email="${user.email || user.id}" class="delete-user-btn p-1 rounded-full hover:bg-red-800 absolute top-2 right-2" title="Delete User">
                         <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>`;
@@ -1293,9 +1383,8 @@
 
                 let checkboxesHTML = permissions.map(perm => {
                     const isChecked = user.permissions?.[perm] === true;
-                    const isDisabled = isSuperAdmin && perm === 'canManageDrivers';
                     return `<label class="flex items-center space-x-2">
-                        <input type="checkbox" data-user-id="${user.id}" data-permission="${perm}" class="permission-checkbox bg-gray-600 border-gray-500 rounded" ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
+                        <input type="checkbox" data-user-id="${user.id}" data-permission="${perm}" class="permission-checkbox bg-gray-600 border-gray-500 rounded" ${isChecked ? 'checked' : ''}>
                         <span class="text-sm">${perm}</span>
                     </label>`;
                 }).join('');
@@ -1372,6 +1461,19 @@
         });
 
         // Modal Close Buttons
+        commentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const comment = commentInput.value.trim();
+            if (comment && typeof AppState.commentCallback === 'function') {
+                AppState.commentCallback(comment);
+            }
+            commentModal.classList.add('hidden');
+            AppState.commentCallback = null;
+        });
+        commentCancelBtn.addEventListener('click', () => {
+            commentModal.classList.add('hidden');
+            AppState.commentCallback = null;
+        });
         profileCancelBtn.addEventListener('click', () => profileModal.classList.add('hidden'));
         settingsCancelBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
         adminSettingsCancelBtn.addEventListener('click', () => adminSettingsModal.classList.add('hidden'));
