@@ -732,20 +732,24 @@
                 const jobColor = getJobColor(job.id);
                 
                 let statusClass = 'bg-gray-800 hover:bg-gray-700';
+                let borderColor = 'border-transparent';
+
                 if (job.status === 'pending-completion') {
                     statusClass = 'bg-green-900 hover:bg-green-800';
+                } else if (job.status === 'in-progress') {
+                    borderColor = `border-[${jobColor}]`;
                 } else if (job.status === 'completed') {
-                    statusClass = 'bg-gray-800 hover:bg-gray-700 border-gray-600';
+                    borderColor = 'border-gray-600';
                 }
 
-                li.className = `p-3 rounded-md text-sm cursor-pointer border-l-4 ${statusClass}`;
-                li.style.borderColor = job.status === 'in-progress' ? jobColor : 'transparent';
+                li.className = `p-3 rounded-md text-sm cursor-pointer border-l-4 ${statusClass} ${borderColor}`;
+                
                 const assignedDrivers = (job.assignedDrivers || []).map(id => AppState.allUsers.find(u => u.id === id)?.name || 'Unknown').join(', ');
                 
                 let actionButtons = '';
                 if (job.status === 'pending-completion' && checkPermission('canCreateJob')) {
                     actionButtons = `<button data-job-id="${job.id}" class="finalize-job-btn w-full mt-2 px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-500">Finalize</button>`;
-                } else if(checkPermission('canDeleteJob') && job.status !== 'completed') {
+                } else if (checkPermission('canDeleteJob')) {
                     actionButtons = `<div class="grid grid-cols-2 gap-2 mt-2">
                         <button data-job-id="${job.id}" class="archive-job-btn w-full px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Archive</button>
                         <button data-job-id="${job.id}" class="delete-job-btn w-full px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>
