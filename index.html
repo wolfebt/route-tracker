@@ -73,6 +73,16 @@
             color: #e5e7eb; /* gray-200 */
         }
 
+        .pulse-border {
+            animation: pulse-animation 2s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0 rgba(156, 163, 175, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(156, 163, 175, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(156, 163, 175, 0); }
+        }
+
         @media print {
             body * {
                 visibility: hidden;
@@ -334,6 +344,8 @@
                     <input type="text" id="job-name-input" placeholder="Job Name (e.g., Warehouse Delivery)" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <input type="text" id="job-origin-input" placeholder="Job Origin" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <input type="text" id="job-destination-input" placeholder="Job Destination" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="contact-name-input" placeholder="Contact Name" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="tel" id="contact-number-input" placeholder="Contact Number" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <textarea id="job-note-input" placeholder="Job Notes (optional)" rows="2" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                     <div>
                         <label for="drivers-needed-input" class="block text-sm font-medium text-gray-300">Number of Drivers Needed:</label>
@@ -371,6 +383,7 @@
             <div id="job-details-printable" class="overflow-y-auto">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-2xl font-bold text-white">Job Details</h3>
+                    <button id="cancel-job-btn" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Cancel Job</button>
                 </div>
                 <div id="job-details-content" class="text-gray-300 space-y-2"></div>
                 <div id="driver-completion-comment-section" class="mt-4 hidden">
@@ -503,6 +516,8 @@
         const jobNameInput = document.getElementById('job-name-input');
         const jobOriginInput = document.getElementById('job-origin-input');
         const jobDestinationInput = document.getElementById('job-destination-input');
+        const contactNameInput = document.getElementById('contact-name-input');
+        const contactNumberInput = document.getElementById('contact-number-input');
         const jobNoteInput = document.getElementById('job-note-input');
         const driversNeededInput = document.getElementById('drivers-needed-input');
         const assignDriverSelect = document.getElementById('assign-driver-select');
@@ -533,6 +548,7 @@
 
         const jobDetailsModal = document.getElementById('job-details-modal');
         const jobDetailsContent = document.getElementById('job-details-content');
+        const cancelJobBtn = document.getElementById('cancel-job-btn');
         const driverCompletionCommentSection = document.getElementById('driver-completion-comment-section');
         const driverCompletionComment = document.getElementById('driver-completion-comment');
         const dispatcherClosingCommentSection = document.getElementById('dispatcher-closing-comment-section');
@@ -816,13 +832,23 @@
                 
                 let statusClass = 'bg-gray-800 hover:bg-gray-700';
                 let borderColorClass = 'border-transparent';
+                let statusTag = '';
 
                 if (job.status === 'pending-completion') {
                     statusClass = 'bg-green-900 hover:bg-green-800';
                 } else if (job.status === 'in-progress') {
                     li.style.borderColor = jobColor;
+                    statusTag = `<span class="text-xs font-semibold px-2 py-1 bg-green-600 text-white rounded-full">In Progress</span>`;
                 } else if (job.status === 'completed') {
                     borderColorClass = 'border-gray-600';
+                } else if (job.status === 'cancelled') {
+                    statusTag = `<span class="text-xs font-semibold px-2 py-1 bg-red-600 text-white rounded-full">Cancelled</span>`;
+                } else if (job.status === 'unassigned') {
+                    statusTag = `<span class="text-xs font-semibold px-2 py-1 bg-yellow-600 text-white rounded-full">Available</span>`;
+                }
+
+                if (job.lastMessageTimestamp && AppState.currentUser && job.lastMessageTimestamp.toMillis() > (AppState.currentUser.lastRead?.[job.id] || 0)) {
+                    li.classList.add('pulse-border');
                 }
 
                 li.className = `p-3 rounded-md text-sm cursor-pointer border-l-4 ${statusClass} ${borderColorClass}`;
@@ -847,7 +873,10 @@
                 }
 
                 li.innerHTML = `
-                    <p class="font-bold text-white">${job.jobName || 'Unnamed Job'}</p>
+                    <div class="flex justify-between items-start">
+                        <p class="font-bold text-white">${job.jobName || 'Unnamed Job'}</p>
+                        ${statusTag}
+                    </div>
                     <p class="text-gray-400"><strong class="text-gray-200">From:</strong> ${job.origin}</p>
                     <p class="text-gray-400"><strong class="text-gray-200">To:</strong> ${job.destination}</p>
                     <p class="text-gray-400"><strong class="text-gray-200">Openings:</strong> ${ (job.assignedDrivers || []).length} of ${job.driversNeeded}</p>
@@ -876,6 +905,16 @@
             showToast('Job has been unarchived.', 'success');
         }
 
+        async function cancelJob(jobId) {
+            if (!checkPermission('canDeleteJob')) return;
+            await updateDoc(doc(db, AppState.jobsPath, jobId), { 
+                status: 'cancelled',
+                log: arrayUnion({ text: `Job cancelled by ${AppState.currentUser.name}`, timestamp: new Date() })
+            });
+            showToast('Job has been cancelled.', 'success');
+            closeJobDetailsModal();
+        }
+
         function renderAvailableJobsList() {
             const availableJobs = AppState.allJobs.filter(job => {
                 const assignedDrivers = job.assignedDrivers || [];
@@ -886,15 +925,15 @@
                 const li = document.createElement('li');
                 li.className = 'bg-gray-800 p-3 rounded-md';
                 li.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
+                    <div class="flex flex-wrap justify-between items-start">
+                        <div class="flex-grow">
                             <p class="font-bold text-white">${job.jobName || 'Unnamed Job'}</p>
                             <p class="text-gray-300"><strong class="text-white">From:</strong> ${job.origin}</p>
                             <p class="text-gray-300"><strong class="text-white">To:</strong> ${job.destination}</p>
                             <p class="text-gray-300"><strong class="text-white">Openings:</strong> ${(job.assignedDrivers || []).length} of ${job.driversNeeded}</p>
                             <p class="text-gray-400 mt-1 italic text-xs">${job.note || 'No notes'}</p>
                         </div>
-                        <button data-job-id="${job.id}" class="accept-job-btn ml-2 px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 flex-shrink-0">Accept</button>
+                        <button data-job-id="${job.id}" class="accept-job-btn mt-2 sm:mt-0 ml-auto px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 flex-shrink-0">Accept</button>
                     </div>
                 `;
                 availableJobsList.appendChild(li);
@@ -1144,19 +1183,23 @@
             document.removeEventListener('keydown', handleEscKey);
         }
 
-        function showJobDetailsModal(job) {
+        async function showJobDetailsModal(job) {
             const assignedDrivers = (job.assignedDrivers || []).map(id => AppState.allUsers.find(u => u.id === id)?.name || 'Unknown').join(', ');
             jobDetailsContent.innerHTML = `
                 <p><strong>Job Name:</strong> ${job.jobName || 'N/A'}</p>
                 <p><strong>Status:</strong> ${job.status}</p>
                 <p><strong>From:</strong> ${job.origin}</p>
                 <p><strong>To:</strong> ${job.destination}</p>
+                <p><strong>Contact:</strong> ${job.contactName || 'N/A'} - ${job.contactNumber || 'N/A'}</p>
                 <p><strong>Distance:</strong> <span id="job-details-distance">Calculating...</span></p>
                 <p><strong>Est. Travel Time:</strong> <span id="job-details-duration">Calculating...</span></p>
                 <p><strong>Drivers Needed:</strong> ${job.driversNeeded}</p>
                 <p><strong>Assigned Drivers:</strong> ${assignedDrivers || 'None'}</p>
                 <p class="mt-2 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
             `;
+
+            cancelJobBtn.classList.toggle('hidden', job.status === 'completed' || job.status === 'cancelled' || !checkPermission('canDeleteJob'));
+            cancelJobBtn.dataset.jobId = job.id;
 
             if (job.driverCompletionComment) {
                 driverCompletionComment.textContent = job.driverCompletionComment;
@@ -1203,6 +1246,13 @@
             listenForJobMessages(job.id);
             jobDetailsModal.classList.remove('hidden');
             document.addEventListener('keydown', handleEscKey);
+
+            if (checkPermission('canCreateJob')) {
+                const userDocRef = doc(db, AppState.usersPath, AppState.currentUser.id);
+                await updateDoc(userDocRef, {
+                    [`lastRead.${job.id}`]: Date.now()
+                });
+            }
         }
         
         function showSpinner(button) {
@@ -1462,6 +1512,11 @@
             });
         });
 
+        cancelJobBtn.addEventListener('click', (e) => {
+            const jobId = e.target.dataset.jobId;
+            showConfirmModal('Cancel Job?', 'This will mark the job as cancelled. This action cannot be undone.', () => cancelJob(jobId));
+        });
+
         startNavigationBtn.addEventListener('click', (e) => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(e.target.dataset.destination)}&travelmode=driving`, '_blank'));
 
         createJobForm.addEventListener('submit', async (e) => {
@@ -1474,6 +1529,8 @@
                     jobName: jobNameInput.value.trim(), 
                     origin: jobOriginInput.value.trim(), 
                     destination: jobDestinationInput.value.trim(),
+                    contactName: contactNameInput.value.trim(),
+                    contactNumber: contactNumberInput.value.trim(),
                     note: jobNoteInput.value.trim(), 
                     driversNeeded: parseInt(driversNeededInput.value, 10),
                     assignedDrivers: [], 
@@ -1609,6 +1666,10 @@
             const jobId = e.target.dataset.jobId;
             const text = jobChatInput.value.trim();
             if (!text || !jobId) return;
+
+            const jobRef = doc(db, AppState.jobsPath, jobId);
+            await updateDoc(jobRef, { lastMessageTimestamp: serverTimestamp() });
+
             await addDoc(collection(db, AppState.jobsPath, jobId, 'messages'), {
                 text, senderId: AppState.currentUser.id,
                 senderName: AppState.currentUser.name, timestamp: serverTimestamp()
