@@ -234,6 +234,41 @@
     </div>
 
     <!-- Modals -->
+    <div id="user-guide-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10004]">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4 flex flex-col" style="max-height: 90vh;">
+            <h3 class="text-2xl font-bold text-white mb-4">Route Tracker User Guide</h3>
+            <div class="overflow-y-auto text-gray-300 space-y-4">
+                <div>
+                    <h4 class="text-lg font-semibold text-teal-400">1. Getting Started: First-Time Login</h4>
+                    <p>Your first interaction with Route Tracker will be the login screen. Click the "Sign in with Google" button. The application will ask for your permission to access your location; this is essential for the app to function correctly. After logging in, click the Settings icon (⚙️) -> "Edit Profile" to set your display name.</p>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold text-teal-400">2. The Interface: Two Roles in One</h4>
+                    <p>Route Tracker has two primary modes: <strong>Driver</strong> and <strong>Dispatcher</strong>. You can switch between these modes at any time from the settings menu (⚙️).</p>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold text-teal-400">3. Driver Mode: On the Road</h4>
+                    <p><strong>My Current Job:</strong> If you are assigned to a job, this panel appears, showing job details. It has buttons to Navigate (opens Google Maps), view Messages, and Complete the job.</p>
+                    <p><strong>Open Job Postings:</strong> Shows available jobs. Click "Accept" to assign a job to yourself.</p>
+                    <p><strong>Completing a Job:</strong> When you click "Complete", a popup will ask for a completion comment. After you submit, the job is sent to dispatch for final review, and you are free to take a new job.</p>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold text-teal-400">4. Dispatch Mode: The Command Center</h4>
+                    <p><strong>Creating a Job:</strong> Use the "Create Job" button. You can fill in details and either post it as an open job or assign it directly to an available driver.</p>
+                    <p><strong>Job Dashboard:</strong> Manage all jobs here. The "Current" tab shows active jobs, while the "Archive" tab shows closed ones. You can search for jobs using the search bar.</p>
+                    <p><strong>Finalizing a Job:</strong> When a driver completes a job, it will appear with a light green background and a "Finalize" button. Review the driver's comments, then click "Finalize" to add your own closing remarks and officially complete the job.</p>
+                    <p><strong>Archiving and Deleting:</strong> On completed or unassigned jobs, you can "Archive" them to the archive list or "Delete" them permanently.</p>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold text-teal-400">5. Administrator Functions</h4>
+                    <p>Users with admin permissions can access the "Admin: User Roles" button in the settings menu. This panel allows you to grant or revoke permissions for all users, including creating jobs, deleting jobs, and managing other users.</p>
+                </div>
+            </div>
+            <div class="mt-6 pt-4 border-t border-gray-700 flex justify-end">
+                <button id="user-guide-close-btn" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500">Close</button>
+            </div>
+        </div>
+    </div>
     <div id="comment-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10003]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
             <form id="comment-form">
@@ -361,6 +396,7 @@
             <div class="space-y-4">
                 <button id="open-profile-modal-btn" class="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">Edit Profile</button>
                 <button id="toggle-role-btn" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Switch to Dispatch Mode</button>
+                <button id="open-user-guide-btn" class="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">User Guide</button>
                 <div id="admin-controls" class="hidden pt-4 border-t border-gray-700">
                      <button id="open-admin-settings-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Admin: User Roles</button>
                 </div>
@@ -404,6 +440,10 @@
         const managementActionsPanel = document.getElementById('management-actions-panel');
         
         // Modals
+        const userGuideModal = document.getElementById('user-guide-modal');
+        const openUserGuideBtn = document.getElementById('open-user-guide-btn');
+        const userGuideCloseBtn = document.getElementById('user-guide-close-btn');
+
         const commentModal = document.getElementById('comment-modal');
         const commentForm = document.getElementById('comment-form');
         const commentModalTitle = document.getElementById('comment-modal-title');
@@ -1526,6 +1566,9 @@
         });
 
         // Modal Close Buttons
+        openUserGuideBtn.addEventListener('click', () => userGuideModal.classList.remove('hidden'));
+        userGuideCloseBtn.addEventListener('click', () => userGuideModal.classList.add('hidden'));
+
         commentForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const comment = commentInput.value.trim();
