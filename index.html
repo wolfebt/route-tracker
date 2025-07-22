@@ -412,6 +412,10 @@
                     <p>Wolfe.BT@TangentLLC</p>
                 </div>
             </div>
+            <div id="job-details-driver-actions" class="hidden mt-4 flex space-x-2">
+                <button id="job-details-accept-btn" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Accept Job</button>
+                <button id="job-details-cancel-accepted-btn" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Cancel My Assignment</button>
+            </div>
             <div class="mt-6 pt-4 border-t border-gray-700 flex justify-between items-center flex-shrink-0">
                 <button id="print-job-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Print</button>
                 <button id="job-details-close-btn" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500">Close</button>
@@ -548,6 +552,9 @@
 
         const jobDetailsModal = document.getElementById('job-details-modal');
         const jobDetailsContent = document.getElementById('job-details-content');
+        const jobDetailsDriverActions = document.getElementById('job-details-driver-actions');
+        const jobDetailsAcceptBtn = document.getElementById('job-details-accept-btn');
+        const jobDetailsCancelAcceptedBtn = document.getElementById('job-details-cancel-accepted-btn');
         const cancelJobBtn = document.getElementById('cancel-job-btn');
         const driverCompletionCommentSection = document.getElementById('driver-completion-comment-section');
         const driverCompletionComment = document.getElementById('driver-completion-comment');
@@ -923,7 +930,8 @@
             availableJobsList.innerHTML = availableJobs.length === 0 ? '<li class="text-gray-400 text-sm p-2">No job postings currently available.</li>' : '';
             availableJobs.forEach(job => {
                 const li = document.createElement('li');
-                li.className = 'bg-gray-800 p-3 rounded-md';
+                li.className = 'bg-gray-800 p-3 rounded-md cursor-pointer';
+                li.dataset.jobId = job.id;
                 li.innerHTML = `
                     <div class="flex flex-wrap justify-between items-start">
                         <div class="flex-grow">
@@ -1201,6 +1209,17 @@
             cancelJobBtn.classList.toggle('hidden', job.status === 'completed' || job.status === 'cancelled' || !checkPermission('canDeleteJob'));
             cancelJobBtn.dataset.jobId = job.id;
 
+            if (checkPermission('isDriver')) {
+                jobDetailsDriverActions.classList.remove('hidden');
+                const isAssigned = (job.assignedDrivers || []).includes(AppState.currentUser.id);
+                jobDetailsAcceptBtn.classList.toggle('hidden', job.status !== 'unassigned');
+                jobDetailsCancelAcceptedBtn.classList.toggle('hidden', !isAssigned || job.status !== 'in-progress');
+                jobDetailsAcceptBtn.dataset.jobId = job.id;
+                jobDetailsCancelAcceptedBtn.dataset.jobId = job.id;
+            } else {
+                jobDetailsDriverActions.classList.add('hidden');
+            }
+
             if (job.driverCompletionComment) {
                 driverCompletionComment.textContent = job.driverCompletionComment;
                 driverCompletionCommentSection.classList.remove('hidden');
@@ -1424,6 +1443,63 @@
                 }
             }
         });
+        
+        async function acceptJob(jobId) {
+            const jobRef = doc(db, AppState.jobsPath, jobId);
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const jobDoc = await transaction.get(jobRef);
+                    if (!jobDoc.exists()) throw "Job does not exist!";
+                    const jobData = jobDoc.data();
+                    if ((jobData.assignedDrivers || []).length >= jobData.driversNeeded) throw "All driver slots are filled.";
+                    
+                    const newLogEntry = { text: `Accepted by ${AppState.currentUser.name}`, timestamp: new Date() };
+                    const updateData = {
+                        status: (jobData.assignedDrivers || []).length + 1 >= jobData.driversNeeded ? 'in-progress' : 'unassigned',
+                        assignedDrivers: arrayUnion(AppState.currentUser.id),
+                    };
+
+                    if (jobData.log) {
+                        updateData.log = arrayUnion(newLogEntry);
+                    } else {
+                        updateData.log = [newLogEntry];
+                    }
+                    
+                    transaction.update(jobRef, updateData);
+
+                    if (AppState.isSharingLocation) {
+                        transaction.update(doc(db, AppState.driversPath, AppState.currentUser.id), { status: 'On Trip' });
+                    }
+                });
+                showToast("Job accepted!", "success");
+            } catch (error) {
+                showToast(error.toString(), "error");
+            }
+        }
+
+        async function cancelAcceptedJob(jobId) {
+            const jobRef = doc(db, AppState.jobsPath, jobId);
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const jobDoc = await transaction.get(jobRef);
+                    if (!jobDoc.exists()) throw "Job not found";
+
+                    transaction.update(jobRef, {
+                        assignedDrivers: arrayRemove(AppState.currentUser.id),
+                        status: 'unassigned',
+                        log: arrayUnion({ text: `Assignment cancelled by ${AppState.currentUser.name}`, timestamp: new Date() })
+                    });
+                    
+                    if (AppState.isSharingLocation) {
+                        transaction.update(doc(db, AppState.driversPath, AppState.currentUser.id), { status: 'Available' });
+                    }
+                });
+                showToast("You have been removed from the job.", "success");
+                closeJobDetailsModal();
+            } catch (error) {
+                showToast("Could not cancel job assignment.", "error");
+            }
+        }
 
         availableJobsList.addEventListener('click', async (e) => {
             if (e.target.classList.contains('accept-job-btn')) {
@@ -1431,37 +1507,14 @@
                 const { jobId } = button.dataset;
                 button.disabled = true;
                 button.textContent = 'Accepting...';
-                const jobRef = doc(db, AppState.jobsPath, jobId);
-                try {
-                    await runTransaction(db, async (transaction) => {
-                        const jobDoc = await transaction.get(jobRef);
-                        if (!jobDoc.exists()) throw "Job does not exist!";
-                        const jobData = jobDoc.data();
-                        if ((jobData.assignedDrivers || []).length >= jobData.driversNeeded) throw "All driver slots are filled.";
-                        
-                        const newLogEntry = { text: `Accepted by ${AppState.currentUser.name}`, timestamp: new Date() };
-                        const updateData = {
-                            status: (jobData.assignedDrivers || []).length + 1 >= jobData.driversNeeded ? 'in-progress' : 'unassigned',
-                            assignedDrivers: arrayUnion(AppState.currentUser.id),
-                        };
-
-                        if (jobData.log) {
-                            updateData.log = arrayUnion(newLogEntry);
-                        } else {
-                            updateData.log = [newLogEntry];
-                        }
-                        
-                        transaction.update(jobRef, updateData);
-
-                        if (AppState.isSharingLocation) {
-                            transaction.update(doc(db, AppState.driversPath, AppState.currentUser.id), { status: 'On Trip' });
-                        }
-                    });
-                    showToast("Job accepted!", "success");
-                } catch (error) {
-                    showToast(error.toString(), "error");
-                    button.disabled = false;
-                    button.textContent = 'Accept';
+                await acceptJob(jobId);
+                button.disabled = false;
+                button.textContent = 'Accept';
+            } else {
+                const li = e.target.closest('li[data-job-id]');
+                if (li) {
+                    const job = AppState.allJobs.find(j => j.id === li.dataset.jobId);
+                    if (job) showJobDetailsModal(job);
                 }
             }
         });
@@ -1476,6 +1529,7 @@
                     const updateData = {
                         status: 'pending-completion',
                         driverCompletionComment: comment,
+                        assignedDrivers: arrayRemove(AppState.currentUser.id),
                         log: arrayUnion({ text: `Marked as pending completion by ${AppState.currentUser.name}`, timestamp: new Date() })
                     };
 
@@ -1730,7 +1784,16 @@
         
         jobDetailsCloseBtn.addEventListener('click', closeJobDetailsModal);
         jobDetailsModal.addEventListener('click', (e) => {
-            if (e.target === jobDetailsModal) {
+            if (e.target.id === 'job-details-accept-btn') {
+                const jobId = e.target.dataset.jobId;
+                showConfirmModal('Accept Job?', 'Are you sure you want to accept this job?', async () => {
+                    await acceptJob(jobId);
+                    closeJobDetailsModal();
+                });
+            } else if (e.target.id === 'job-details-cancel-accepted-btn') {
+                const jobId = e.target.dataset.jobId;
+                showConfirmModal('Cancel Assignment?', 'Are you sure you want to remove yourself from this job?', () => cancelAcceptedJob(jobId));
+            } else if (e.target === jobDetailsModal) {
                 closeJobDetailsModal();
             }
         });
