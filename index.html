@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Route Tracker - Dark</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -234,6 +235,35 @@
     </div>
 
     <!-- Modals -->
+    <div id="invite-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10004]">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+            <h3 class="text-xl font-bold text-white mb-6">Invite Others</h3>
+            <div class="space-y-6">
+                <!-- QR Code Section -->
+                <div class="text-center">
+                    <p class="text-gray-400 mb-2">Scan QR Code</p>
+                    <div id="qrcode" class="flex justify-center p-2 bg-white rounded-lg"></div>
+                </div>
+                <!-- Share Link Section -->
+                <div>
+                    <p class="text-gray-400 mb-2">Or share this link:</p>
+                    <div class="flex space-x-2">
+                        <input type="text" id="share-link-input" readonly class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white">
+                        <button id="copy-link-btn" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Copy</button>
+                    </div>
+                </div>
+                <!-- Email Invite Section -->
+                <div>
+                    <p class="text-gray-400 mb-2">Or send an email invite:</p>
+                    <form id="email-invite-form" class="flex space-x-2">
+                        <input type="email" id="email-invite-input" placeholder="Enter email address" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Send</button>
+                    </form>
+                </div>
+            </div>
+            <button id="invite-cancel-btn" class="mt-8 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
+        </div>
+    </div>
     <div id="user-guide-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10004]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4 flex flex-col" style="max-height: 90vh;">
             <h3 class="text-2xl font-bold text-white mb-4">Route Tracker User Guide</h3>
@@ -287,6 +317,7 @@
                 <h3 class="text-xl font-bold text-white mb-4">Edit Profile</h3>
                 <div class="space-y-4">
                     <input type="text" id="profile-name-input" placeholder="Your Name" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="tel" id="profile-phone-input" placeholder="Mobile Number" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="flex justify-end space-x-2 mt-6">
                     <button type="button" id="profile-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
@@ -397,6 +428,7 @@
                 <button id="open-profile-modal-btn" class="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">Edit Profile</button>
                 <button id="toggle-role-btn" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Switch to Dispatch Mode</button>
                 <button id="open-user-guide-btn" class="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">User Guide</button>
+                <button id="open-invite-modal-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Invite Others</button>
                 <div id="admin-controls" class="hidden pt-4 border-t border-gray-700">
                      <button id="open-admin-settings-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Admin: User Roles</button>
                 </div>
@@ -440,6 +472,15 @@
         const managementActionsPanel = document.getElementById('management-actions-panel');
         
         // Modals
+        const inviteModal = document.getElementById('invite-modal');
+        const openInviteModalBtn = document.getElementById('open-invite-modal-btn');
+        const inviteCancelBtn = document.getElementById('invite-cancel-btn');
+        const shareLinkInput = document.getElementById('share-link-input');
+        const copyLinkBtn = document.getElementById('copy-link-btn');
+        const emailInviteForm = document.getElementById('email-invite-form');
+        const emailInviteInput = document.getElementById('email-invite-input');
+        const qrcodeEl = document.getElementById('qrcode');
+
         const userGuideModal = document.getElementById('user-guide-modal');
         const openUserGuideBtn = document.getElementById('open-user-guide-btn');
         const userGuideCloseBtn = document.getElementById('user-guide-close-btn');
@@ -453,6 +494,7 @@
         const profileModal = document.getElementById('profile-modal');
         const profileForm = document.getElementById('profile-form');
         const profileNameInput = document.getElementById('profile-name-input');
+        const profilePhoneInput = document.getElementById('profile-phone-input');
         const profileCancelBtn = document.getElementById('profile-cancel-btn');
         
         const createJobModal = document.getElementById('create-job-modal');
@@ -657,6 +699,7 @@
                     setDoc(userDocRef, { 
                         email: user.email || user.uid, 
                         name: user.displayName || `User-${user.uid.substring(0, 4)}`,
+                        phone: '',
                         permissions: { canCreateJob: true, canDeleteJob: false, canManageDrivers: false, isDriver: true }
                     });
                 } else {
@@ -970,6 +1013,8 @@
                 return;
             }
             recentDrivers.forEach(driver => {
+                const user = AppState.allUsers.find(u => u.id === driver.id);
+                const phone = user ? user.phone : '';
                 const li = document.createElement('li');
                 const status = driver.status || 'Online';
                 let statusColor = 'bg-gray-500';
@@ -988,6 +1033,7 @@
                 li.innerHTML = `
                     <div>
                         <p class="text-sm font-bold text-gray-200">${driver.name || 'Unnamed Driver'}</p>
+                        <p class="text-xs text-gray-400">${phone || 'No mobile'}</p>
                         <p class="text-xs text-gray-400">ETA: ${driver.eta || 'N/A'}</p>
                     </div>
                     <div class="flex items-center">
@@ -1232,6 +1278,7 @@
         openProfileModalBtn.addEventListener('click', () => {
             settingsModal.classList.add('hidden');
             profileNameInput.value = AppState.currentUser.name;
+            profilePhoneInput.value = AppState.currentUser.phone || '';
             profileModal.classList.remove('hidden');
         });
 
@@ -1252,8 +1299,12 @@
         profileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const newName = profileNameInput.value.trim();
-            if (newName && newName !== AppState.currentUser.name) {
-                await updateDoc(doc(db, AppState.usersPath, AppState.currentUser.id), { name: newName });
+            const newPhone = profilePhoneInput.value.trim();
+            if (newName && (newName !== AppState.currentUser.name || newPhone !== AppState.currentUser.phone)) {
+                await updateDoc(doc(db, AppState.usersPath, AppState.currentUser.id), { 
+                    name: newName,
+                    phone: newPhone 
+                });
                 showToast('Profile updated!', 'success');
             }
             profileModal.classList.add('hidden');
@@ -1568,6 +1619,35 @@
         // Modal Close Buttons
         openUserGuideBtn.addEventListener('click', () => userGuideModal.classList.remove('hidden'));
         userGuideCloseBtn.addEventListener('click', () => userGuideModal.classList.add('hidden'));
+        
+        openInviteModalBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+            const url = window.location.href;
+            shareLinkInput.value = url;
+            qrcodeEl.innerHTML = '';
+            new QRCode(qrcodeEl, {
+                text: url,
+                width: 128,
+                height: 128,
+            });
+            inviteModal.classList.remove('hidden');
+        });
+        inviteCancelBtn.addEventListener('click', () => inviteModal.classList.add('hidden'));
+
+        copyLinkBtn.addEventListener('click', () => {
+            shareLinkInput.select();
+            document.execCommand('copy');
+            showToast('Link copied to clipboard!', 'success');
+        });
+
+        emailInviteForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = emailInviteInput.value;
+            const subject = "Invitation to join Route Tracker";
+            const body = `You've been invited to join Route Tracker. Click this link to get started: ${window.location.href}`;
+            window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            emailInviteInput.value = '';
+        });
 
         commentForm.addEventListener('submit', (e) => {
             e.preventDefault();
