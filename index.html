@@ -580,6 +580,7 @@
             allJobs: [],
             activeDrivers: [],
             activeJobTab: 'current',
+            isDispatchView: false,
             confirmCallback: null, 
             commentCallback: null,
             usersPath: '',
@@ -723,7 +724,7 @@
                         email: user.email || user.uid, 
                         name: user.displayName || `User-${user.uid.substring(0, 4)}`,
                         phone: '',
-                        permissions: { canCreateJob: true, canDeleteJob: false, canManageDrivers: false, isDriver: true }
+                        permissions: { canCreateJob: false, canDeleteJob: false, canManageDrivers: false }
                     });
                 } else {
                     AppState.currentUser = { id: user.uid, ...userDocSnap.data() };
@@ -789,15 +790,13 @@
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const newPos = { lat: position.coords.latitude, lng: position.coords.longitude };
-                    if (checkPermission('isDriver')) {
-                        const locationData = {
-                            location: new GeoPoint(newPos.lat, newPos.lng),
-                            timestamp: serverTimestamp(),
-                            status: driverStatusSelect.value,
-                            name: AppState.currentUser.name
-                        };
-                        setDoc(doc(db, AppState.driversPath, AppState.currentUser.id), locationData, { merge: true });
-                    }
+                    const locationData = {
+                        location: new GeoPoint(newPos.lat, newPos.lng),
+                        timestamp: serverTimestamp(),
+                        status: driverStatusSelect.value,
+                        name: AppState.currentUser.name
+                    };
+                    setDoc(doc(db, AppState.driversPath, AppState.currentUser.id), locationData, { merge: true });
                 },
                 (error) => showToast(`Geolocation Error: ${error.message}`, "error"),
                 { enableHighAccuracy: true }
@@ -805,7 +804,7 @@
         }
         
         driverStatusSelect.addEventListener('change', () => {
-            if (AppState.isSharingLocation && checkPermission('isDriver')) {
+            if (AppState.isSharingLocation) {
                 const driverLocRef = doc(db, AppState.driversPath, AppState.currentUser.id);
                 updateDoc(driverLocRef, { status: driverStatusSelect.value });
             }
@@ -977,7 +976,7 @@
             const recentDrivers = AppState.activeDrivers.filter(driver => driver.timestamp && driver.timestamp.toMillis() > fiveMinutesAgo);
 
             // Draw user's own location marker if they are a driver
-            if (checkPermission('isDriver')) {
+            if (!AppState.isDispatchView) {
                 const myLocationData = recentDrivers.find(d => d.id === AppState.currentUser.id);
                 if (myLocationData) {
                     const pos = { lat: myLocationData.location.latitude, lng: myLocationData.location.longitude };
@@ -989,18 +988,20 @@
             }
 
             // Draw other driver markers (for dispatchers)
-            recentDrivers.forEach(driver => {
-                if (driver.id === AppState.currentUser.id) return;
-                const position = { lat: driver.location.latitude, lng: driver.location.longitude };
-                AppState.driverMapMarkers[driver.id] = new google.maps.Marker({
-                    position, map: AppState.map,
-                    label: { text: driver.name ? driver.name.substring(0, 2).toUpperCase() : 'DR', color: "white", fontWeight: 'bold' },
-                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#f39c12', fillOpacity: 1, strokeColor: 'black', strokeWeight: 2 }
+            if (AppState.isDispatchView) {
+                recentDrivers.forEach(driver => {
+                    if (driver.id === AppState.currentUser.id) return;
+                    const position = { lat: driver.location.latitude, lng: driver.location.longitude };
+                    AppState.driverMapMarkers[driver.id] = new google.maps.Marker({
+                        position, map: AppState.map,
+                        label: { text: driver.name ? driver.name.substring(0, 2).toUpperCase() : 'DR', color: "white", fontWeight: 'bold' },
+                        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#f39c12', fillOpacity: 1, strokeColor: 'black', strokeWeight: 2 }
+                    });
                 });
-            });
+            }
 
             // Draw routes based on role
-            if (checkPermission('isDriver')) {
+            if (!AppState.isDispatchView) {
                 const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.includes(AppState.currentUser.id));
                 if (myJob) {
                     const myLocation = recentDrivers.find(d => d.id === AppState.currentUser.id)?.location;
@@ -1033,7 +1034,7 @@
                     if (status === "OK") {
                         renderer.setDirections(response);
                         const leg = response.routes[0].legs[0];
-                        if (leg && checkPermission('isDriver')) {
+                        if (leg && !AppState.isDispatchView) {
                             if (leg.distance.value <= 200) { 
                                 showCommentModal('Add Completion Comment', (comment) => {
                                     completeJob(job.id, comment, true);
@@ -1099,13 +1100,19 @@
             userWelcomeEl.textContent = `Welcome, ${AppState.currentUser.name}!`;
             userIdEl.textContent = AppState.currentUser.id;
 
-            const isDriver = checkPermission('isDriver');
-            driverUi.classList.toggle('hidden', !isDriver);
-            dispatchUi.classList.toggle('hidden', isDriver);
+            const canDispatch = checkPermission('canCreateJob');
+            toggleRoleBtn.classList.toggle('hidden', !canDispatch);
             
-            toggleRoleBtn.textContent = isDriver ? 'Switch to Dispatch Mode' : 'Switch to Driver Mode';
+            if (!canDispatch) {
+                AppState.isDispatchView = false;
+            }
 
-            if (isDriver) {
+            driverUi.classList.toggle('hidden', AppState.isDispatchView);
+            dispatchUi.classList.toggle('hidden', !AppState.isDispatchView);
+            
+            toggleRoleBtn.textContent = AppState.isDispatchView ? 'Switch to Driver View' : 'Switch to Dispatch View';
+
+            if (!AppState.isDispatchView) {
                 startAutomaticLocationSharing();
                 updateDriverJobPanels();
             } else {
@@ -1119,7 +1126,6 @@
         }
 
         function updateDriverJobPanels() {
-            if (!checkPermission('isDriver')) return;
             const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.includes(AppState.currentUser.id));
             if (myJob) {
                 currentJobPanel.classList.remove('hidden');
@@ -1209,7 +1215,7 @@
             cancelJobBtn.classList.toggle('hidden', job.status === 'completed' || job.status === 'cancelled' || !checkPermission('canDeleteJob'));
             cancelJobBtn.dataset.jobId = job.id;
 
-            if (checkPermission('isDriver')) {
+            if (!AppState.isDispatchView) {
                 jobDetailsDriverActions.classList.remove('hidden');
                 const isAssigned = (job.assignedDrivers || []).includes(AppState.currentUser.id);
                 jobDetailsAcceptBtn.classList.toggle('hidden', job.status !== 'unassigned');
@@ -1351,12 +1357,11 @@
             profileModal.classList.remove('hidden');
         });
 
-        toggleRoleBtn.addEventListener('click', async () => {
-            const userDocRef = doc(db, AppState.usersPath, AppState.currentUser.id);
-            const newIsDriver = !checkPermission('isDriver');
-            await updateDoc(userDocRef, { 'permissions.isDriver': newIsDriver });
+        toggleRoleBtn.addEventListener('click', () => {
+            AppState.isDispatchView = !AppState.isDispatchView;
+            renderUI();
             settingsModal.classList.add('hidden');
-            showToast(`Switched to ${newIsDriver ? 'Driver' : 'Dispatch'} mode.`, 'success');
+            showToast(`Switched to ${AppState.isDispatchView ? 'Dispatch' : 'Driver'} View.`, 'success');
         });
         
         openAdminSettingsBtn.addEventListener('click', () => {
@@ -1621,7 +1626,7 @@
 
         function renderUserRoleManagement() {
             userRoleList.innerHTML = '';
-            const permissions = ['isDriver', 'canCreateJob', 'canDeleteJob', 'canManageDrivers'];
+            const permissions = ['canCreateJob', 'canDeleteJob', 'canManageDrivers'];
             AppState.allUsers.forEach(user => {
                 const li = document.createElement('li');
                 li.className = 'bg-gray-700 p-3 rounded relative';
