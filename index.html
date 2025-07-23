@@ -681,7 +681,8 @@
             jobRouteRenderers: {}, // Store renderers per job
             jobColors: {}, // Store colors per job
             routeColors: ['#FF5733', '#33FF57', '#3357FF', '#FF33A1', '#A133FF', '#33FFA1', '#FFC300', '#C70039'],
-            unsubscribes: [],
+            globalUnsubscribes: [],
+            companyUnsubscribes: [],
             currentJobChatUnsubscribe: null,
             autocompleteInstances: [],
             passwordJoinCompanyId: null,
@@ -805,9 +806,9 @@
         }
 
         async function setupUserSession(user) {
-            // Clear all previous listeners
-            AppState.unsubscribes.forEach(unsub => unsub());
-            AppState.unsubscribes = [];
+            // Clear all previous global listeners
+            AppState.globalUnsubscribes.forEach(unsub => unsub());
+            AppState.globalUnsubscribes = [];
 
             const userDocRef = doc(db, AppState.globalUsersPath, user.uid);
             
@@ -821,18 +822,17 @@
                         phone: '',
                         currentCompanyId: null,
                     });
-                    // After creating, we don't need to do anything else here, the listener will fire again with the new data.
                 } else {
-                    AppState.currentUser = { id: user.uid, ...userDocSnap.data() };
+                    const userData = userDocSnap.data();
+                    const companyChanged = AppState.currentUser?.currentCompanyId !== userData.currentCompanyId;
+                    AppState.currentUser = { id: user.uid, ...userData };
                     
                     authContainer.classList.add('hidden');
                     appContainer.classList.remove('hidden');
 
-                    // If user has a company, load its data. Otherwise, prompt them to select one.
-                    if (AppState.currentUser.currentCompanyId) {
+                    if (AppState.currentUser.currentCompanyId && companyChanged) {
                         await loadCompanyData(AppState.currentUser.currentCompanyId);
-                    } else {
-                        // If no company, stop any active location sharing and open the selection modal
+                    } else if (!AppState.currentUser.currentCompanyId) {
                         stopAutomaticLocationSharing();
                         openCompanyModal();
                     }
@@ -841,13 +841,13 @@
                 console.error("Error listening to user document:", error);
                 showToast("Error loading your profile.", "error");
             });
-            AppState.unsubscribes.push(userUnsubscribe);
+            AppState.globalUnsubscribes.push(userUnsubscribe);
         }
 
         async function loadCompanyData(companyId) {
             // Clear previous company-specific listeners
-            AppState.unsubscribes.forEach(unsub => unsub());
-            AppState.unsubscribes = [];
+            AppState.companyUnsubscribes.forEach(unsub => unsub());
+            AppState.companyUnsubscribes = [];
             
             AppState.companyId = companyId;
             const companyDocRef = doc(db, AppState.companiesPath, companyId);
@@ -856,8 +856,7 @@
             if (!companyDoc.exists()) {
                 showToast("Your assigned company could not be found. Please select a new one.", "error");
                 await updateDoc(doc(db, AppState.globalUsersPath, AppState.currentUser.id), { currentCompanyId: null });
-                openCompanyModal();
-                return;
+                return; // The global listener will handle opening the modal
             }
 
             const companyData = companyDoc.data();
@@ -884,14 +883,14 @@
                     renderUI();
                 }
             });
-            AppState.unsubscribes.push(memberUnsubscribe);
+            AppState.companyUnsubscribes.push(memberUnsubscribe);
 
             // Listener for all members of the company
             const membersUnsubscribe = onSnapshot(collection(db, AppState.membersPath), (snapshot) => {
                 AppState.allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderUI();
             });
-            AppState.unsubscribes.push(membersUnsubscribe);
+            AppState.companyUnsubscribes.push(membersUnsubscribe);
 
             // Listener for active drivers in the company
             const driversUnsubscribe = onSnapshot(collection(db, AppState.driversPath), (snapshot) => {
@@ -899,16 +898,32 @@
                 renderUI();
                 renderMapObjects();
             });
-            AppState.unsubscribes.push(driversUnsubscribe);
+            AppState.companyUnsubscribes.push(driversUnsubscribe);
             
             // Listener for jobs in the company
             setupJobListener();
         }
 
+        function setupJobListener() {
+            if (!AppState.companyId) return;
+            const jobsRef = collection(db, AppState.jobsPath);
+            const jobsUnsubscribe = onSnapshot(query(jobsRef), (snapshot) => {
+                AppState.allJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderUI(); 
+                renderMapObjects();
+            }, (error) => {
+                console.error("Error listening to jobs collection:", error);
+                showToast("Could not load jobs.", "error");
+            });
+            AppState.companyUnsubscribes.push(jobsUnsubscribe);
+        }
+
         function cleanupUserSession() {
             stopAutomaticLocationSharing();
-            AppState.unsubscribes.forEach(unsub => unsub());
-            AppState.unsubscribes = [];
+            AppState.globalUnsubscribes.forEach(unsub => unsub());
+            AppState.companyUnsubscribes.forEach(unsub => unsub());
+            AppState.globalUnsubscribes = [];
+            AppState.companyUnsubscribes = [];
             AppState.currentUser = null;
             AppState.companyId = null;
             
