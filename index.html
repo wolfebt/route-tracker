@@ -664,15 +664,17 @@
             driverMapMarkers: {},
             isSharingLocation: false,
             locationInterval: null,
-            allUsers: [],
+            allUsers: [], // Users within the current company
             allJobs: [],
             activeDrivers: [],
             activeJobTab: 'current',
             isDispatchView: false,
             confirmCallback: null, 
             commentCallback: null,
+            globalUsersPath: '',
             companiesPath: '',
-            usersPath: '',
+            // Company-specific paths are set dynamically
+            membersPath: '',
             driversPath: '',
             jobsPath: '',
             directionsService: null,
@@ -740,6 +742,8 @@
                 storage = getStorage(app);
                 await enableIndexedDbPersistence(db);
 
+                // Define base paths
+                AppState.globalUsersPath = `/artifacts/${appId}/public/data/users`;
                 AppState.companiesPath = `/artifacts/${appId}/public/data/companies`;
                 
                 let isInitialAuthCheck = true;
@@ -801,44 +805,57 @@
         }
 
         async function setupUserSession(user) {
+            // Clear all previous listeners
             AppState.unsubscribes.forEach(unsub => unsub());
             AppState.unsubscribes = [];
 
-            const userDocRef = doc(db, `/artifacts/${__app_id || 'default-app-id'}/users`, user.uid);
+            const userDocRef = doc(db, AppState.globalUsersPath, user.uid);
             
-            AppState.unsubscribes.push(onSnapshot(userDocRef, async (userDocSnap) => {
+            // This is the primary listener for the user's global profile
+            const userUnsubscribe = onSnapshot(userDocRef, async (userDocSnap) => {
                 if (!userDocSnap.exists()) {
+                    // Create the global user profile if it doesn't exist
                     await setDoc(userDocRef, { 
                         email: user.email || user.uid, 
                         name: user.displayName || `User-${user.uid.substring(0, 4)}`,
                         phone: '',
-                        lastRead: {},
-                        permissions: { canCreateJob: false, canDeleteJob: false, canManageDrivers: false },
-                        companyId: null,
+                        currentCompanyId: null,
                     });
-                     AppState.currentUser = { id: user.uid, ... (await getDoc(userDocRef)).data() };
+                    // After creating, we don't need to do anything else here, the listener will fire again with the new data.
                 } else {
                     AppState.currentUser = { id: user.uid, ...userDocSnap.data() };
+                    
+                    authContainer.classList.add('hidden');
+                    appContainer.classList.remove('hidden');
+
+                    // If user has a company, load its data. Otherwise, prompt them to select one.
+                    if (AppState.currentUser.currentCompanyId) {
+                        await loadCompanyData(AppState.currentUser.currentCompanyId);
+                    } else {
+                        // If no company, stop any active location sharing and open the selection modal
+                        stopAutomaticLocationSharing();
+                        openCompanyModal();
+                    }
                 }
-                
-                authContainer.classList.add('hidden');
-                appContainer.classList.remove('hidden');
-                
-                if (AppState.currentUser.companyId) {
-                    await loadCompanyData(AppState.currentUser.companyId);
-                } else {
-                    openCompanyModal();
-                }
-            }));
+            }, (error) => {
+                console.error("Error listening to user document:", error);
+                showToast("Error loading your profile.", "error");
+            });
+            AppState.unsubscribes.push(userUnsubscribe);
         }
 
         async function loadCompanyData(companyId) {
+            // Clear previous company-specific listeners
+            AppState.unsubscribes.forEach(unsub => unsub());
+            AppState.unsubscribes = [];
+            
             AppState.companyId = companyId;
             const companyDocRef = doc(db, AppState.companiesPath, companyId);
             const companyDoc = await getDoc(companyDocRef);
 
             if (!companyDoc.exists()) {
                 showToast("Your assigned company could not be found. Please select a new one.", "error");
+                await updateDoc(doc(db, AppState.globalUsersPath, AppState.currentUser.id), { currentCompanyId: null });
                 openCompanyModal();
                 return;
             }
@@ -847,37 +864,44 @@
             AppState.companyName = companyData.name;
             currentCompanyNameEl.textContent = AppState.companyName;
 
-            // Update Firestore paths to be company-specific
-            AppState.usersPath = `/artifacts/${__app_id || 'default-app-id'}/companies/${companyId}/users`;
-            AppState.driversPath = `/artifacts/${__app_id || 'default-app-id'}/companies/${companyId}/driverLocations`;
-            AppState.jobsPath = `/artifacts/${__app_id || 'default-app-id'}/companies/${companyId}/jobs`;
+            // Set company-specific paths
+            const companyBasePath = `${AppState.companiesPath}/${companyId}`;
+            AppState.membersPath = `${companyBasePath}/members`;
+            AppState.driversPath = `${companyBasePath}/driverLocations`;
+            AppState.jobsPath = `${companyBasePath}/jobs`;
 
-            // Clear previous listeners and data
-            AppState.unsubscribes.forEach(unsub => unsub());
-            AppState.unsubscribes = [];
+            // Clear previous data
             AppState.allUsers = [];
             AppState.allJobs = [];
             AppState.activeDrivers = [];
 
-            // Re-attach listeners with new paths
-            const userDocRef = doc(db, `/artifacts/${__app_id || 'default-app-id'}/users`, AppState.currentUser.id);
-            AppState.unsubscribes.push(onSnapshot(userDocRef, (snap) => {
-                 AppState.currentUser = { id: snap.id, ...snap.data() };
-                 AppState.isDispatchView = checkPermission('canCreateJob');
-                 renderUI();
-            }));
+            // Listener for the current user's role/permissions within this company
+            const memberDocRef = doc(db, AppState.membersPath, AppState.currentUser.id);
+            const memberUnsubscribe = onSnapshot(memberDocRef, (memberDoc) => {
+                if (memberDoc.exists()) {
+                    AppState.currentUser.permissions = memberDoc.data().permissions;
+                    AppState.isDispatchView = checkPermission('canCreateJob');
+                    renderUI();
+                }
+            });
+            AppState.unsubscribes.push(memberUnsubscribe);
 
-            AppState.unsubscribes.push(onSnapshot(collection(db, AppState.usersPath), (snapshot) => {
+            // Listener for all members of the company
+            const membersUnsubscribe = onSnapshot(collection(db, AppState.membersPath), (snapshot) => {
                 AppState.allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderUI();
-            }));
+            });
+            AppState.unsubscribes.push(membersUnsubscribe);
 
-            AppState.unsubscribes.push(onSnapshot(collection(db, AppState.driversPath), (snapshot) => {
+            // Listener for active drivers in the company
+            const driversUnsubscribe = onSnapshot(collection(db, AppState.driversPath), (snapshot) => {
                 AppState.activeDrivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderUI();
                 renderMapObjects();
-            }));
+            });
+            AppState.unsubscribes.push(driversUnsubscribe);
             
+            // Listener for jobs in the company
             setupJobListener();
         }
 
@@ -888,7 +912,6 @@
             AppState.currentUser = null;
             AppState.companyId = null;
             
-            // Clear all map objects on logout
             for (const jobId in AppState.jobRouteRenderers) {
                 AppState.jobRouteRenderers[jobId].setMap(null);
             }
@@ -911,7 +934,7 @@
         }
         
         function startAutomaticLocationSharing() {
-            if (AppState.locationInterval || !AppState.companyId) return; // Don't share if no company
+            if (AppState.locationInterval || !AppState.companyId) return;
             AppState.isSharingLocation = true;
             shareLocation(); 
             AppState.locationInterval = setInterval(shareLocation, 15000); 
@@ -1510,7 +1533,7 @@
             document.addEventListener('keydown', handleEscKey);
 
             if (checkPermission('canCreateJob')) {
-                const userDocRef = doc(db, `/artifacts/${__app_id || 'default-app-id'}/users`, AppState.currentUser.id);
+                const userDocRef = doc(db, AppState.globalUsersPath, AppState.currentUser.id);
                 await updateDoc(userDocRef, {
                     [`lastRead.${job.id}`]: Date.now()
                 });
@@ -1531,28 +1554,25 @@
         
         async function deleteUserFromDb(userId) {
             if (!checkPermission('canManageDrivers')) {
-                showToast('You do not have permission to delete users.', 'error');
+                showToast('You do not have permission to remove users.', 'error');
                 return;
             }
 
             try {
-                // This only deletes Firestore data, not the actual Firebase Auth user.
-                // Deleting the auth user requires a backend function for security.
-                const userDocRef = doc(db, AppState.usersPath, userId);
-                const driverLocRef = doc(db, AppState.driversPath, userId);
+                // Remove the user from the company's members list
+                await deleteDoc(doc(db, AppState.membersPath, userId));
+                // Optionally, remove their driver location data
+                await deleteDoc(doc(db, AppState.driversPath, userId)).catch(() => {});
 
-                await deleteDoc(userDocRef);
-                await deleteDoc(driverLocRef).catch(() => {}); // Ignore error if driver doc doesn't exist
+                // Set their global profile's company ID to null so they are prompted to rejoin
+                await updateDoc(doc(db, AppState.globalUsersPath, userId), { currentCompanyId: null });
 
-                showToast('User data deleted successfully.', 'success');
-                
-                // Manually remove the user from the local state to update UI immediately
-                AppState.allUsers = AppState.allUsers.filter(u => u.id !== userId);
-                renderUserRoleManagement(); // Re-render the list in the modal
+                showToast('User removed from company.', 'success');
+                renderUserRoleManagement(); 
 
             } catch (error) {
-                console.error("Error deleting user:", error);
-                showToast('Failed to delete user data.', 'error');
+                console.error("Error removing user from company:", error);
+                showToast('Failed to remove user.', 'error');
             }
         }
 
@@ -1560,7 +1580,6 @@
         logoutBtn.addEventListener('click', async () => {
             try {
                 await signOut(auth);
-                // The onAuthStateChanged listener will now handle the cleanup correctly.
             } catch (error) {
                 console.error('Logout Error:', error);
                 showToast('Error logging out.', 'error');
@@ -1572,14 +1591,7 @@
                 await signInWithPopup(auth, new GoogleAuthProvider());
             } catch (error) {
                 console.error("Google Sign-In Error:", error);
-                if (error.code === 'auth/invalid-credential') {
-                    showToast('Google Sign-In Error: Please contact support about a project configuration issue.', 'error');
-                } else if (error.code === 'auth/unauthorized-domain') {
-                    showToast('Error: This domain is not authorized for sign-in. Please add it to the Firebase console.', 'error');
-                }
-                else {
-                    showToast('Google Sign-In Error: ' + error.message, 'error');
-                }
+                showToast('Google Sign-In Error: ' + error.message, 'error');
             }
         });
 
@@ -1604,11 +1616,13 @@
             e.preventDefault();
             const newName = profileNameInput.value.trim();
             const newPhone = profilePhoneInput.value.trim();
-            if (newName && (newName !== AppState.currentUser.name || newPhone !== AppState.currentUser.phone)) {
-                await updateDoc(doc(db, `/artifacts/${__app_id || 'default-app-id'}/users`, AppState.currentUser.id), { 
+            if (newName) {
+                await updateDoc(doc(db, AppState.globalUsersPath, AppState.currentUser.id), { 
                     name: newName,
                     phone: newPhone 
                 });
+                // Also update their name in the company members list
+                await updateDoc(doc(db, AppState.membersPath, AppState.currentUser.id), { name: newName });
                 showToast('Profile updated!', 'success');
             }
             profileModal.classList.add('hidden');
@@ -1617,7 +1631,10 @@
         openCreateJobModalBtn.addEventListener('click', () => {
             destinationsContainer.innerHTML = '';
             addDestinationInput();
-            const availableDrivers = AppState.allUsers.filter(u => u.permissions?.isDriver && !AppState.activeDrivers.some(d => d.id === u.id && d.status === 'On Trip'));
+            const availableDrivers = AppState.allUsers.filter(u => {
+                const isActive = AppState.activeDrivers.some(d => d.id === u.id && d.status === 'On Trip');
+                return !isActive;
+            });
             assignDriverSelect.innerHTML = '<option value="">Post as open job</option>';
             availableDrivers.forEach(driver => {
                 const option = document.createElement('option');
@@ -1910,7 +1927,7 @@
                 }).join('');
 
                 li.innerHTML = `
-                    <p class="text-sm font-bold text-gray-200 truncate mb-2 pr-8">${user.email || user.id}</p>
+                    <p class="text-sm font-bold text-gray-200 truncate mb-2 pr-8">${user.name || user.email}</p>
                     ${deleteButtonHTML}
                     <div class="grid grid-cols-2 gap-2">${checkboxesHTML}</div>
                 `;
@@ -1923,8 +1940,8 @@
             if (deleteBtn) {
                 const { userId, userEmail } = deleteBtn.dataset;
                 showConfirmModal(
-                    'Delete User?', 
-                    `This will delete all database records for "${userEmail}". The user will need to sign in again to be re-created. This action cannot be undone.`, 
+                    'Remove User?', 
+                    `This will remove "${userEmail}" from the company. They will need to be invited again to rejoin.`, 
                     () => deleteUserFromDb(userId)
                 );
             }
@@ -1934,7 +1951,7 @@
             if (e.target.classList.contains('permission-checkbox')) {
                 const { userId, permission } = e.target.dataset;
                 const isChecked = e.target.checked;
-                await updateDoc(doc(db, AppState.usersPath, userId), { [`permissions.${permission}`]: isChecked });
+                await updateDoc(doc(db, AppState.membersPath, userId), { [`permissions.${permission}`]: isChecked });
                 showToast('Permissions updated.', 'success');
             }
         });
@@ -2029,14 +2046,27 @@
                 showToast("Incorrect password.", "error");
                 return;
             }
+            
+            // Add user to the company's members subcollection
+            const memberRef = doc(db, `${AppState.companiesPath}/${companyId}/members`, AppState.currentUser.id);
+            await setDoc(memberRef, {
+                name: AppState.currentUser.name,
+                email: AppState.currentUser.email,
+                permissions: { // Default permissions for new members
+                    canCreateJob: false,
+                    canDeleteJob: false,
+                    canManageDrivers: false
+                }
+            });
 
-            const userRef = doc(db, `/artifacts/${__app_id || 'default-app-id'}/users`, AppState.currentUser.id);
-            await updateDoc(userRef, { companyId: companyId });
+            // Update the user's global profile to set their current company
+            const userRef = doc(db, AppState.globalUsersPath, AppState.currentUser.id);
+            await updateDoc(userRef, { currentCompanyId: companyId });
 
             showToast(`Successfully joined ${companyData.name}!`, "success");
             companyModal.classList.add('hidden');
             companyPasswordModal.classList.add('hidden');
-            await loadCompanyData(companyId);
+            // The main user listener will automatically trigger loadCompanyData
         }
 
         createCompanyForm.addEventListener('submit', async (e) => {
@@ -2049,16 +2079,37 @@
             await setDoc(newCompanyRef, {
                 name: name,
                 hasPassword: !!password,
-                password: password || null, // Storing password directly for simplicity. Use hashing in a real app.
+                password: password || null, 
                 ownerId: AppState.currentUser.id
             });
 
-            await joinCompany(newCompanyRef.id);
+            // The owner gets all permissions by default
+            const ownerMemberRef = doc(db, `${AppState.companiesPath}/${newCompanyRef.id}/members`, AppState.currentUser.id);
+            await setDoc(ownerMemberRef, {
+                name: AppState.currentUser.name,
+                email: AppState.currentUser.email,
+                permissions: {
+                    canCreateJob: true,
+                    canDeleteJob: true,
+                    canManageDrivers: true
+                }
+            });
+            
+            // Join the company you just created
+            const userRef = doc(db, AppState.globalUsersPath, AppState.currentUser.id);
+            await updateDoc(userRef, { currentCompanyId: newCompanyRef.id });
+
             createCompanyForm.reset();
         });
         
         selectCompanyBtn.addEventListener('click', openCompanyModal);
-        companyCancelBtn.addEventListener('click', () => companyModal.classList.add('hidden'));
+        companyCancelBtn.addEventListener('click', () => {
+            if (!AppState.companyId) {
+                showToast("You must select or create a company to use the app.", "error");
+            } else {
+                companyModal.classList.add('hidden');
+            }
+        });
         companyPasswordCancelBtn.addEventListener('click', () => companyPasswordModal.classList.add('hidden'));
 
         companyListEl.addEventListener('click', (e) => {
