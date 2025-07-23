@@ -179,10 +179,10 @@
                          <p class="text-sm text-gray-400">Your User ID: <span id="userId" class="font-mono break-all"></span></p>
                     </div>
 
-                    <div id="instance-selection-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                        <h2 class="text-lg font-semibold text-gray-200 mb-2">Instance Selection</h2>
-                        <p class="text-sm text-gray-400">Current Instance: <span id="current-instance-name" class="font-mono">None</span></p>
-                        <button id="select-instance-btn" class="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Select Instance</button>
+                    <div id="company-selection-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                        <h2 class="text-lg font-semibold text-gray-200 mb-2">Company Selection</h2>
+                        <p class="text-sm text-gray-400">Current Company: <span id="current-company-name" class="font-mono">None</span></p>
+                        <button id="select-company-btn" class="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Select Company</button>
                     </div>
 
                     <!-- Dispatcher UI -->
@@ -251,36 +251,36 @@
     </div>
 
     <!-- Modals -->
-    <div id="instance-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10004]">
+    <div id="company-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10004]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
-            <h3 class="text-xl font-bold text-white mb-6">Select or Create Instance</h3>
+            <h3 class="text-xl font-bold text-white mb-6">Select or Create Company</h3>
             <div class="space-y-4">
                 <div>
-                    <h4 class="text-lg font-semibold text-gray-200 mb-2">Join Existing Instance</h4>
-                    <ul id="instance-list" class="space-y-2 max-h-48 overflow-y-auto">
-                        <!-- Instance list will be populated here -->
+                    <h4 class="text-lg font-semibold text-gray-200 mb-2">Join Existing Company</h4>
+                    <ul id="company-list" class="space-y-2 max-h-48 overflow-y-auto">
+                        <!-- Company list will be populated here -->
                     </ul>
                 </div>
                 <div class="border-t border-gray-700 pt-4">
-                    <h4 class="text-lg font-semibold text-gray-200 mb-2">Create New Instance</h4>
-                    <form id="create-instance-form" class="space-y-2">
-                        <input type="text" id="new-instance-name" placeholder="Instance Name" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
-                        <input type="password" id="new-instance-password" placeholder="Instance Password" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
+                    <h4 class="text-lg font-semibold text-gray-200 mb-2">Create New Company</h4>
+                    <form id="create-company-form" class="space-y-2">
+                        <input type="text" id="new-company-name" placeholder="Company Name" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
+                        <input type="password" id="new-company-password" placeholder="Company Password" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
                         <button type="submit" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Create</button>
                     </form>
                 </div>
             </div>
-            <button id="instance-cancel-btn" class="mt-8 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
+            <button id="company-cancel-btn" class="mt-8 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
         </div>
     </div>
 
-    <div id="instance-password-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10005]">
+    <div id="company-password-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10005]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <form id="instance-password-form">
-                <h3 id="instance-password-title" class="text-xl font-bold text-white mb-4">Enter Password</h3>
-                <input type="password" id="instance-password-input" placeholder="Instance Password" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
+            <form id="company-password-form">
+                <h3 id="company-password-title" class="text-xl font-bold text-white mb-4">Enter Password</h3>
+                <input type="password" id="company-password-input" placeholder="Company Password" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
                 <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" id="instance-password-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
+                    <button type="button" id="company-password-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
                     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Join</button>
                 </div>
             </form>
