@@ -182,7 +182,7 @@
                     <div id="company-selection-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                         <h2 class="text-lg font-semibold text-gray-200 mb-2">Company Selection</h2>
                         <p class="text-sm text-gray-400">Current Company: <span id="current-company-name" class="font-mono">None</span></p>
-                        <button id="select-company-btn" class="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Select Company</button>
+                        <button id="select-company-btn" class="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Select/Change Company</button>
                     </div>
 
                     <!-- Dispatcher UI -->
@@ -265,8 +265,8 @@
                     <h4 class="text-lg font-semibold text-gray-200 mb-2">Create New Company</h4>
                     <form id="create-company-form" class="space-y-2">
                         <input type="text" id="new-company-name" placeholder="Company Name" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
-                        <input type="password" id="new-company-password" placeholder="Company Password" required class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
-                        <button type="submit" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Create</button>
+                        <input type="password" id="new-company-password" placeholder="Company Password (optional)" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
+                        <button type="submit" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Create & Join</button>
                     </form>
                 </div>
             </div>
@@ -289,7 +289,7 @@
 
     <div id="invite-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10004]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
-            <h3 class="text-xl font-bold text-white mb-6">Invite Others</h3>
+            <h3 class="text-xl font-bold text-white mb-6">Invite Others to your Company</h3>
             <div class="space-y-6">
                 <!-- QR Code Section -->
                 <div class="text-center">
@@ -552,13 +552,23 @@
         const availableJobsList = document.getElementById('available-jobs-list');
         const managementActionsPanel = document.getElementById('management-actions-panel');
         
-        // Modals
-        const optimizeRouteModal = document.getElementById('optimize-route-modal');
-        const optimizeDriverName = document.getElementById('optimize-driver-name');
-        const optimizeJobsList = document.getElementById('optimize-jobs-list');
-        const optimizeRouteCancelBtn = document.getElementById('optimize-route-cancel-btn');
-        const optimizeRouteSubmitBtn = document.getElementById('optimize-route-submit-btn');
+        // Company UI
+        const companySelectionPanel = document.getElementById('company-selection-panel');
+        const currentCompanyNameEl = document.getElementById('current-company-name');
+        const selectCompanyBtn = document.getElementById('select-company-btn');
+        const companyModal = document.getElementById('company-modal');
+        const companyListEl = document.getElementById('company-list');
+        const createCompanyForm = document.getElementById('create-company-form');
+        const newCompanyNameInput = document.getElementById('new-company-name');
+        const newCompanyPasswordInput = document.getElementById('new-company-password');
+        const companyCancelBtn = document.getElementById('company-cancel-btn');
+        const companyPasswordModal = document.getElementById('company-password-modal');
+        const companyPasswordForm = document.getElementById('company-password-form');
+        const companyPasswordTitle = document.getElementById('company-password-title');
+        const companyPasswordInput = document.getElementById('company-password-input');
+        const companyPasswordCancelBtn = document.getElementById('company-password-cancel-btn');
 
+        // Modals
         const inviteModal = document.getElementById('invite-modal');
         const openInviteModalBtn = document.getElementById('open-invite-modal-btn');
         const inviteCancelBtn = document.getElementById('invite-cancel-btn');
@@ -647,6 +657,8 @@
         // --- App State ---
         const AppState = {
             currentUser: null,
+            companyId: null,
+            companyName: null,
             map: null,
             userMarker: null,
             driverMapMarkers: {},
@@ -659,6 +671,7 @@
             isDispatchView: false,
             confirmCallback: null, 
             commentCallback: null,
+            companiesPath: '',
             usersPath: '',
             driversPath: '',
             jobsPath: '',
@@ -669,6 +682,7 @@
             unsubscribes: [],
             currentJobChatUnsubscribe: null,
             autocompleteInstances: [],
+            passwordJoinCompanyId: null,
         };
 
         // --- Main App Initialization ---
@@ -726,9 +740,7 @@
                 storage = getStorage(app);
                 await enableIndexedDbPersistence(db);
 
-                AppState.usersPath = `/artifacts/${appId}/public/data/users`;
-                AppState.driversPath = `/artifacts/${appId}/public/data/driverLocations`;
-                AppState.jobsPath = `/artifacts/${appId}/public/data/jobs`;
+                AppState.companiesPath = `/artifacts/${appId}/public/data/companies`;
                 
                 let isInitialAuthCheck = true;
 
@@ -792,27 +804,73 @@
             AppState.unsubscribes.forEach(unsub => unsub());
             AppState.unsubscribes = [];
 
-            const userDocRef = doc(db, AppState.usersPath, user.uid);
+            const userDocRef = doc(db, `/artifacts/${__app_id || 'default-app-id'}/users`, user.uid);
             
-            AppState.unsubscribes.push(onSnapshot(userDocRef, (userDocSnap) => {
+            AppState.unsubscribes.push(onSnapshot(userDocRef, async (userDocSnap) => {
                 if (!userDocSnap.exists()) {
-                    setDoc(userDocRef, { 
+                    await setDoc(userDocRef, { 
                         email: user.email || user.uid, 
                         name: user.displayName || `User-${user.uid.substring(0, 4)}`,
                         phone: '',
                         lastRead: {},
-                        permissions: { canCreateJob: false, canDeleteJob: false, canManageDrivers: false }
+                        permissions: { canCreateJob: false, canDeleteJob: false, canManageDrivers: false },
+                        companyId: null,
                     });
+                     AppState.currentUser = { id: user.uid, ... (await getDoc(userDocRef)).data() };
                 } else {
                     AppState.currentUser = { id: user.uid, ...userDocSnap.data() };
-                    // Set the view mode based on permissions as soon as user data is loaded.
-                    AppState.isDispatchView = checkPermission('canCreateJob');
-                    renderUI();
+                }
+                
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                
+                if (AppState.currentUser.companyId) {
+                    await loadCompanyData(AppState.currentUser.companyId);
+                } else {
+                    openCompanyModal();
                 }
             }));
-            
-            authContainer.classList.add('hidden');
-            appContainer.classList.remove('hidden');
+        }
+
+        async function loadCompanyData(companyId) {
+            AppState.companyId = companyId;
+            const companyDocRef = doc(db, AppState.companiesPath, companyId);
+            const companyDoc = await getDoc(companyDocRef);
+
+            if (!companyDoc.exists()) {
+                showToast("Your assigned company could not be found. Please select a new one.", "error");
+                openCompanyModal();
+                return;
+            }
+
+            const companyData = companyDoc.data();
+            AppState.companyName = companyData.name;
+            currentCompanyNameEl.textContent = AppState.companyName;
+
+            // Update Firestore paths to be company-specific
+            AppState.usersPath = `/artifacts/${__app_id || 'default-app-id'}/companies/${companyId}/users`;
+            AppState.driversPath = `/artifacts/${__app_id || 'default-app-id'}/companies/${companyId}/driverLocations`;
+            AppState.jobsPath = `/artifacts/${__app_id || 'default-app-id'}/companies/${companyId}/jobs`;
+
+            // Clear previous listeners and data
+            AppState.unsubscribes.forEach(unsub => unsub());
+            AppState.unsubscribes = [];
+            AppState.allUsers = [];
+            AppState.allJobs = [];
+            AppState.activeDrivers = [];
+
+            // Re-attach listeners with new paths
+            const userDocRef = doc(db, `/artifacts/${__app_id || 'default-app-id'}/users`, AppState.currentUser.id);
+            AppState.unsubscribes.push(onSnapshot(userDocRef, (snap) => {
+                 AppState.currentUser = { id: snap.id, ...snap.data() };
+                 AppState.isDispatchView = checkPermission('canCreateJob');
+                 renderUI();
+            }));
+
+            AppState.unsubscribes.push(onSnapshot(collection(db, AppState.usersPath), (snapshot) => {
+                AppState.allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderUI();
+            }));
 
             AppState.unsubscribes.push(onSnapshot(collection(db, AppState.driversPath), (snapshot) => {
                 AppState.activeDrivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -828,6 +886,7 @@
             AppState.unsubscribes.forEach(unsub => unsub());
             AppState.unsubscribes = [];
             AppState.currentUser = null;
+            AppState.companyId = null;
             
             // Clear all map objects on logout
             for (const jobId in AppState.jobRouteRenderers) {
@@ -852,7 +911,7 @@
         }
         
         function startAutomaticLocationSharing() {
-            if (AppState.locationInterval) return;
+            if (AppState.locationInterval || !AppState.companyId) return; // Don't share if no company
             AppState.isSharingLocation = true;
             shareLocation(); 
             AppState.locationInterval = setInterval(shareLocation, 15000); 
@@ -863,15 +922,14 @@
                 clearInterval(AppState.locationInterval);
                 AppState.locationInterval = null;
             }
-            if (AppState.currentUser) {
+            if (AppState.currentUser && AppState.companyId) {
                 const driverLocRef = doc(db, AppState.driversPath, AppState.currentUser.id);
                 deleteDoc(driverLocRef).catch(err => console.log("No location to delete or error:", err));
             }
         }
 
         function shareLocation() {
-            if (!navigator.geolocation) {
-                showToast("Geolocation is not supported by your browser.", "error");
+            if (!navigator.geolocation || !AppState.companyId) {
                 return;
             }
             navigator.geolocation.getCurrentPosition(
@@ -895,7 +953,7 @@
         }
         
         driverStatusSelect.addEventListener('change', () => {
-            if (AppState.isSharingLocation) {
+            if (AppState.isSharingLocation && AppState.companyId) {
                 const driverLocRef = doc(db, AppState.driversPath, AppState.currentUser.id);
                 updateDoc(driverLocRef, { status: driverStatusSelect.value });
             }
@@ -1243,7 +1301,7 @@
         }
 
         function renderUI() {
-            if (!AppState.currentUser) return;
+            if (!AppState.currentUser || !AppState.companyId) return;
             
             userWelcomeEl.textContent = `Welcome, ${AppState.currentUser.name}!`;
             userIdEl.textContent = AppState.currentUser.id;
@@ -1452,7 +1510,7 @@
             document.addEventListener('keydown', handleEscKey);
 
             if (checkPermission('canCreateJob')) {
-                const userDocRef = doc(db, AppState.usersPath, AppState.currentUser.id);
+                const userDocRef = doc(db, `/artifacts/${__app_id || 'default-app-id'}/users`, AppState.currentUser.id);
                 await updateDoc(userDocRef, {
                     [`lastRead.${job.id}`]: Date.now()
                 });
@@ -1547,7 +1605,7 @@
             const newName = profileNameInput.value.trim();
             const newPhone = profilePhoneInput.value.trim();
             if (newName && (newName !== AppState.currentUser.name || newPhone !== AppState.currentUser.phone)) {
-                await updateDoc(doc(db, AppState.usersPath, AppState.currentUser.id), { 
+                await updateDoc(doc(db, `/artifacts/${__app_id || 'default-app-id'}/users`, AppState.currentUser.id), { 
                     name: newName,
                     phone: newPhone 
                 });
@@ -1702,7 +1760,7 @@
             const jobRef = doc(db, AppState.jobsPath, jobId);
             let podURL = '';
             if (file) {
-                const storageRef = ref(storage, `proof_of_delivery/${jobId}/${file.name}`);
+                const storageRef = ref(storage, `proof_of_delivery/${AppState.companyId}/${jobId}/${file.name}`);
                 await uploadBytes(storageRef, file);
                 podURL = await getDownloadURL(storageRef);
             }
@@ -1894,11 +1952,6 @@
                     showToast('Driver removed from active list.', 'success');
                 });
             }
-            const optimizeBtn = e.target.closest('.optimize-driver-route-btn');
-            if (optimizeBtn && checkPermission('canManageDrivers')) {
-                const driverId = optimizeBtn.dataset.driverId;
-                openOptimizeRouteModal(driverId);
-            }
         });
 
         function listenForJobMessages(jobId) {
@@ -1941,13 +1994,105 @@
             jobChatInput.value = '';
         });
 
+        // --- Company Logic ---
+        async function openCompanyModal() {
+            const companiesRef = collection(db, AppState.companiesPath);
+            const snapshot = await getDocs(query(companiesRef));
+            companyListEl.innerHTML = '';
+            if (snapshot.empty) {
+                companyListEl.innerHTML = `<li class="text-gray-400">No companies found. Create one to get started.</li>`;
+            } else {
+                snapshot.forEach(doc => {
+                    const company = { id: doc.id, ...doc.data() };
+                    const li = document.createElement('li');
+                    li.className = 'flex justify-between items-center bg-gray-700 p-3 rounded-md';
+                    li.innerHTML = `
+                        <span class="font-semibold text-white">${company.name}</span>
+                        <button data-company-id="${company.id}" data-has-password="${!!company.hasPassword}" class="join-company-btn px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Join</button>
+                    `;
+                    companyListEl.appendChild(li);
+                });
+            }
+            companyModal.classList.remove('hidden');
+        }
+
+        async function joinCompany(companyId, password = null) {
+            const companyRef = doc(db, AppState.companiesPath, companyId);
+            const companyDoc = await getDoc(companyRef);
+            if (!companyDoc.exists()) {
+                showToast("Company not found.", "error");
+                return;
+            }
+            const companyData = companyDoc.data();
+
+            if (companyData.hasPassword && companyData.password !== password) {
+                showToast("Incorrect password.", "error");
+                return;
+            }
+
+            const userRef = doc(db, `/artifacts/${__app_id || 'default-app-id'}/users`, AppState.currentUser.id);
+            await updateDoc(userRef, { companyId: companyId });
+
+            showToast(`Successfully joined ${companyData.name}!`, "success");
+            companyModal.classList.add('hidden');
+            companyPasswordModal.classList.add('hidden');
+            await loadCompanyData(companyId);
+        }
+
+        createCompanyForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = newCompanyNameInput.value.trim();
+            const password = newCompanyPasswordInput.value.trim();
+            if (!name) return;
+
+            const newCompanyRef = doc(collection(db, AppState.companiesPath));
+            await setDoc(newCompanyRef, {
+                name: name,
+                hasPassword: !!password,
+                password: password || null, // Storing password directly for simplicity. Use hashing in a real app.
+                ownerId: AppState.currentUser.id
+            });
+
+            await joinCompany(newCompanyRef.id);
+            createCompanyForm.reset();
+        });
+        
+        selectCompanyBtn.addEventListener('click', openCompanyModal);
+        companyCancelBtn.addEventListener('click', () => companyModal.classList.add('hidden'));
+        companyPasswordCancelBtn.addEventListener('click', () => companyPasswordModal.classList.add('hidden'));
+
+        companyListEl.addEventListener('click', (e) => {
+            if (e.target.classList.contains('join-company-btn')) {
+                const { companyId, hasPassword } = e.target.dataset;
+                if (hasPassword === 'true') {
+                    AppState.passwordJoinCompanyId = companyId;
+                    companyPasswordTitle.textContent = `Enter Password for ${e.target.previousElementSibling.textContent}`;
+                    companyPasswordModal.classList.remove('hidden');
+                } else {
+                    joinCompany(companyId);
+                }
+            }
+        });
+
+        companyPasswordForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const password = companyPasswordInput.value;
+            joinCompany(AppState.passwordJoinCompanyId, password);
+            companyPasswordForm.reset();
+        });
+
+
         // Modal Close Buttons
         openUserGuideBtn.addEventListener('click', () => userGuideModal.classList.remove('hidden'));
         userGuideCloseBtn.addEventListener('click', () => userGuideModal.classList.add('hidden'));
         
         openInviteModalBtn.addEventListener('click', () => {
+            if (!AppState.companyId) {
+                showToast("Please select a company before inviting others.", "error");
+                return;
+            }
             settingsModal.classList.add('hidden');
-            const url = window.location.href;
+            const url = `${window.location.href}?companyId=${AppState.companyId}`;
             shareLinkInput.value = url;
             qrcodeEl.innerHTML = '';
             new QRCode(qrcodeEl, {
@@ -1968,8 +2113,8 @@
         emailInviteForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const email = emailInviteInput.value;
-            const subject = "Invitation to join Route Tracker";
-            const body = `You've been invited to join Route Tracker. Click this link to get started: ${window.location.href}`;
+            const subject = `Invitation to join ${AppState.companyName} on Route Tracker`;
+            const body = `You've been invited to join ${AppState.companyName} on Route Tracker. Click this link to get started: ${shareLinkInput.value}`;
             window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             emailInviteInput.value = '';
         });
