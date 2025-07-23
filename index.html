@@ -814,29 +814,37 @@
             
             // This is the primary listener for the user's global profile
             const userUnsubscribe = onSnapshot(userDocRef, async (userDocSnap) => {
+                let userData;
                 if (!userDocSnap.exists()) {
                     // Create the global user profile if it doesn't exist
-                    await setDoc(userDocRef, { 
+                    userData = { 
                         email: user.email || user.uid, 
                         name: user.displayName || `User-${user.uid.substring(0, 4)}`,
                         phone: '',
                         currentCompanyId: null,
-                    });
+                    };
+                    await setDoc(userDocRef, userData);
                 } else {
-                    const userData = userDocSnap.data();
-                    const companyChanged = AppState.currentUser?.currentCompanyId !== userData.currentCompanyId;
-                    AppState.currentUser = { id: user.uid, ...userData };
-                    
-                    authContainer.classList.add('hidden');
-                    appContainer.classList.remove('hidden');
-
-                    if (AppState.currentUser.currentCompanyId && companyChanged) {
-                        await loadCompanyData(AppState.currentUser.currentCompanyId);
-                    } else if (!AppState.currentUser.currentCompanyId) {
-                        stopAutomaticLocationSharing();
-                        openCompanyModal();
-                    }
+                    userData = userDocSnap.data();
                 }
+
+                const companyChanged = AppState.currentUser?.currentCompanyId !== userData.currentCompanyId;
+                AppState.currentUser = { id: user.uid, ...userData };
+                
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+
+                if (AppState.currentUser.currentCompanyId) {
+                    // Load company data if it's the first time or if it has changed
+                    if(companyChanged) {
+                        await loadCompanyData(AppState.currentUser.currentCompanyId);
+                    }
+                } else {
+                    // If the user has no company, clear any existing company data and show the modal
+                    cleanupCompanyState();
+                    openCompanyModal();
+                }
+
             }, (error) => {
                 console.error("Error listening to user document:", error);
                 showToast("Error loading your profile.", "error");
@@ -846,8 +854,7 @@
 
         async function loadCompanyData(companyId) {
             // Clear previous company-specific listeners
-            AppState.companyUnsubscribes.forEach(unsub => unsub());
-            AppState.companyUnsubscribes = [];
+            cleanupCompanyState();
             
             AppState.companyId = companyId;
             const companyDocRef = doc(db, AppState.companiesPath, companyId);
@@ -868,11 +875,6 @@
             AppState.membersPath = `${companyBasePath}/members`;
             AppState.driversPath = `${companyBasePath}/driverLocations`;
             AppState.jobsPath = `${companyBasePath}/jobs`;
-
-            // Clear previous data
-            AppState.allUsers = [];
-            AppState.allJobs = [];
-            AppState.activeDrivers = [];
 
             // Listener for the current user's role/permissions within this company
             const memberDocRef = doc(db, AppState.membersPath, AppState.currentUser.id);
@@ -918,14 +920,24 @@
             AppState.companyUnsubscribes.push(jobsUnsubscribe);
         }
 
+        function cleanupCompanyState() {
+            AppState.companyUnsubscribes.forEach(unsub => unsub());
+            AppState.companyUnsubscribes = [];
+            AppState.companyId = null;
+            AppState.companyName = null;
+            currentCompanyNameEl.textContent = "None";
+            AppState.allUsers = [];
+            AppState.allJobs = [];
+            AppState.activeDrivers = [];
+            renderUI(); // Re-render to clear lists
+        }
+
         function cleanupUserSession() {
             stopAutomaticLocationSharing();
             AppState.globalUnsubscribes.forEach(unsub => unsub());
-            AppState.companyUnsubscribes.forEach(unsub => unsub());
             AppState.globalUnsubscribes = [];
-            AppState.companyUnsubscribes = [];
+            cleanupCompanyState();
             AppState.currentUser = null;
-            AppState.companyId = null;
             
             for (const jobId in AppState.jobRouteRenderers) {
                 AppState.jobRouteRenderers[jobId].setMap(null);
@@ -1339,10 +1351,16 @@
         }
 
         function renderUI() {
-            if (!AppState.currentUser || !AppState.companyId) return;
+            if (!AppState.currentUser) return;
             
             userWelcomeEl.textContent = `Welcome, ${AppState.currentUser.name}!`;
             userIdEl.textContent = AppState.currentUser.id;
+
+            if (!AppState.companyId) {
+                dispatchUi.classList.add('hidden');
+                driverUi.classList.add('hidden');
+                return;
+            }
 
             // Show/hide main UI sections based on the role-based flag
             driverUi.classList.toggle('hidden', AppState.isDispatchView);
