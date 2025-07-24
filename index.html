@@ -435,10 +435,6 @@
                     <input type="tel" id="contact-number-input" placeholder="Contact Number" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <textarea id="job-note-input" placeholder="Job Notes (optional)" rows="2" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                     <div>
-                        <label for="third-party-mobile-input" class="block text-sm font-medium text-gray-300">3rd Party Monitor Mobile # (optional):</label>
-                        <input type="tel" id="third-party-mobile-input" placeholder="Enter mobile number to send tracking link" class="w-full mt-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    <div>
                         <label for="drivers-needed-input" class="block text-sm font-medium text-gray-300">Number of Drivers Needed:</label>
                         <input type="number" id="drivers-needed-input" min="1" max="9" value="1" required class="w-full mt-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
@@ -496,10 +492,11 @@
                     <h4 class="text-lg font-semibold text-white mb-2">Third-Party Tracking Invite</h4>
                     <div id="generate-invite-form">
                          <p class="text-sm text-gray-400 mb-2">Send a real-time tracking link to a third party.</p>
-                         <div class="flex space-x-2">
-                            <input type="tel" id="job-details-third-party-mobile" placeholder="Enter mobile number" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
-                            <button id="generate-invite-btn" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Generate & Send</button>
+                         <div class="mb-2">
+                            <label for="job-details-third-party-mobile" class="block text-sm font-medium text-gray-300">Mobile:</label>
+                            <input type="tel" id="job-details-third-party-mobile" placeholder="Enter mobile number to send link" class="w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
                          </div>
+                         <button id="generate-invite-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Generate & Send</button>
                     </div>
                     <div id="invite-link-details" class="hidden mt-4 space-y-4">
                         <div class="flex space-x-2">
@@ -659,7 +656,6 @@
         const optimizeRouteCheckbox = document.getElementById('optimize-route-checkbox');
         const contactNameInput = document.getElementById('contact-name-input');
         const contactNumberInput = document.getElementById('contact-number-input');
-        const thirdPartyMobileInput = document.getElementById('third-party-mobile-input');
         const jobNoteInput = document.getElementById('job-note-input');
         const driversNeededInput = document.getElementById('drivers-needed-input');
         const assignDriverSelect = document.getElementById('assign-driver-select');
@@ -2070,7 +2066,6 @@
                     isOptimized: optimizeRouteCheckbox.checked,
                     contactName: contactNameInput.value.trim(),
                     contactNumber: contactNumberInput.value.trim(),
-                    thirdPartyMobile: thirdPartyMobileInput.value.trim(),
                     note: jobNoteInput.value.trim(), 
                     driversNeeded: parseInt(driversNeededInput.value, 10),
                     assignedDrivers: [], 
