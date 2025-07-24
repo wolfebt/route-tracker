@@ -1829,20 +1829,10 @@
             createJobModal.classList.remove('hidden');
         });
 
-        jobDashboardPanel.addEventListener('click', (e) => {
-            if (e.target.matches('.tab-btn')) {
-                jobDashboardPanel.querySelector('.tab-btn.active').classList.remove('active');
-                e.target.classList.add('active');
-                AppState.activeJobTab = e.target.dataset.tab;
-                renderAllJobsList();
-            }
-        });
-
-        jobSearchInput.addEventListener('input', renderAllJobsList);
-
         jobsListEl.addEventListener('click', (e) => {
             const button = e.target.closest('button');
             if (button) {
+                // Handle button clicks (archive, delete, etc.)
                 const jobId = button.dataset.jobId;
                 if (button.classList.contains('delete-job-btn')) {
                     showConfirmModal('Delete Job?', 'This action is permanent.', () => deleteJob(jobId));
@@ -1855,10 +1845,10 @@
                         closeOutJob(jobId, comment);
                     });
                 }
+                return; // Stop further processing if a button was clicked
             }
-        });
 
-        jobsListEl.addEventListener('dblclick', (e) => {
+            // If a button was not clicked, check for the list item to open details
             const li = e.target.closest('li[data-job-id]');
             if (li) {
                 const job = AppState.allJobs.find(j => j.id === li.dataset.jobId);
@@ -1866,7 +1856,9 @@
             }
         });
 
-        currentJobPanel.addEventListener('dblclick', () => {
+        currentJobPanel.addEventListener('click', (e) => {
+             // Avoid triggering if a button inside the panel was clicked
+             if (e.target.closest('button')) return;
              const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.some(d => d.id === AppState.currentUser.id));
              if (myJob) {
                  showJobDetailsModal(myJob);
