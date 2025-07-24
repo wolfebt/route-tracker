@@ -572,6 +572,8 @@
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, getDoc, arrayUnion, arrayRemove, runTransaction, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+        import { Loader } from "https://esm.sh/@googlemaps/js-api-loader";
+
         
         // --- Initialize Firebase and Services ---
         let app, auth, db, storage;
@@ -1537,20 +1539,28 @@
             renderAvailableJobsList();
         }
 
-        function loadGoogleMapsScript() {
+        async function loadGoogleMapsScript() {
             const apiKey = "AIzaSyDUzkfgu-6zuMHoH-UV5vzFQySSjwAD9u8";
-            const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=directions,places`;
-            script.async = true;
-            script.defer = true;
-            script.onload = () => { 
-                console.log("Google Maps script loaded successfully."); 
+            const loader = new Loader({
+                apiKey: apiKey,
+                version: "weekly",
+            });
+
+            try {
+                await loader.importLibrary('maps');
+                await loader.importLibrary('places');
+                await loader.importLibrary('routes'); // Corrected from 'directions'
+                
+                console.log("Google Maps libraries loaded successfully.");
                 initMap(); 
                 AppState.directionsService = new google.maps.DirectionsService();
-            };
-            script.onerror = () => { console.error("Error loading the Google Maps script."); document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Script Error</p></div>`; };
-            document.head.appendChild(script);
+
+            } catch (e) {
+                console.error("Error loading Google Maps script:", e);
+                document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Script Error</p></div>`;
+            }
         }
+
 
         function showToast(message, type = 'info') {
             const toastContainer = document.getElementById('toast-container');
