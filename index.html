@@ -674,14 +674,14 @@
         // --- App State ---
         const AppState = {
             currentUser: null,
-            isAuthReady: false, // NEW: Flag to prevent race conditions
+            isAuthReady: false, 
             companyId: null,
             companyName: null,
             map: null,
             userMarker: null,
             driverMapMarkers: {},
             isSharingLocation: false,
-            locationInterval: null,
+            locationWatchId: null, // Changed from locationInterval
             allUsers: [], // Users within the current company
             allJobs: [],
             activeDrivers: [],
@@ -1000,46 +1000,50 @@
         }
         
         function startAutomaticLocationSharing() {
-            if (AppState.locationInterval || !AppState.companyId) return;
+            if (AppState.locationWatchId || !AppState.companyId || !navigator.geolocation) return;
             AppState.isSharingLocation = true;
-            shareLocation(); 
-            AppState.locationInterval = setInterval(shareLocation, 15000); 
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            };
+
+            const successCallback = (position) => {
+                if (!AppState.companyId) return; // Check again in case company was changed while waiting for location
+
+                const newPos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.some(d => d.id === AppState.currentUser.id));
+                const currentStatus = myJob ? 'On Trip' : driverStatusSelect.value;
+
+                const locationData = {
+                    location: new GeoPoint(newPos.lat, newPos.lng),
+                    timestamp: serverTimestamp(),
+                    status: currentStatus,
+                    name: AppState.currentUser.name
+                };
+                setDoc(doc(db, AppState.driversPath, AppState.currentUser.id), locationData, { merge: true })
+                    .catch(err => console.error("Error sharing location:", err));
+            };
+
+            const errorCallback = (error) => {
+                showToast(`Geolocation Error: ${error.message}`, "error");
+                console.error("Geolocation watchPosition error:", error);
+            };
+
+            AppState.locationWatchId = navigator.geolocation.watchPosition(successCallback, errorCallback, options);
         }
 
         function stopAutomaticLocationSharing() {
-            if (AppState.locationInterval) {
-                clearInterval(AppState.locationInterval);
-                AppState.locationInterval = null;
+            if (AppState.locationWatchId) {
+                navigator.geolocation.clearWatch(AppState.locationWatchId);
+                AppState.locationWatchId = null;
             }
+            AppState.isSharingLocation = false;
             if (AppState.currentUser && AppState.companyId) {
                 const driverLocRef = doc(db, AppState.driversPath, AppState.currentUser.id);
                 deleteDoc(driverLocRef).catch(err => console.log("No location to delete or error:", err));
             }
-        }
-
-        function shareLocation() {
-            if (!navigator.geolocation || !AppState.companyId) {
-                return;
-            }
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const newPos = { lat: position.coords.latitude, lng: position.coords.longitude };
-                    
-                    const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.some(d => d.id === AppState.currentUser.id));
-                    const currentStatus = myJob ? 'On Trip' : driverStatusSelect.value;
-
-                    const locationData = {
-                        location: new GeoPoint(newPos.lat, newPos.lng),
-                        timestamp: serverTimestamp(),
-                        status: currentStatus,
-                        name: AppState.currentUser.name
-                    };
-                    setDoc(doc(db, AppState.driversPath, AppState.currentUser.id), locationData, { merge: true })
-                        .catch(err => console.error("Error sharing location:", err));
-                },
-                (error) => showToast(`Geolocation Error: ${error.message}`, "error"),
-                { enableHighAccuracy: true }
-            );
         }
         
         driverStatusSelect.addEventListener('change', () => {
