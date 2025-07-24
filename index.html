@@ -128,6 +128,11 @@
 </head>
 <body class="bg-gray-900 text-gray-200">
 
+    <!-- Offline Banner -->
+    <div id="offline-banner" class="hidden fixed top-0 left-0 right-0 bg-yellow-600 text-white text-center p-2 z-[10002]">
+        You are currently offline. Data may not be up-to-date.
+    </div>
+
     <!-- Fullscreen Loader -->
     <div id="loading-overlay" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-[10001]">
         <div class="text-center">
@@ -546,6 +551,7 @@
         const settingsBtn = document.getElementById('settings-btn');
         const sidebarLoader = document.getElementById('sidebar-loader');
         const adminBadge = document.getElementById('admin-badge');
+        const offlineBanner = document.getElementById('offline-banner');
         
         const userIdEl = document.getElementById('userId');
         const driversListEl = document.getElementById('drivers-list');
@@ -2301,6 +2307,15 @@
         }
 
         addDestinationBtn.addEventListener('click', addDestinationInput);
+
+        // --- Offline Handling ---
+        window.addEventListener('online', () => {
+            offlineBanner.classList.add('hidden');
+            showToast('You are back online.', 'success');
+        });
+        window.addEventListener('offline', () => {
+            offlineBanner.classList.remove('hidden');
+        });
 
         window.onload = () => {
             initializeFirebase();
