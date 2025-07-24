@@ -1368,6 +1368,7 @@
          * Reuses the DirectionsRenderer if one already exists for the job.
          */
         function drawRouteForJob(job, driverLocation) {
+            if (!AppState.directionsService) return; // Guard against missing service
             const jobId = job.id;
             let renderer = AppState.jobRouteRenderers[jobId];
 
@@ -1539,10 +1540,14 @@
         function loadGoogleMapsScript() {
             const apiKey = "AIzaSyDUzkfgu-6zuMHoH-UV5vzFQySSjwAD9u8";
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=directions,places`;
             script.async = true;
             script.defer = true;
-            script.onload = () => { console.log("Google Maps script loaded successfully."); initMap(); };
+            script.onload = () => { 
+                console.log("Google Maps script loaded successfully."); 
+                initMap(); 
+                AppState.directionsService = new google.maps.DirectionsService();
+            };
             script.onerror = () => { console.error("Error loading the Google Maps script."); document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Script Error</p></div>`; };
             document.head.appendChild(script);
         }
@@ -1672,29 +1677,31 @@
             const finalDestination = job.destinations ? job.destinations[job.destinations.length - 1] : job.destination;
             const waypoints = job.destinations ? job.destinations.slice(0, -1).map(d => ({ location: d, stopover: true })) : [];
 
-            AppState.directionsService.route({
-                origin: job.origin,
-                destination: finalDestination,
-                waypoints: waypoints,
-                optimizeWaypoints: job.isOptimized || false,
-                travelMode: google.maps.TravelMode.DRIVING
-            }, (response, status) => {
-                const distanceEl = document.getElementById('job-details-distance');
-                const durationEl = document.getElementById('job-details-duration');
-                if (status === 'OK' && distanceEl && durationEl) {
-                    let totalDistance = 0;
-                    let totalDuration = 0;
-                    response.routes[0].legs.forEach(leg => {
-                        totalDistance += leg.distance.value;
-                        totalDuration += leg.duration.value;
-                    });
-                    distanceEl.textContent = `${(totalDistance / 1609.34).toFixed(1)} mi`; // Convert meters to miles
-                    durationEl.textContent = `${Math.round(totalDuration / 60)} mins`;
-                } else {
-                    if(distanceEl) distanceEl.textContent = 'N/A';
-                    if(durationEl) durationEl.textContent = 'N/A';
-                }
-            });
+            if (AppState.directionsService) {
+                AppState.directionsService.route({
+                    origin: job.origin,
+                    destination: finalDestination,
+                    waypoints: waypoints,
+                    optimizeWaypoints: job.isOptimized || false,
+                    travelMode: google.maps.TravelMode.DRIVING
+                }, (response, status) => {
+                    const distanceEl = document.getElementById('job-details-distance');
+                    const durationEl = document.getElementById('job-details-duration');
+                    if (status === 'OK' && distanceEl && durationEl) {
+                        let totalDistance = 0;
+                        let totalDuration = 0;
+                        response.routes[0].legs.forEach(leg => {
+                            totalDistance += leg.distance.value;
+                            totalDuration += leg.duration.value;
+                        });
+                        distanceEl.textContent = `${(totalDistance / 1609.34).toFixed(1)} mi`; // Convert meters to miles
+                        durationEl.textContent = `${Math.round(totalDuration / 60)} mins`;
+                    } else {
+                        if(distanceEl) distanceEl.textContent = 'N/A';
+                        if(durationEl) durationEl.textContent = 'N/A';
+                    }
+                });
+            }
 
             jobHistoryLog.innerHTML = '';
             if (job.log && job.log.length > 0) {
@@ -1827,6 +1834,15 @@
                 assignDriverSelect.appendChild(option);
             });
             createJobModal.classList.remove('hidden');
+        });
+
+        jobDashboardPanel.addEventListener('click', (e) => {
+            if (e.target.matches('.tab-btn')) {
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                AppState.activeJobTab = e.target.dataset.tab;
+                renderAllJobsList();
+            }
         });
 
         jobsListEl.addEventListener('click', (e) => {
