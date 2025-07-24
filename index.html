@@ -238,6 +238,7 @@
                                 <button id="open-job-details-btn" class="w-full px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700">Messages</button>
                                 <button id="complete-job-btn" class="w-full px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Complete</button>
                             </div>
+                             <button id="arrived-btn" class="hidden w-full mt-3 px-4 py-2 bg-yellow-500 text-white font-bold rounded-lg hover:bg-yellow-600 animate-pulse">Arrived? Mark as Complete</button>
                         </div>
                         <div id="available-jobs-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                             <h3 class="text-lg font-semibold text-gray-200 mb-2">Open Job Postings</h3>
@@ -633,6 +634,7 @@
         const currentJobDetails = document.getElementById('current-job-details');
         const completeJobBtn = document.getElementById('complete-job-btn');
         const startNavigationBtn = document.getElementById('start-navigation-btn');
+        const arrivedBtn = document.getElementById('arrived-btn');
 
         const adminSettingsModal = document.getElementById('admin-settings-modal');
         const adminSettingsCancelBtn = document.getElementById('admin-settings-cancel-btn');
@@ -674,6 +676,7 @@
         // --- App State ---
         const AppState = {
             currentUser: null,
+            isAuthReady: false, // NEW: Flag to prevent race conditions
             companyId: null,
             companyName: null,
             map: null,
@@ -758,7 +761,13 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
                 storage = getStorage(app);
-                await enableIndexedDbPersistence(db);
+                await enableIndexedDbPersistence(db).catch(err => {
+                    if (err.code == 'failed-precondition') {
+                        console.warn("Firestore persistence failed. Multiple tabs open?");
+                    } else if (err.code == 'unimplemented') {
+                        console.warn("Firestore persistence not available in this browser.");
+                    }
+                });
 
                 // Define base paths
                 AppState.globalUsersPath = `/artifacts/${appId}/public/data/users`;
@@ -786,6 +795,10 @@
                                     showToast("Geolocation is denied. Please enable it in browser settings.", "error");
                                     cleanupUserSession();
                                 }
+                            }).catch(err => {
+                                showToast("Could not check geolocation permissions.", "error");
+                                console.error("Geolocation permission query error:", err);
+                                cleanupUserSession();
                             });
                         } else {
                             showToast("Geolocation is not supported by your browser.", "error");
@@ -840,24 +853,23 @@
                         phone: '',
                         currentCompanyId: null,
                     };
-                    await setDoc(userDocRef, userData);
+                    await setDoc(userDocRef, userData).catch(err => console.error("Error creating user profile:", err));
                 } else {
                     userData = userDocSnap.data();
                 }
 
                 const companyChanged = AppState.currentUser?.currentCompanyId !== userData.currentCompanyId;
                 AppState.currentUser = { id: user.uid, ...userData };
+                AppState.isAuthReady = true; // Auth is now ready
                 
                 authContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
 
                 if (AppState.currentUser.currentCompanyId) {
-                    // Load company data if it's the first time or if it has changed
-                    if(companyChanged) {
+                    if(companyChanged || !AppState.companyId) { // Load if company changed or wasn't loaded before
                         await loadCompanyData(AppState.currentUser.currentCompanyId);
                     }
                 } else {
-                    // If the user has no company, clear any existing company data and show the modal
                     cleanupCompanyState();
                     openCompanyModal();
                 }
@@ -865,69 +877,77 @@
             }, (error) => {
                 console.error("Error listening to user document:", error);
                 showToast("Error loading your profile.", "error");
+                AppState.isAuthReady = true; // Still set to true to unblock UI, even on error
             });
             AppState.globalUnsubscribes.push(userUnsubscribe);
         }
 
         async function loadCompanyData(companyId) {
-            // Clear previous company-specific listeners
+            if (!AppState.isAuthReady) return; // Prevent running before auth is ready
             cleanupCompanyState();
             sidebarLoader.style.display = 'flex';
             
             AppState.companyId = companyId;
             const companyDocRef = doc(db, AppState.companiesPath, companyId);
-            const companyDoc = await getDoc(companyDocRef);
-
-            if (!companyDoc.exists()) {
-                showToast("Your assigned company could not be found. Please select a new one.", "error");
-                await updateDoc(doc(db, AppState.globalUsersPath, AppState.currentUser.id), { currentCompanyId: null });
-                sidebarLoader.style.display = 'none';
-                return; // The global listener will handle opening the modal
-            }
-
-            const companyData = companyDoc.data();
-            AppState.companyName = companyData.name;
-            currentCompanyNameEl.textContent = AppState.companyName;
-
-            // Set company-specific paths
-            const companyBasePath = `${AppState.companiesPath}/${companyId}`;
-            AppState.membersPath = `${companyBasePath}/members`;
-            AppState.driversPath = `${companyBasePath}/driverLocations`;
-            AppState.jobsPath = `${companyBasePath}/jobs`;
-
-            // Listener for the current user's role/permissions within this company
-            const memberDocRef = doc(db, AppState.membersPath, AppState.currentUser.id);
-            const memberUnsubscribe = onSnapshot(memberDocRef, (memberDoc) => {
-                if (memberDoc.exists()) {
-                    AppState.currentUser.permissions = memberDoc.data().permissions;
-                    AppState.isDispatchView = checkPermission('canCreateJob');
-                    renderUI();
-                }
-                sidebarLoader.style.display = 'none';
-            });
-            AppState.companyUnsubscribes.push(memberUnsubscribe);
-
-            // Listener for all members of the company
-            const membersUnsubscribe = onSnapshot(collection(db, AppState.membersPath), (snapshot) => {
-                AppState.allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderUI();
-            });
-            AppState.companyUnsubscribes.push(membersUnsubscribe);
-
-            // Listener for active drivers in the company
-            const driversUnsubscribe = onSnapshot(collection(db, AppState.driversPath), (snapshot) => {
-                AppState.activeDrivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderUI();
-                renderMapObjects();
-            });
-            AppState.companyUnsubscribes.push(driversUnsubscribe);
             
-            // Listener for jobs in the company
-            setupJobListener();
+            try {
+                const companyDoc = await getDoc(companyDocRef);
+
+                if (!companyDoc.exists()) {
+                    showToast("Your assigned company could not be found. Please select a new one.", "error");
+                    await updateDoc(doc(db, AppState.globalUsersPath, AppState.currentUser.id), { currentCompanyId: null });
+                    sidebarLoader.style.display = 'none';
+                    return;
+                }
+
+                const companyData = companyDoc.data();
+                AppState.companyName = companyData.name;
+                currentCompanyNameEl.textContent = AppState.companyName;
+
+                // Set company-specific paths
+                const companyBasePath = `${AppState.companiesPath}/${companyId}`;
+                AppState.membersPath = `${companyBasePath}/members`;
+                AppState.driversPath = `${companyBasePath}/driverLocations`;
+                AppState.jobsPath = `${companyBasePath}/jobs`;
+
+                // Listener for the current user's role/permissions within this company
+                const memberDocRef = doc(db, AppState.membersPath, AppState.currentUser.id);
+                const memberUnsubscribe = onSnapshot(memberDocRef, (memberDoc) => {
+                    if (memberDoc.exists()) {
+                        AppState.currentUser.permissions = memberDoc.data().permissions;
+                        AppState.isDispatchView = checkPermission('canCreateJob');
+                        renderUI();
+                    }
+                    sidebarLoader.style.display = 'none';
+                }, (err) => { console.error("Error listening to member doc:", err); sidebarLoader.style.display = 'none'; });
+                AppState.companyUnsubscribes.push(memberUnsubscribe);
+
+                // Listener for all members of the company
+                const membersUnsubscribe = onSnapshot(collection(db, AppState.membersPath), (snapshot) => {
+                    AppState.allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderUI();
+                }, (err) => console.error("Error listening to members:", err));
+                AppState.companyUnsubscribes.push(membersUnsubscribe);
+
+                // Listener for active drivers in the company
+                const driversUnsubscribe = onSnapshot(collection(db, AppState.driversPath), (snapshot) => {
+                    AppState.activeDrivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderUI();
+                    renderMapObjects();
+                }, (err) => console.error("Error listening to drivers:", err));
+                AppState.companyUnsubscribes.push(driversUnsubscribe);
+                
+                // Listener for jobs in the company
+                setupJobListener();
+            } catch (error) {
+                console.error("Error loading company data:", error);
+                showToast("Failed to load company data.", "error");
+                sidebarLoader.style.display = 'none';
+            }
         }
 
         function setupJobListener() {
-            if (!AppState.companyId) return;
+            if (!AppState.companyId || !AppState.isAuthReady) return;
             const jobsRef = collection(db, AppState.jobsPath);
             const jobsUnsubscribe = onSnapshot(query(jobsRef), (snapshot) => {
                 AppState.allJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -958,6 +978,7 @@
             AppState.globalUnsubscribes = [];
             cleanupCompanyState();
             AppState.currentUser = null;
+            AppState.isAuthReady = false; // Reset auth flag
             
             for (const jobId in AppState.jobRouteRenderers) {
                 AppState.jobRouteRenderers[jobId].setMap(null);
@@ -1015,7 +1036,8 @@
                         status: currentStatus,
                         name: AppState.currentUser.name
                     };
-                    setDoc(doc(db, AppState.driversPath, AppState.currentUser.id), locationData, { merge: true });
+                    setDoc(doc(db, AppState.driversPath, AppState.currentUser.id), locationData, { merge: true })
+                        .catch(err => console.error("Error sharing location:", err));
                 },
                 (error) => showToast(`Geolocation Error: ${error.message}`, "error"),
                 { enableHighAccuracy: true }
@@ -1025,7 +1047,8 @@
         driverStatusSelect.addEventListener('change', () => {
             if (AppState.isSharingLocation && AppState.companyId) {
                 const driverLocRef = doc(db, AppState.driversPath, AppState.currentUser.id);
-                updateDoc(driverLocRef, { status: driverStatusSelect.value });
+                updateDoc(driverLocRef, { status: driverStatusSelect.value })
+                    .catch(err => showToast("Could not update status.", "error"));
             }
         });
         
@@ -1114,30 +1137,50 @@
 
         async function deleteJob(jobId) {
             if (!checkPermission('canDeleteJob')) return;
-            await deleteDoc(doc(db, AppState.jobsPath, jobId));
-            showToast('Job has been deleted.', 'success');
+            try {
+                await deleteDoc(doc(db, AppState.jobsPath, jobId));
+                showToast('Job has been deleted.', 'success');
+            } catch (error) {
+                console.error("Error deleting job:", error);
+                showToast("Failed to delete job.", "error");
+            }
         }
 
         async function archiveJob(jobId) {
             if (!checkPermission('canDeleteJob')) return;
-            await updateDoc(doc(db, AppState.jobsPath, jobId), { archived: true });
-            showToast('Job has been archived.', 'success');
+            try {
+                await updateDoc(doc(db, AppState.jobsPath, jobId), { archived: true });
+                showToast('Job has been archived.', 'success');
+            } catch (error) {
+                console.error("Error archiving job:", error);
+                showToast("Failed to archive job.", "error");
+            }
         }
 
         async function unarchiveJob(jobId) {
             if (!checkPermission('canDeleteJob')) return;
-            await updateDoc(doc(db, AppState.jobsPath, jobId), { archived: false });
-            showToast('Job has been unarchived.', 'success');
+            try {
+                await updateDoc(doc(db, AppState.jobsPath, jobId), { archived: false });
+                showToast('Job has been unarchived.', 'success');
+            } catch (error) {
+                console.error("Error unarchiving job:", error);
+                showToast("Failed to unarchive job.", "error");
+            }
         }
 
         async function cancelJob(jobId) {
             if (!checkPermission('canDeleteJob')) return;
-            await updateDoc(doc(db, AppState.jobsPath, jobId), { 
-                status: 'cancelled',
-                log: arrayUnion({ text: `Job cancelled by ${AppState.currentUser.name}`, timestamp: new Date() })
-            });
-            showToast('Job has been cancelled.', 'success');
-            closeJobDetailsModal();
+            try {
+                await updateDoc(doc(db, AppState.jobsPath, jobId), { 
+                    status: 'cancelled',
+                    log: arrayUnion({ text: `Job cancelled by ${AppState.currentUser.name}`, timestamp: new Date() })
+                });
+                showToast('Job has been cancelled.', 'success');
+                closeJobDetailsModal();
+            } catch (error) {
+                console.error("Error cancelling job:", error);
+                showToast("Failed to cancel job.", "error");
+            }
         }
 
         function renderAvailableJobsList() {
@@ -1172,7 +1215,7 @@
          * This avoids clearing and re-drawing everything on every data update.
          */
         function renderMapObjects() {
-            if (!AppState.map || !AppState.currentUser) return;
+            if (!AppState.map || !AppState.currentUser || !AppState.isAuthReady) return;
 
             const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
             const recentDrivers = AppState.activeDrivers.filter(driver => driver.timestamp && driver.timestamp.toMillis() > fiveMinutesAgo);
@@ -1293,14 +1336,15 @@
                     if (status === "OK") {
                         renderer.setDirections(response);
                         const leg = response.routes[0].legs[response.routes[0].legs.length - 1];
-                        if (leg && !AppState.isDispatchView) {
-                            if (leg.distance.value <= 200) { 
-                                showCommentModal('Add Completion Comment', (comment, file) => {
-                                    completeJob(job.id, comment, file, true);
-                                });
-                            }
+                        // NEW: Manual completion logic
+                        if (leg && !AppState.isDispatchView && leg.distance.value <= 200) { 
+                            arrivedBtn.classList.remove('hidden');
+                            arrivedBtn.dataset.jobId = job.id;
+                        } else {
+                            arrivedBtn.classList.add('hidden');
                         }
                     } else { 
+                        arrivedBtn.classList.add('hidden');
                         if(AppState.jobRouteRenderers[jobId]) {
                             AppState.jobRouteRenderers[jobId].setMap(null);
                             delete AppState.jobRouteRenderers[jobId];
@@ -1371,7 +1415,7 @@
         }
 
         function renderUI() {
-            if (!AppState.currentUser) return;
+            if (!AppState.isAuthReady) return; // Don't render if auth isn't ready
             
             userWelcomeEl.textContent = `Welcome, ${AppState.currentUser.name}!`;
             userIdEl.textContent = AppState.currentUser.id;
@@ -1426,6 +1470,7 @@
                 currentJobPanel.classList.add('hidden');
                 availableJobsPanel.classList.remove('hidden'); 
                 driverStatusSelect.disabled = false;
+                arrivedBtn.classList.add('hidden'); // Hide arrived button if no job
             }
             renderAvailableJobsList();
         }
@@ -1592,7 +1637,7 @@
                 const userDocRef = doc(db, AppState.globalUsersPath, AppState.currentUser.id);
                 await updateDoc(userDocRef, {
                     [`lastRead.${job.id}`]: Date.now()
-                });
+                }).catch(err => console.error("Error updating last read timestamp:", err));
             }
         }
         
@@ -1673,13 +1718,18 @@
             const newName = profileNameInput.value.trim();
             const newPhone = profilePhoneInput.value.trim();
             if (newName) {
-                await updateDoc(doc(db, AppState.globalUsersPath, AppState.currentUser.id), { 
-                    name: newName,
-                    phone: newPhone 
-                });
-                // Also update their name in the company members list
-                await updateDoc(doc(db, AppState.membersPath, AppState.currentUser.id), { name: newName });
-                showToast('Profile updated!', 'success');
+                try {
+                    await updateDoc(doc(db, AppState.globalUsersPath, AppState.currentUser.id), { 
+                        name: newName,
+                        phone: newPhone 
+                    });
+                    // Also update their name in the company members list
+                    await updateDoc(doc(db, AppState.membersPath, AppState.currentUser.id), { name: newName });
+                    showToast('Profile updated!', 'success');
+                } catch (error) {
+                    console.error("Error updating profile:", error);
+                    showToast("Failed to update profile.", "error");
+                }
             }
             profileModal.classList.add('hidden');
         });
@@ -1783,6 +1833,7 @@
                 });
                 showToast("Job accepted!", "success");
             } catch (error) {
+                console.error("Error accepting job:", error);
                 showToast(error.toString(), "error");
             }
         }
@@ -1807,6 +1858,7 @@
                 showToast("You have been removed from the job.", "success");
                 closeJobDetailsModal();
             } catch (error) {
+                console.error("Error cancelling accepted job:", error);
                 showToast("Could not cancel job assignment.", "error");
             }
         }
@@ -1829,13 +1881,19 @@
             }
         });
         
-        async function completeJob(jobId, comment, file, isAuto = false) {
+        async function completeJob(jobId, comment, file) {
             const jobRef = doc(db, AppState.jobsPath, jobId);
             let podURL = '';
             if (file) {
-                const storageRef = ref(storage, `proof_of_delivery/${AppState.companyId}/${jobId}/${file.name}`);
-                await uploadBytes(storageRef, file);
-                podURL = await getDownloadURL(storageRef);
+                try {
+                    const storageRef = ref(storage, `proof_of_delivery/${AppState.companyId}/${jobId}/${file.name}`);
+                    await uploadBytes(storageRef, file);
+                    podURL = await getDownloadURL(storageRef);
+                } catch (error) {
+                    console.error("Error uploading POD:", error);
+                    showToast("Could not upload proof of delivery image.", "error");
+                    return; // Stop if upload fails
+                }
             }
 
             try {
@@ -1849,7 +1907,7 @@
                         status: 'pending-completion',
                         driverCompletionComment: comment,
                         assignedDrivers: newAssignedDrivers,
-                        proofOfDeliveryURL: podURL,
+                        proofOfDeliveryURL: podURL || jobData.proofOfDeliveryURL, // Keep old if new not provided
                         log: arrayUnion({ text: `Marked as pending completion by ${AppState.currentUser.name}`, timestamp: new Date() })
                     };
 
@@ -1859,7 +1917,7 @@
                         transaction.update(doc(db, AppState.driversPath, AppState.currentUser.id), { status: 'Available', eta: '' });
                     }
                 });
-                showToast(isAuto ? "Arrived! Job pending completion." : "Job pending completion!", "success");
+                showToast("Job pending completion!", "success");
             } catch (error) {
                 console.error("Error completing job:", error);
                 showToast("Could not complete job.", "error");
@@ -1876,11 +1934,19 @@
                 });
                 showToast("Job finalized and completed!", "success");
             } catch (error) {
+                console.error("Error closing out job:", error);
                 showToast("Could not finalize job.", "error");
             }
         }
 
         completeJobBtn.addEventListener('click', (e) => {
+            const jobId = e.target.dataset.jobId;
+            showCommentModal('Add Completion Comment', (comment, file) => {
+                completeJob(jobId, comment, file);
+            });
+        });
+        
+        arrivedBtn.addEventListener('click', (e) => {
             const jobId = e.target.dataset.jobId;
             showCommentModal('Add Completion Comment', (comment, file) => {
                 completeJob(jobId, comment, file);
@@ -2007,8 +2073,14 @@
             if (e.target.classList.contains('permission-checkbox')) {
                 const { userId, permission } = e.target.dataset;
                 const isChecked = e.target.checked;
-                await updateDoc(doc(db, AppState.membersPath, userId), { [`permissions.${permission}`]: isChecked });
-                showToast('Permissions updated.', 'success');
+                try {
+                    await updateDoc(doc(db, AppState.membersPath, userId), { [`permissions.${permission}`]: isChecked });
+                    showToast('Permissions updated.', 'success');
+                } catch (error) {
+                    console.error("Error updating permissions:", error);
+                    showToast("Failed to update permissions.", "error");
+                    e.target.checked = !isChecked; // Revert checkbox on failure
+                }
             }
         });
 
@@ -2021,8 +2093,12 @@
             if (removeBtn && checkPermission('canManageDrivers')) {
                 const driverId = removeBtn.dataset.driverId;
                 showConfirmModal('Remove Driver?', 'This will remove the driver from the active list. They will reappear if they send a new location update.', () => {
-                    deleteDoc(doc(db, AppState.driversPath, driverId));
-                    showToast('Driver removed from active list.', 'success');
+                    deleteDoc(doc(db, AppState.driversPath, driverId))
+                        .then(() => showToast('Driver removed from active list.', 'success'))
+                        .catch(err => {
+                            console.error("Error removing driver:", err);
+                            showToast("Failed to remove driver.", "error");
+                        });
                 });
             }
         });
@@ -2048,7 +2124,7 @@
                     jobChatBox.appendChild(msgEl);
                 });
                 jobChatBox.scrollTop = jobChatBox.scrollHeight;
-            });
+            }, (err) => console.error(`Error listening for messages on job ${jobId}:`, err));
         }
 
         jobChatForm.addEventListener('submit', async (e) => {
@@ -2057,77 +2133,92 @@
             const text = jobChatInput.value.trim();
             if (!text || !jobId) return;
 
-            const jobRef = doc(db, AppState.jobsPath, jobId);
-            await updateDoc(jobRef, { lastMessageTimestamp: serverTimestamp() });
+            try {
+                const jobRef = doc(db, AppState.jobsPath, jobId);
+                await updateDoc(jobRef, { lastMessageTimestamp: serverTimestamp() });
 
-            await addDoc(collection(db, AppState.jobsPath, jobId, 'messages'), {
-                text, senderId: AppState.currentUser.id,
-                senderName: AppState.currentUser.name, timestamp: serverTimestamp()
-            });
-            jobChatInput.value = '';
+                await addDoc(collection(db, AppState.jobsPath, jobId, 'messages'), {
+                    text, senderId: AppState.currentUser.id,
+                    senderName: AppState.currentUser.name, timestamp: serverTimestamp()
+                });
+                jobChatInput.value = '';
+            } catch (error) {
+                console.error("Error sending message:", error);
+                showToast("Could not send message.", "error");
+            }
         });
 
         // --- Company Logic ---
         async function openCompanyModal() {
-            const companiesRef = collection(db, AppState.companiesPath);
-            const snapshot = await getDocs(query(companiesRef));
-            companyListEl.innerHTML = '';
-            if (snapshot.empty) {
-                companyListEl.innerHTML = `<li class="text-gray-400">No companies found. Create one to get started.</li>`;
-            } else {
-                snapshot.forEach(doc => {
-                    const company = { id: doc.id, ...doc.data() };
-                    const li = document.createElement('li');
-                    li.className = 'flex justify-between items-center bg-gray-700 p-3 rounded-md';
-                    li.innerHTML = `
-                        <span class="font-semibold text-white">${company.name}</span>
-                        <button data-company-id="${company.id}" data-has-password="${!!company.hasPassword}" class="join-company-btn px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Join</button>
-                    `;
-                    companyListEl.appendChild(li);
-                });
+            try {
+                const companiesRef = collection(db, AppState.companiesPath);
+                const snapshot = await getDocs(query(companiesRef));
+                companyListEl.innerHTML = '';
+                if (snapshot.empty) {
+                    companyListEl.innerHTML = `<li class="text-gray-400">No companies found. Create one to get started.</li>`;
+                } else {
+                    snapshot.forEach(doc => {
+                        const company = { id: doc.id, ...doc.data() };
+                        const li = document.createElement('li');
+                        li.className = 'flex justify-between items-center bg-gray-700 p-3 rounded-md';
+                        li.innerHTML = `
+                            <span class="font-semibold text-white">${company.name}</span>
+                            <button data-company-id="${company.id}" data-has-password="${!!company.hasPassword}" class="join-company-btn px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Join</button>
+                        `;
+                        companyListEl.appendChild(li);
+                    });
+                }
+                companyModal.classList.remove('hidden');
+            } catch (error) {
+                console.error("Error fetching companies:", error);
+                showToast("Could not load company list.", "error");
             }
-            companyModal.classList.remove('hidden');
         }
 
         async function joinCompany(companyId, password = null) {
             const button = document.querySelector(`.join-company-btn[data-company-id="${companyId}"]`);
             if(button) button.innerHTML = `<span class="spinner"></span>`;
 
-            const companyRef = doc(db, AppState.companiesPath, companyId);
-            const companyDoc = await getDoc(companyRef);
-            if (!companyDoc.exists()) {
-                showToast("Company not found.", "error");
-                if(button) button.textContent = 'Join';
-                return;
-            }
-            const companyData = companyDoc.data();
-
-            if (companyData.hasPassword && companyData.password !== password) {
-                showToast("Incorrect password.", "error");
-                if(button) button.textContent = 'Join';
-                return;
-            }
-            
-            // Add user to the company's members subcollection
-            const memberRef = doc(db, `${AppState.companiesPath}/${companyId}/members`, AppState.currentUser.id);
-            await setDoc(memberRef, {
-                name: AppState.currentUser.name,
-                email: AppState.currentUser.email,
-                permissions: { // Default permissions for new members
-                    canCreateJob: false,
-                    canDeleteJob: false,
-                    canManageDrivers: false
+            try {
+                const companyRef = doc(db, AppState.companiesPath, companyId);
+                const companyDoc = await getDoc(companyRef);
+                if (!companyDoc.exists()) {
+                    showToast("Company not found.", "error");
+                    if(button) button.textContent = 'Join';
+                    return;
                 }
-            });
+                const companyData = companyDoc.data();
 
-            // Update the user's global profile to set their current company
-            const userRef = doc(db, AppState.globalUsersPath, AppState.currentUser.id);
-            await updateDoc(userRef, { currentCompanyId: companyId });
+                if (companyData.hasPassword && companyData.password !== password) {
+                    showToast("Incorrect password.", "error");
+                    if(button) button.textContent = 'Join';
+                    return;
+                }
+                
+                // Add user to the company's members subcollection
+                const memberRef = doc(db, `${AppState.companiesPath}/${companyId}/members`, AppState.currentUser.id);
+                await setDoc(memberRef, {
+                    name: AppState.currentUser.name,
+                    email: AppState.currentUser.email,
+                    permissions: { // Default permissions for new members
+                        canCreateJob: false,
+                        canDeleteJob: false,
+                        canManageDrivers: false
+                    }
+                });
 
-            showToast(`Successfully joined ${companyData.name}!`, "success");
-            companyModal.classList.add('hidden');
-            companyPasswordModal.classList.add('hidden');
-            // The main user listener will automatically trigger loadCompanyData
+                // Update the user's global profile to set their current company
+                const userRef = doc(db, AppState.globalUsersPath, AppState.currentUser.id);
+                await updateDoc(userRef, { currentCompanyId: companyId });
+
+                showToast(`Successfully joined ${companyData.name}!`, "success");
+                companyModal.classList.add('hidden');
+                companyPasswordModal.classList.add('hidden');
+            } catch (error) {
+                console.error("Error joining company:", error);
+                showToast("Failed to join company.", "error");
+                if(button) button.textContent = 'Join';
+            }
         }
 
         createCompanyForm.addEventListener('submit', async (e) => {
@@ -2136,31 +2227,36 @@
             const password = newCompanyPasswordInput.value.trim();
             if (!name) return;
 
-            const newCompanyRef = doc(collection(db, AppState.companiesPath));
-            await setDoc(newCompanyRef, {
-                name: name,
-                hasPassword: !!password,
-                password: password || null, 
-                ownerId: AppState.currentUser.id
-            });
+            try {
+                const newCompanyRef = doc(collection(db, AppState.companiesPath));
+                await setDoc(newCompanyRef, {
+                    name: name,
+                    hasPassword: !!password,
+                    password: password || null, 
+                    ownerId: AppState.currentUser.id
+                });
 
-            // The owner gets all permissions by default
-            const ownerMemberRef = doc(db, `${AppState.companiesPath}/${newCompanyRef.id}/members`, AppState.currentUser.id);
-            await setDoc(ownerMemberRef, {
-                name: AppState.currentUser.name,
-                email: AppState.currentUser.email,
-                permissions: {
-                    canCreateJob: true,
-                    canDeleteJob: true,
-                    canManageDrivers: true
-                }
-            });
-            
-            // Join the company you just created
-            const userRef = doc(db, AppState.globalUsersPath, AppState.currentUser.id);
-            await updateDoc(userRef, { currentCompanyId: newCompanyRef.id });
+                // The owner gets all permissions by default
+                const ownerMemberRef = doc(db, `${AppState.companiesPath}/${newCompanyRef.id}/members`, AppState.currentUser.id);
+                await setDoc(ownerMemberRef, {
+                    name: AppState.currentUser.name,
+                    email: AppState.currentUser.email,
+                    permissions: {
+                        canCreateJob: true,
+                        canDeleteJob: true,
+                        canManageDrivers: true
+                    }
+                });
+                
+                // Join the company you just created
+                const userRef = doc(db, AppState.globalUsersPath, AppState.currentUser.id);
+                await updateDoc(userRef, { currentCompanyId: newCompanyRef.id });
 
-            createCompanyForm.reset();
+                createCompanyForm.reset();
+            } catch (error) {
+                console.error("Error creating company:", error);
+                showToast("Failed to create company.", "error");
+            }
         });
         
         selectCompanyBtn.addEventListener('click', openCompanyModal);
