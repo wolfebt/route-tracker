@@ -185,18 +185,20 @@
                         </div>
                     </div>
                     
+                    <div id="company-selection-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                        <h2 class="text-lg font-semibold text-gray-200 mb-2">Company Selection</h2>
+                        <p class="text-sm text-gray-400">Current Company: <span id="current-company-name" class="font-mono">None</span></p>
+                        <button id="select-company-btn" class="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            <span id="select-company-btn-label" class="text-lg underline font-semibold">Select/Change Company</span>
+                        </button>
+                    </div>
+
                     <div id="user-info-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                          <div class="flex items-center space-x-2 mb-2">
                              <h2 id="user-welcome" class="text-lg font-semibold text-gray-200">Welcome!</h2>
                              <span id="admin-badge" class="hidden bg-indigo-600 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">Admin</span>
                          </div>
                          <p class="text-sm text-gray-400">Your User ID: <span id="userId" class="font-mono break-all"></span></p>
-                    </div>
-
-                    <div id="company-selection-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                        <h2 class="text-lg font-semibold text-gray-200 mb-2">Company Selection</h2>
-                        <p class="text-sm text-gray-400">Current Company: <span id="current-company-name" class="font-mono">None</span></p>
-                        <button id="select-company-btn" class="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Select/Change Company</button>
                     </div>
 
                     <!-- Dispatcher UI -->
@@ -574,6 +576,7 @@
         const companySelectionPanel = document.getElementById('company-selection-panel');
         const currentCompanyNameEl = document.getElementById('current-company-name');
         const selectCompanyBtn = document.getElementById('select-company-btn');
+        const selectCompanyBtnLabel = document.getElementById('select-company-btn-label');
         const companyModal = document.getElementById('company-modal');
         const companyListEl = document.getElementById('company-list');
         const createCompanyForm = document.getElementById('create-company-form');
@@ -903,6 +906,7 @@
                 const companyData = companyDoc.data();
                 AppState.companyName = companyData.name;
                 currentCompanyNameEl.textContent = AppState.companyName;
+                selectCompanyBtnLabel.textContent = AppState.companyName;
 
                 // Set company-specific paths
                 const companyBasePath = `${AppState.companiesPath}/${companyId}`;
@@ -966,6 +970,7 @@
             AppState.companyId = null;
             AppState.companyName = null;
             currentCompanyNameEl.textContent = "None";
+            selectCompanyBtnLabel.textContent = "Select/Change Company";
             AppState.allUsers = [];
             AppState.allJobs = [];
             AppState.activeDrivers = [];
