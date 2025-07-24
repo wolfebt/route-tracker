@@ -349,32 +349,74 @@
     </div>
     <div id="user-guide-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10004]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4 flex flex-col" style="max-height: 90vh;">
-            <h3 class="text-2xl font-bold text-white mb-4">Route Tracker User Guide</h3>
+            <h3 class="text-2xl font-bold text-white mb-4">Route Tracker: A Simple Guide</h3>
             <div class="overflow-y-auto text-gray-300 space-y-4">
                 <div>
-                    <h4 class="text-lg font-semibold text-teal-400">1. Getting Started: First-Time Login</h4>
-                    <p>Your first interaction with Route Tracker will be the login screen. Click the "Sign in with Google" button. The application will ask for your permission to access your location; this is essential for the app to function correctly. After logging in, click the Settings icon (⚙️) -> "Edit Profile" to set your display name.</p>
+                    <h4 class="text-lg font-semibold text-teal-400">1. Getting Started: Your First Login</h4>
+                    <p>Before you can use the app, you'll need to sign in and set up your company.</p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Sign In:</strong> Click the <strong>"Sign in with Google"</strong> button to use your Google account.</li>
+                        <li><strong>Allow Location:</strong> Your browser will ask for permission to share your location. Please click <strong>"Allow"</strong>, as this is necessary for the map and tracking features to work.</li>
+                        <li><strong>Join or Create a Company:</strong>
+                            <ul class="list-disc list-inside ml-4">
+                                <li><strong>To Create:</strong> If you are the first person from your company to use the app, type in your company's name, set an optional password, and click <strong>"Create & Join"</strong>. You will automatically become the administrator.</li>
+                                <li><strong>To Join:</strong> Find your company in the list and click <strong>"Join"</strong>. If it's password-protected, you'll be asked to enter it.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Set Your Name:</strong> Go to the <strong>Settings</strong> icon (⚙️) in the top right, click <strong>"Edit Profile"</strong>, and enter the name you want displayed to your team.</li>
+                    </ol>
                 </div>
                 <div>
-                    <h4 class="text-lg font-semibold text-teal-400">2. The Interface: Two Roles in One</h4>
-                    <p>Route Tracker has two primary modes: <strong>Driver</strong> and <strong>Dispatcher</strong>. You can switch between these modes at any time from the settings menu (⚙️).</p>
+                    <h4 class="text-lg font-semibold text-teal-400">2. The Two Views: Dispatcher vs. Driver</h4>
+                    <p>Route Tracker has two main views. Your company administrator sets your role.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Dispatcher View:</strong> This is the command center. You can see all jobs, all drivers, and the full map. You have the power to create, assign, and manage jobs.</li>
+                        <li><strong>Driver View:</strong> This is the on-the-road view. You see only your current job and a list of jobs that are available for you to take.</li>
+                    </ul>
                 </div>
                 <div>
-                    <h4 class="text-lg font-semibold text-teal-400">3. Driver Mode: On the Road</h4>
-                    <p><strong>My Current Job:</strong> If you are assigned to a job, this panel appears, showing job details. It has buttons to Navigate (opens Google Maps), view Messages, and Complete the job.</p>
-                    <p><strong>Open Job Postings:</strong> Shows available jobs. Click "Accept" to assign a job to yourself.</p>
-                    <p><strong>Completing a Job:</strong> When you click "Complete", a popup will ask for a completion comment. After you submit, the job is sent to dispatch for final review, and you are free to take a new job.</p>
+                    <h4 class="text-lg font-semibold text-teal-400">3. For Dispatchers: Managing the Day</h4>
+                    <p>As a dispatcher, your main screen is the dashboard.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Creating a Job:</strong>
+                            <ol class="list-decimal list-inside ml-4">
+                                <li>Click the <strong>"Create Job"</strong> button.</li>
+                                <li>Fill in the details: a name for the job, the starting point, and at least one destination. You can add multiple stops by clicking <strong>"Add Destination"</strong>.</li>
+                                <li>Optionally, add customer contact info and any special notes.</li>
+                                <li>You can either <strong>assign the job directly</strong> to an available driver from the dropdown menu or leave it unassigned for any driver to claim.</li>
+                            </ol>
+                        </li>
+                        <li><strong>Tracking Progress:</strong>
+                            <ul class="list-disc list-inside ml-4">
+                                <li><strong>The Map:</strong> The main map shows you the real-time location of all your active drivers. In-progress job routes are drawn on the map.</li>
+                                <li><strong>The Dashboard:</strong> "Current" tab shows active jobs, "Archive" shows old ones, and the "Drivers List" shows driver status.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Completing a Job:</strong>
+                            <ol class="list-decimal list-inside ml-4">
+                                <li>When a driver finishes, the job card turns green.</li>
+                                <li>Click the card to review their notes/photos.</li>
+                                <li>Click <strong>"Finalize"</strong> to add your own comments and officially close the job.</li>
+                            </ol>
+                        </li>
+                    </ul>
                 </div>
                 <div>
-                    <h4 class="text-lg font-semibold text-teal-400">4. Dispatch Mode: The Command Center</h4>
-                    <p><strong>Creating a Job:</strong> Use the "Create Job" button. You can fill in details and either post it as an open job or assign it directly to an available driver.</p>
-                    <p><strong>Job Dashboard:</strong> Manage all jobs here. The "Current" tab shows active jobs, while the "Archive" tab shows closed ones. You can search for jobs using the search bar.</p>
-                    <p><strong>Finalizing a Job:</strong> When a driver completes a job, it will appear with a light green background and a "Finalize" button. Review the driver's comments, then click "Finalize" to add your own closing remarks and officially complete the job.</p>
-                    <p><strong>Archiving and Deleting:</strong> On completed or unassigned jobs, you can "Archive" them to the archive list or "Delete" them permanently.</p>
+                    <h4 class="text-lg font-semibold text-teal-400">4. For Drivers: On the Road</h4>
+                    <p>As a driver, your view is focused on the task at hand.</p>
+                     <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Finding a Job:</strong> The <strong>"Open Job Postings"</strong> panel shows available jobs. Click one to see details, then click <strong>"Accept Job"</strong> to claim it.</li>
+                        <li><strong>Your Current Job:</strong> Your active job appears at the top. Use the buttons to <strong>Navigate</strong> (opens Google Maps), send <strong>Messages</strong> to dispatch, or <strong>Complete</strong> the job when you're finished.</li>
+                        <li><strong>Your Status:</strong> Use the <strong>"My Status"</strong> dropdown to set yourself as "Available" or "On Break".</li>
+                    </ul>
                 </div>
-                <div>
-                    <h4 class="text-lg font-semibold text-teal-400">5. Administrator Functions</h4>
-                    <p>Users with admin permissions can access the "Admin: User Roles" button in the settings menu. This panel allows you to grant or revoke permissions for all users, including creating jobs, deleting jobs, and managing other users.</p>
+                 <div>
+                    <h4 class="text-lg font-semibold text-teal-400">5. Key Features for Everyone</h4>
+                     <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Messaging:</strong> Every job has its own private chat. A pulsing border on a job card means you have an unread message.</li>
+                        <li><strong>Customer Tracking Link:</strong> Dispatchers can generate a special link for customers to see their driver's location in real-time.</li>
+                        <li><strong>User Guide:</strong> Need a refresher? Click the <strong>Settings</strong> icon (⚙️) and then <strong>"User Guide"</strong> to see these instructions again.</li>
+                    </ul>
                 </div>
             </div>
             <div class="mt-6 pt-4 border-t border-gray-700 flex justify-end">
@@ -1549,16 +1591,26 @@
             try {
                 await loader.importLibrary('maps');
                 await loader.importLibrary('places');
-                await loader.importLibrary('routes'); // Corrected from 'directions'
+                await loader.importLibrary('routes');
                 
                 console.log("Google Maps libraries loaded successfully.");
                 initMap(); 
                 AppState.directionsService = new google.maps.DirectionsService();
+                setupAutocomplete();
 
             } catch (e) {
                 console.error("Error loading Google Maps script:", e);
                 document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Script Error</p></div>`;
             }
+        }
+
+        function setupAutocomplete() {
+            const originInput = document.getElementById('job-origin-input');
+            const originAutocomplete = new google.maps.places.Autocomplete(originInput, {
+                fields: ["address_components", "geometry", "icon", "name"],
+                strictBounds: false,
+            });
+            AppState.autocompleteInstances.push(originAutocomplete);
         }
 
 
