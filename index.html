@@ -2129,20 +2129,34 @@
 
         jobChatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const jobId = e.target.dataset.jobId;
+            const jobId = jobChatForm.dataset.jobId;
             const text = jobChatInput.value.trim();
             if (!text || !jobId) return;
 
+            // First, try to send the message. This is the most important part.
             try {
-                const jobRef = doc(db, AppState.jobsPath, jobId);
-                await updateDoc(jobRef, { lastMessageTimestamp: serverTimestamp() });
-
                 await addDoc(collection(db, AppState.jobsPath, jobId, 'messages'), {
-                    text, senderId: AppState.currentUser.id,
-                    senderName: AppState.currentUser.name, timestamp: serverTimestamp()
+                    text,
+                    senderId: AppState.currentUser.id,
+                    senderName: AppState.currentUser.name,
+                    timestamp: serverTimestamp()
                 });
                 jobChatInput.value = '';
+
+                // Second, try to update the timestamp for the notification pulse.
+                // This might fail for drivers without update permissions, but that's okay.
+                // The message has already been sent.
+                try {
+                    const jobRef = doc(db, AppState.jobsPath, jobId);
+                    await updateDoc(jobRef, { lastMessageTimestamp: serverTimestamp() });
+                } catch (timestampError) {
+                    // This error is expected for users without job update permissions (like drivers).
+                    // We can ignore it or log it quietly for debugging.
+                    console.log('Could not update message timestamp, likely due to permissions:', timestampError.message);
+                }
+
             } catch (error) {
+                // This will only catch critical errors, like if sending the message itself fails.
                 console.error("Error sending message:", error);
                 showToast("Could not send message.", "error");
             }
