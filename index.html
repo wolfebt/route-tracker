@@ -2166,6 +2166,7 @@
         // --- Company Logic ---
         async function openCompanyModal() {
             try {
+                createCompanyForm.reset(); // Clear the form fields
                 const companiesRef = collection(db, AppState.companiesPath);
                 const snapshot = await getDocs(query(companiesRef));
                 companyListEl.innerHTML = '';
