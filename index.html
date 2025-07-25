@@ -192,7 +192,6 @@
                     </div>
                     
                     <div id="company-selection-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                        <h2 class="text-lg font-semibold text-gray-200 mb-4">Company Selection</h2>
                         <button id="select-company-btn" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                             <span id="select-company-btn-label" class="text-[1.5rem] leading-snug underline font-semibold">Select/Change Company</span>
                         </button>
@@ -201,7 +200,6 @@
                     <!-- Dispatcher UI -->
                     <div id="dispatch-ui" class="hidden">
                         <div id="management-actions-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
-                            <h2 class="text-lg font-semibold text-gray-200 mb-2">Management Actions</h2>
                             <div id="dispatcher-actions" class="grid grid-cols-1 gap-2">
                                 <button id="open-create-job-modal-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Create Job</button>
                             </div>
@@ -2811,7 +2809,7 @@
             }
         });
 
-        copyTrackingLinkBtn.addEventListener('click', () => {
+        copyLinkBtn.addEventListener('click', () => {
             trackingLinkUrlInput.select();
             document.execCommand('copy');
             showToast('Link copied to clipboard!', 'success');
