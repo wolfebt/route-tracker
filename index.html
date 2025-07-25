@@ -2621,7 +2621,8 @@
                 return;
             }
             settingsModal.classList.add('hidden');
-            const url = `${window.location.href}?companyId=${AppState.companyId}`;
+            const baseUrl = window.location.href.split('?')[0];
+            const url = `${baseUrl}?companyId=${AppState.companyId}`;
             shareLinkInput.value = url;
             qrcodeEl.innerHTML = '';
             new QRCode(qrcodeEl, {
@@ -2746,10 +2747,11 @@
             trackingLinkMobileInput.value = job.thirdPartyMobile || job.contactNumber || '';
 
             if (job.thirdPartyInviteId) {
-                const url = `${window.location.origin}${window.location.pathname}?jobId=${job.id}&inviteId=${job.thirdPartyInviteId}`;
+                const baseUrl = window.location.href.split('?')[0];
+                const url = `${baseUrl}?jobId=${job.id}&inviteId=${job.thirdPartyInviteId}`;
                 trackingLinkUrlInput.value = url;
-                qrcodeEl.innerHTML = '';
-                new QRCode(qrcodeEl, { text: url, width: 128, height: 128 });
+                trackingLinkQrcodeEl.innerHTML = '';
+                new QRCode(trackingLinkQrcodeEl, { text: url, width: 128, height: 128 });
                 trackingLinkForm.classList.add('hidden');
                 trackingLinkDetails.classList.remove('hidden');
             } else {
@@ -2848,10 +2850,10 @@
             }
         });
 
-        copyLinkBtn.addEventListener('click', () => {
+        copyTrackingLinkBtn.addEventListener('click', () => {
             trackingLinkUrlInput.select();
             document.execCommand('copy');
-            showToast('Link copied to clipboard!', 'success');
+            showToast('Tracking link copied!', 'success');
         });
 
         trackingLinkCloseBtn.addEventListener('click', () => {
