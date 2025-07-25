@@ -530,25 +530,10 @@
                     <h4 class="text-lg font-semibold text-white mb-2">Job History</h4>
                     <ul id="job-history-log" class="space-y-1 text-sm text-gray-400"></ul>
                 </div>
-                <div id="third-party-invite-section" class="mt-4 pt-4 border-t border-gray-700">
-                    <h4 class="text-lg font-semibold text-white mb-2">Third-Party Tracking Invite</h4>
-                    <div id="generate-invite-form">
-                         <p class="text-sm text-gray-400 mb-2">Send a real-time tracking link to a third party.</p>
-                         <div class="mb-2">
-                            <label for="job-details-third-party-mobile" class="block text-sm font-medium text-gray-300">Mobile:</label>
-                            <input type="tel" id="job-details-third-party-mobile" placeholder="Enter mobile number to send link" class="w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
-                         </div>
-                         <button id="generate-invite-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Generate & Send</button>
-                    </div>
-                    <div id="invite-link-details" class="hidden mt-4 space-y-4">
-                        <div class="flex space-x-2">
-                            <input type="text" id="third-party-share-link" readonly class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white">
-                            <button id="copy-third-party-link-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Copy</button>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-gray-400 mb-2">Or scan QR Code</p>
-                            <div id="third-party-qrcode" class="flex justify-center p-2 bg-white rounded-lg w-36 h-36 mx-auto"></div>
-                        </div>
+                <div id="tracking-link-section" class="mt-4 pt-4 border-t border-gray-700">
+                    <h4 class="text-lg font-semibold text-white mb-2">Tracking Link</h4>
+                    <div id="tracking-link-container">
+                        <!-- Button will be dynamically inserted here -->
                     </div>
                 </div>
                  <div class="mt-4">
@@ -574,6 +559,30 @@
                 <button id="job-details-driver-cancel-btn" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Cancel Assignment</button>
                 <button id="job-details-close-btn" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500">Close</button>
             </div>
+        </div>
+    </div>
+    <div id="tracking-link-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10001]">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+            <h3 class="text-xl font-bold text-white mb-4">Tracking Link</h3>
+            <form id="tracking-link-form">
+                <p class="text-sm text-gray-400 mb-2">Send a real-time tracking link to a third party.</p>
+                <div class="mb-4">
+                    <label for="tracking-link-mobile" class="block text-sm font-medium text-gray-300">Mobile:</label>
+                    <input type="tel" id="tracking-link-mobile" placeholder="Enter mobile number to send link" class="w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
+                </div>
+                <button type="submit" id="generate-tracking-link-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Generate Link</button>
+            </form>
+            <div id="tracking-link-details" class="hidden mt-4 space-y-4">
+                <div class="flex space-x-2">
+                    <input type="text" id="tracking-link-url" readonly class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white">
+                    <button id="copy-tracking-link-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Copy</button>
+                </div>
+                <div class="text-center">
+                    <p class="text-gray-400 mb-2">Or scan QR Code</p>
+                    <div id="tracking-link-qrcode" class="flex justify-center p-2 bg-white rounded-lg w-36 h-36 mx-auto"></div>
+                </div>
+            </div>
+            <button id="tracking-link-close-btn" class="mt-6 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500">Close</button>
         </div>
     </div>
     <div id="admin-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -747,15 +756,19 @@
         const jobDetailsCloseBtn = document.getElementById('job-details-close-btn');
         const printJobBtn = document.getElementById('print-job-btn');
 
-        // Third Party Invite UI
-        const thirdPartyInviteSection = document.getElementById('third-party-invite-section');
-        const generateInviteForm = document.getElementById('generate-invite-form');
-        const jobDetailsThirdPartyMobile = document.getElementById('job-details-third-party-mobile');
-        const generateInviteBtn = document.getElementById('generate-invite-btn');
-        const inviteLinkDetails = document.getElementById('invite-link-details');
-        const thirdPartyShareLink = document.getElementById('third-party-share-link');
-        const copyThirdPartyLinkBtn = document.getElementById('copy-third-party-link-btn');
-        const thirdPartyQrcodeEl = document.getElementById('third-party-qrcode');
+        // Tracking Link UI
+        const trackingLinkSection = document.getElementById('tracking-link-section');
+        const trackingLinkContainer = document.getElementById('tracking-link-container');
+        const trackingLinkModal = document.getElementById('tracking-link-modal');
+        const trackingLinkForm = document.getElementById('tracking-link-form');
+        const trackingLinkMobileInput = document.getElementById('tracking-link-mobile');
+        const generateTrackingLinkBtn = document.getElementById('generate-tracking-link-btn');
+        const trackingLinkDetails = document.getElementById('tracking-link-details');
+        const trackingLinkUrlInput = document.getElementById('tracking-link-url');
+        const copyTrackingLinkBtn = document.getElementById('copy-tracking-link-btn');
+        const trackingLinkQrcodeEl = document.getElementById('tracking-link-qrcode');
+        const trackingLinkCloseBtn = document.getElementById('tracking-link-close-btn');
+
 
         // Public View UI
         const publicJobContainer = document.getElementById('public-job-container');
@@ -798,6 +811,7 @@
             currentJobChatUnsubscribe: null,
             autocompleteInstances: [],
             passwordJoinCompanyId: null,
+            currentJobIdForModal: null,
         };
 
         // --- Main App Initialization ---
@@ -1657,6 +1671,7 @@
         }
 
         async function showJobDetailsModal(job) {
+            AppState.currentJobIdForModal = job.id;
             const assignedDrivers = (job.assignedDrivers || []).map(driver => driver.name).join(', ');
             
             let destinationsHTML = '';
@@ -1719,21 +1734,20 @@
                 dispatcherClosingCommentSection.classList.add('hidden');
             }
 
-            // Third-Party Invite Logic
-            thirdPartyInviteSection.classList.toggle('hidden', !checkPermission('canCreateJob'));
-            jobDetailsThirdPartyMobile.value = job.thirdPartyMobile || '';
+            // Tracking Link UI Logic
+            trackingLinkSection.classList.toggle('hidden', !checkPermission('canCreateJob'));
+            trackingLinkContainer.innerHTML = '';
+            const button = document.createElement('button');
+            button.className = 'w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700';
+            button.dataset.jobId = job.id;
             if (job.thirdPartyInviteId) {
-                generateInviteForm.classList.add('hidden');
-                const url = `${window.location.origin}${window.location.pathname}?jobId=${job.id}&inviteId=${job.thirdPartyInviteId}`;
-                thirdPartyShareLink.value = url;
-                thirdPartyQrcodeEl.innerHTML = '';
-                new QRCode(thirdPartyQrcodeEl, { text: url, width: 128, height: 128 });
-                inviteLinkDetails.classList.remove('hidden');
+                button.textContent = 'View Tracking Link';
+                button.id = 'view-tracking-link-btn';
             } else {
-                generateInviteForm.classList.remove('hidden');
-                inviteLinkDetails.classList.add('hidden');
+                button.textContent = 'Create Tracking Link';
+                button.id = 'create-tracking-link-btn';
             }
-            generateInviteBtn.dataset.jobId = job.id;
+            trackingLinkContainer.appendChild(button);
 
 
             const finalDestination = job.destinations ? job.destinations[job.destinations.length - 1] : job.destination;
@@ -2565,6 +2579,91 @@
         }
 
         addDestinationBtn.addEventListener('click', addDestinationInput);
+        
+        // --- Tracking Link Logic ---
+        trackingLinkContainer.addEventListener('click', (e) => {
+            const jobId = e.target.dataset.jobId;
+            if (!jobId) return;
+            const job = AppState.allJobs.find(j => j.id === jobId);
+            if (!job) return;
+
+            trackingLinkMobileInput.value = job.thirdPartyMobile || '';
+            
+            if (job.thirdPartyInviteId) {
+                // Link exists, just show the details
+                const url = `${window.location.origin}${window.location.pathname}?jobId=${job.id}&inviteId=${job.thirdPartyInviteId}`;
+                trackingLinkUrlInput.value = url;
+                trackingLinkQrcodeEl.innerHTML = '';
+                new QRCode(trackingLinkQrcodeEl, { text: url, width: 128, height: 128 });
+                trackingLinkForm.classList.add('hidden');
+                trackingLinkDetails.classList.remove('hidden');
+            } else {
+                // No link, show the form to create one
+                trackingLinkForm.classList.remove('hidden');
+                trackingLinkDetails.classList.add('hidden');
+            }
+            trackingLinkModal.classList.remove('hidden');
+        });
+
+        trackingLinkForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const jobId = AppState.currentJobIdForModal;
+            if (!jobId) return;
+
+            const mobile = trackingLinkMobileInput.value.trim();
+            const inviteId = crypto.randomUUID();
+            const jobRef = doc(db, AppState.jobsPath, jobId);
+            const publicJobRef = doc(db, AppState.publicJobsPath, jobId);
+            const jobData = AppState.allJobs.find(j => j.id === jobId);
+
+            try {
+                const batch = writeBatch(db);
+                batch.update(jobRef, { 
+                    thirdPartyInviteId: inviteId,
+                    thirdPartyMobile: mobile,
+                    log: arrayUnion({ text: `Tracking link created by ${AppState.currentUser.name}`, timestamp: new Date() })
+                });
+                batch.set(publicJobRef, {
+                    jobName: jobData.jobName,
+                    origin: jobData.origin,
+                    destinations: jobData.destinations,
+                    driverLocation: null, // Will be updated by driver
+                    status: jobData.status
+                });
+                await batch.commit();
+
+                showToast("Tracking link generated!", "success");
+                // Now show the generated link details
+                const url = `${window.location.origin}${window.location.pathname}?jobId=${jobId}&inviteId=${inviteId}`;
+                trackingLinkUrlInput.value = url;
+                trackingLinkQrcodeEl.innerHTML = '';
+                new QRCode(trackingLinkQrcodeEl, { text: url, width: 128, height: 128 });
+                trackingLinkForm.classList.add('hidden');
+                trackingLinkDetails.classList.remove('hidden');
+                
+                // Update the button in the job details modal
+                const buttonInDetails = document.querySelector(`#tracking-link-container button[data-job-id="${jobId}"]`);
+                if(buttonInDetails) {
+                    buttonInDetails.textContent = 'View Tracking Link';
+                    buttonInDetails.id = 'view-tracking-link-btn';
+                }
+
+            } catch (error) {
+                console.error("Error generating tracking link:", error);
+                showToast("Failed to generate tracking link.", "error");
+            }
+        });
+
+        copyTrackingLinkBtn.addEventListener('click', () => {
+            trackingLinkUrlInput.select();
+            document.execCommand('copy');
+            showToast('Link copied to clipboard!', 'success');
+        });
+
+        trackingLinkCloseBtn.addEventListener('click', () => {
+            trackingLinkModal.classList.add('hidden');
+        });
+
 
         // --- Offline Handling ---
         window.addEventListener('online', () => {
