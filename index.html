@@ -1705,20 +1705,26 @@
                 <p><strong>Assigned Drivers:</strong> ${assignedDrivers || 'None'}</p>
                 <p class="mt-2 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
             `;
-
-            cancelJobBtn.classList.toggle('hidden', job.status === 'completed' || job.status === 'cancelled' || !checkPermission('canDeleteJob'));
-            cancelJobBtn.dataset.jobId = job.id;
-
-            if (!AppState.isDispatchView) {
-                jobDetailsDriverActions.classList.remove('hidden');
-                const isAssigned = (job.assignedDrivers || []).some(d => d.id === AppState.currentUser.id);
-                jobDetailsAcceptBtn.classList.toggle('hidden', job.status !== 'unassigned');
-                jobDetailsDriverCancelBtn.classList.toggle('hidden', !isAssigned || job.status !== 'in-progress');
-                jobDetailsAcceptBtn.dataset.jobId = job.id;
-                jobDetailsDriverCancelBtn.dataset.jobId = job.id;
-            } else {
+            
+            // FIX: Refined button visibility logic
+            const isAssignedToMe = (job.assignedDrivers || []).some(d => d.id === AppState.currentUser.id);
+            
+            if (AppState.isDispatchView) {
+                // Dispatcher View
                 jobDetailsDriverActions.classList.add('hidden');
+                cancelJobBtn.classList.toggle('hidden', job.status === 'completed' || job.status === 'cancelled' || !checkPermission('canDeleteJob'));
+                jobDetailsDriverCancelBtn.classList.add('hidden');
+            } else {
+                // Driver View
+                jobDetailsDriverActions.classList.remove('hidden');
+                jobDetailsAcceptBtn.classList.toggle('hidden', job.status !== 'unassigned');
+                jobDetailsDriverCancelBtn.classList.toggle('hidden', !isAssignedToMe || job.status !== 'in-progress');
+                cancelJobBtn.classList.add('hidden');
             }
+            
+            cancelJobBtn.dataset.jobId = job.id;
+            jobDetailsAcceptBtn.dataset.jobId = job.id;
+            jobDetailsDriverCancelBtn.dataset.jobId = job.id;
             
             if (job.proofOfDeliveryURL) {
                 podImage.src = job.proofOfDeliveryURL;
