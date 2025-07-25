@@ -885,66 +885,166 @@
                 AppState.companiesPath = `/artifacts/${appId}/public/data/companies`;
                 AppState.publicJobsPath = `/artifacts/${appId}/public/data/publicJobs`;
                 
-                let isInitialAuthCheck = true;
+                // NEW: Check for public tracking link on page load
+                const urlParams = new URLSearchParams(window.location.search);
+                const publicJobId = urlParams.get('jobId');
+                const inviteId = urlParams.get('inviteId');
 
-                onAuthStateChanged(auth, async (user) => {
-                    loadingOverlay.classList.add('hidden');
-                    if (user) {
-                        isInitialAuthCheck = false;
-                        if (navigator.geolocation) {
-                            navigator.permissions.query({ name: 'geolocation' }).then(async (permissionStatus) => {
-                                if (permissionStatus.state === 'granted') {
-                                    await setupUserSession(user);
-                                } else if (permissionStatus.state === 'prompt') {
-                                    navigator.geolocation.getCurrentPosition(
-                                        async () => { await setupUserSession(user); },
-                                        () => {
-                                            showToast("Geolocation is required for this app.", "error");
-                                            cleanupUserSession();
-                                        }
-                                    );
-                                } else {
-                                    showToast("Geolocation is denied. Please enable it in browser settings.", "error");
-                                    cleanupUserSession();
-                                }
-                            }).catch(err => {
-                                showToast("Could not check geolocation permissions.", "error");
-                                console.error("Geolocation permission query error:", err);
-                                cleanupUserSession();
-                            });
-                        } else {
-                            showToast("Geolocation is not supported by your browser.", "error");
-                            cleanupUserSession();
-                        }
-                    } else { // User is null
-                        if (isInitialAuthCheck) {
-                            isInitialAuthCheck = false; // Prevent re-running auto-login
-                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                try { 
-                                    await signInWithCustomToken(auth, __initial_auth_token); 
-                                } catch (error) {
-                                    console.error("Custom token sign-in failed, trying anonymous:", error);
-                                    await signInAnonymously(auth).catch(anonError => console.error("Anonymous sign-in also failed:", anonError));
-                                }
-                            } else {
-                               try {
-                                    await signInAnonymously(auth);
-                                } catch (anonError) {
-                                    console.error("Anonymous sign-in failed:", anonError);
-                                    showToast("Could not sign you in automatically.", "error");
-                                }
-                            }
-                        } else {
-                            // This block runs on explicit logout, after the initial check is done.
-                            cleanupUserSession();
-                        }
-                    }
-                });
+                if (publicJobId && inviteId) {
+                    // This is a public tracking link visitor
+                    await loadPublicJobView(publicJobId, inviteId);
+                } else {
+                    // This is a regular user, proceed with normal auth flow
+                    startRegularAuthFlow();
+                }
 
             } catch (e) {
                 console.error("Critical Firebase initialization error:", e);
                 loadingOverlay.innerHTML = `<p class="text-red-400">Critical Error: ${e.message}</p>`;
             }
+        }
+
+        function startRegularAuthFlow() {
+            let isInitialAuthCheck = true;
+            onAuthStateChanged(auth, async (user) => {
+                loadingOverlay.classList.add('hidden');
+                if (user) {
+                    isInitialAuthCheck = false;
+                    if (navigator.geolocation) {
+                        navigator.permissions.query({ name: 'geolocation' }).then(async (permissionStatus) => {
+                            if (permissionStatus.state === 'granted') {
+                                await setupUserSession(user);
+                            } else if (permissionStatus.state === 'prompt') {
+                                navigator.geolocation.getCurrentPosition(
+                                    async () => { await setupUserSession(user); },
+                                    () => {
+                                        showToast("Geolocation is required for this app.", "error");
+                                        cleanupUserSession();
+                                    }
+                                );
+                            } else {
+                                showToast("Geolocation is denied. Please enable it in browser settings.", "error");
+                                cleanupUserSession();
+                            }
+                        }).catch(err => {
+                            showToast("Could not check geolocation permissions.", "error");
+                            console.error("Geolocation permission query error:", err);
+                            cleanupUserSession();
+                        });
+                    } else {
+                        showToast("Geolocation is not supported by your browser.", "error");
+                        cleanupUserSession();
+                    }
+                } else { // User is null
+                    if (isInitialAuthCheck) {
+                        isInitialAuthCheck = false; // Prevent re-running auto-login
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            try { 
+                                await signInWithCustomToken(auth, __initial_auth_token); 
+                            } catch (error) {
+                                console.error("Custom token sign-in failed, trying anonymous:", error);
+                                await signInAnonymously(auth).catch(anonError => console.error("Anonymous sign-in also failed:", anonError));
+                            }
+                        } else {
+                           try {
+                                await signInAnonymously(auth);
+                            } catch (anonError) {
+                                console.error("Anonymous sign-in failed:", anonError);
+                                showToast("Could not sign you in automatically.", "error");
+                            }
+                        }
+                    } else {
+                        // This block runs on explicit logout, after the initial check is done.
+                        cleanupUserSession();
+                    }
+                }
+            });
+        }
+
+        async function loadPublicJobView(jobId, inviteId) {
+            loadingOverlay.classList.add('hidden');
+            authContainer.classList.add('hidden');
+            appContainer.classList.add('hidden');
+            publicJobContainer.classList.remove('hidden');
+
+            await loadGoogleMapsScript();
+            initMap('public-map', true);
+            
+            const publicJobRef = doc(db, AppState.publicJobsPath, jobId);
+            
+            onSnapshot(publicJobRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const job = docSnap.data();
+                    // Basic validation could be added here to check inviteId if it were stored on the public doc
+                    
+                    const finalDestination = job.destinations ? job.destinations[job.destinations.length - 1] : 'N/A';
+                    publicJobDetailsEl.innerHTML = `
+                        <p><strong>Job:</strong> ${job.jobName || 'N/A'}</p>
+                        <p><strong>Status:</strong> ${job.status}</p>
+                        <p><strong>From:</strong> ${job.origin}</p>
+                        <p><strong>To:</strong> ${finalDestination}</p>
+                    `;
+                    
+                    // Clear previous markers/routes
+                    for (const key in AppState.driverMapMarkers) {
+                        AppState.driverMapMarkers[key].setMap(null);
+                    }
+                    AppState.driverMapMarkers = {};
+                     for (const key in AppState.jobRouteRenderers) {
+                        AppState.jobRouteRenderers[key].setMap(null);
+                    }
+                    AppState.jobRouteRenderers = {};
+
+                    if (job.driverLocation) {
+                        const driverPos = { lat: job.driverLocation.latitude, lng: job.driverLocation.longitude };
+                        AppState.driverMapMarkers['publicDriver'] = new google.maps.Marker({
+                            position: driverPos,
+                            map: AppState.publicMap,
+                            title: "Driver Location",
+                            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
+                        });
+                        
+                        // Draw route from driver to destination
+                         if (AppState.directionsService) {
+                            const renderer = new google.maps.DirectionsRenderer({
+                                map: AppState.publicMap, suppressMarkers: true, preserveViewport: false,
+                                polylineOptions: { strokeColor: '#4285F4', strokeWeight: 5, strokeOpacity: 0.8 },
+                            });
+                            AppState.jobRouteRenderers['publicRoute'] = renderer;
+                            AppState.directionsService.route({
+                                origin: driverPos,
+                                destination: finalDestination,
+                                travelMode: google.maps.TravelMode.DRIVING
+                            }, (response, status) => {
+                                if (status === 'OK') {
+                                    renderer.setDirections(response);
+                                }
+                            });
+                         }
+                    } else {
+                        // If no driver location, just draw the planned route
+                         if (AppState.directionsService) {
+                            const renderer = new google.maps.DirectionsRenderer({
+                                map: AppState.publicMap, suppressMarkers: false, preserveViewport: false,
+                                polylineOptions: { strokeColor: '#888888', strokeWeight: 5, strokeOpacity: 0.8 },
+                            });
+                            AppState.jobRouteRenderers['publicRoute'] = renderer;
+                            AppState.directionsService.route({
+                                origin: job.origin,
+                                destination: finalDestination,
+                                travelMode: google.maps.TravelMode.DRIVING
+                            }, (response, status) => {
+                                if (status === 'OK') {
+                                    renderer.setDirections(response);
+                                }
+                            });
+                         }
+                    }
+
+                } else {
+                    publicJobDetailsEl.innerHTML = `<p class="text-red-400">This tracking link is invalid or has expired.</p>`;
+                }
+            });
         }
 
         async function setupUserSession(user) {
@@ -1615,7 +1715,7 @@
                 await loader.importLibrary('routes');
                 
                 console.log("Google Maps libraries loaded successfully.");
-                initMap(); 
+                if(!AppState.publicMap) initMap(); 
                 AppState.directionsService = new google.maps.DirectionsService();
                 setupAutocomplete();
 
@@ -2610,8 +2710,8 @@
             if (job.thirdPartyInviteId) {
                 const url = `${window.location.origin}${window.location.pathname}?jobId=${job.id}&inviteId=${job.thirdPartyInviteId}`;
                 trackingLinkUrlInput.value = url;
-                trackingLinkQrcodeEl.innerHTML = '';
-                new QRCode(trackingLinkQrcodeEl, { text: url, width: 128, height: 128 });
+                qrcodeEl.innerHTML = '';
+                new QRCode(qrcodeEl, { text: url, width: 128, height: 128 });
                 trackingLinkForm.classList.add('hidden');
                 trackingLinkDetails.classList.remove('hidden');
             } else {
@@ -2732,7 +2832,6 @@
 
         window.onload = () => {
             initializeFirebase();
-            loadGoogleMapsScript();
         };
 
     </script>
