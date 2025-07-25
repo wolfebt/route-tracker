@@ -346,54 +346,69 @@
     </div>
     <div id="user-guide-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10004]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4 flex flex-col" style="max-height: 90vh;">
-            <h3 class="text-2xl font-bold text-white mb-4">Route Tracker: A Simple Guide</h3>
+            <h3 class="text-2xl font-bold text-white mb-4">Route Tracker</h3>
             <div class="overflow-y-auto text-gray-300 space-y-4">
+                <p>Welcome to Route Tracker! This guide will walk you through all the features of the app, whether you're a dispatcher managing the fleet or a driver on the road.</p>
                 <div>
                     <h4 class="text-lg font-semibold text-teal-400">1. Getting Started: Your First Login</h4>
-                    <p>Before you can use the app, you'll need to sign in and set up your company.</p>
+                    <p>Before you can use the app, you'll need to sign in and join your company.</p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li><strong>Sign In:</strong> Click the <strong>"Sign in with Google"</strong> button to use your Google account.</li>
-                        <li><strong>Allow Location:</strong> Your browser will ask for permission to share your location. Please click <strong>"Allow"</strong>, as this is necessary for the map and tracking features to work.</li>
+                        <li><strong>Sign In:</strong> On the main screen, click the <strong>"Sign in with Google"</strong> button to securely log in with your Google account.</li>
+                        <li><strong>Allow Location:</strong> Your browser will ask for permission to share your location. Please click <strong>"Allow"</strong>. This is essential for the map and live tracking features to work.</li>
                         <li><strong>Join or Create a Company:</strong>
                             <ul class="list-disc list-inside ml-4">
-                                <li><strong>To Create:</strong> If you are the first person from your company to use the app, type in your company's name, set an optional password, and click <strong>"Create & Join"</strong>. You will automatically become the administrator.</li>
-                                <li><strong>To Join:</strong> Find your company in the list and click <strong>"Join"</strong>. If it's password-protected, you'll be asked to enter it.</li>
+                                <li><strong>To Join:</strong> A modal will appear with a list of existing companies. Find your company in the list and click <strong>"Join"</strong>. If it's password-protected, you'll be prompted to enter it.</li>
+                                <li><strong>To Create:</strong> If you are the first person from your organization, you can create a new company. Type in your company's name, set an optional password for others to join, and click <strong>"Create & Join"</strong>. The creator automatically becomes an administrator.</li>
                             </ul>
                         </li>
-                        <li><strong>Set Your Name:</strong> Go to the <strong>Settings</strong> icon (⚙️) in the top right, click <strong>"Edit Profile"</strong>, and enter the name you want displayed to your team.</li>
+                        <li><strong>Set Your Name:</strong> After joining a company, click the <strong>Settings icon (⚙️)</strong> in the top right, select <strong>"Edit Profile"</strong>, and enter the name you want displayed to your team.</li>
                     </ol>
                 </div>
                 <div>
                     <h4 class="text-lg font-semibold text-teal-400">2. The Two Views: Dispatcher vs. Driver</h4>
-                    <p>Route Tracker has two main views. Your company administrator sets your role.</p>
+                    <p>Route Tracker has two main roles, which are set by a company administrator. Your view of the app will change based on your role.</p>
                     <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Dispatcher View:</strong> This is the command center. You can see all jobs, all drivers, and the full map. You have the power to create, assign, and manage jobs.</li>
-                        <li><strong>Driver View:</strong> This is the on-the-road view. You see only your current job and a list of jobs that are available for you to take.</li>
+                        <li><strong>Dispatcher View (Admin):</strong> This is the command center. You can see all jobs (current and archived), the real-time location of all active drivers, and have access to management actions like creating jobs and managing user roles.</li>
+                        <li><strong>Driver View:</strong> This is the streamlined, on-the-road view. You will only see your currently assigned job and a list of open jobs available for you to accept.</li>
                     </ul>
                 </div>
                 <div>
-                    <h4 class="text-lg font-semibold text-teal-400">3. For Dispatchers: Managing the Day</h4>
-                    <p>As a dispatcher, your main screen is the dashboard.</p>
+                    <h4 class="text-lg font-semibold text-teal-400">3. For Dispatchers: Managing Operations</h4>
+                    <p>As a dispatcher, your sidebar is your main dashboard.</p>
                     <ul class="list-disc list-inside space-y-2 mt-2">
                         <li><strong>Creating a Job:</strong>
                             <ol class="list-decimal list-inside ml-4">
-                                <li>Click the <strong>"Create Job"</strong> button.</li>
-                                <li>Fill in the details: a name for the job, the starting point, and at least one destination. You can add multiple stops by clicking <strong>"Add Destination"</strong>.</li>
-                                <li>Optionally, add customer contact info and any special notes.</li>
-                                <li>You can either <strong>assign the job directly</strong> to an available driver from the dropdown menu or leave it unassigned for any driver to claim.</li>
+                                <li>Click the green <strong>"Create Job"</strong> button.</li>
+                                <li>Fill in the job details: a name, the starting point, and at least one destination. Use the <strong>"Add Destination"</strong> button for multi-stop routes.</li>
+                                <li>If you have more than one destination, you can check the <strong>"Optimize Route"</strong> box to have Google Maps calculate the most efficient order of stops.</li>
+                                <li>Optionally, add customer contact info and any special notes for the driver.</li>
+                                <li>You can either <strong>assign the job directly</strong> to an available driver from the dropdown menu or leave it unassigned to post it as an open job for any driver to claim.</li>
                             </ol>
                         </li>
-                        <li><strong>Tracking Progress:</strong>
+                        <li><strong>Tracking & Managing Jobs:</strong>
                             <ul class="list-disc list-inside ml-4">
-                                <li><strong>The Map:</strong> The main map shows you the real-time location of all your active drivers. In-progress job routes are drawn on the map.</li>
-                                <li><strong>The Dashboard:</strong> "Current" tab shows active jobs, "Archive" shows old ones, and the "Drivers List" shows driver status.</li>
+                                <li><strong>The Map:</strong> The main map shows you the real-time location of all your active drivers. In-progress job routes are drawn on the map, color-coded for clarity.</li>
+                                <li><strong>The Dashboard:</strong>
+                                    <ul class="list-disc list-inside ml-4">
+                                        <li>Use the <strong>"Current"</strong> and <strong>"Archive"</strong> tabs to switch between active and completed jobs.</li>
+                                        <li>The <strong>"Drivers"</strong> list shows all currently online drivers, their status (Available, On Break, On Trip), and their contact info.</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Job Details:</strong> Click on any job card in the list to open a detailed view. Here you can:
+                                    <ul class="list-disc list-inside ml-4">
+                                        <li>Review all job information.</li>
+                                        <li>Read and send messages in the job-specific chat.</li>
+                                        <li>Create a <strong>Public Tracking Link</strong> to share with customers.</li>
+                                        <li><strong>Cancel</strong> the job if needed.</li>
+                                    </ul>
+                                </li>
                             </ul>
                         </li>
                         <li><strong>Completing a Job:</strong>
                             <ol class="list-decimal list-inside ml-4">
-                                <li>When a driver finishes, the job card turns green.</li>
-                                <li>Click the card to review their notes/photos.</li>
-                                <li>Click <strong>"Finalize"</strong> to add your own comments and officially close the job.</li>
+                                <li>When a driver marks a job as complete, its card will turn green and move into a "pending-completion" state.</li>
+                                <li>Click the card to review the driver's completion comments and any photos they uploaded.</li>
+                                <li>Click the <strong>"Finalize"</strong> button, add your own closing comments if needed, and the job will be moved to the archive.</li>
                             </ol>
                         </li>
                     </ul>
@@ -402,17 +417,41 @@
                     <h4 class="text-lg font-semibold text-teal-400">4. For Drivers: On the Road</h4>
                     <p>As a driver, your view is focused on the task at hand.</p>
                      <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Finding a Job:</strong> The <strong>"Open Job Postings"</strong> panel shows available jobs. Click one to see details, then click <strong>"Accept Job"</strong> to claim it.</li>
-                        <li><strong>Your Current Job:</strong> Your active job appears at the top. Use the buttons to <strong>Navigate</strong> (opens Google Maps), send <strong>Messages</strong> to dispatch, or <strong>Complete</strong> the job when you're finished.</li>
-                        <li><strong>Your Status:</strong> Use the <strong>"My Status"</strong> dropdown to set yourself as "Available" or "On Break".</li>
+                        <li><strong>Finding & Accepting a Job:</strong>
+                            <ul class="list-disc list-inside ml-4">
+                                <li>The <strong>"Open Job Postings"</strong> panel shows all unassigned jobs.</li>
+                                <li>Click on a job to view its details. If you want to take it, click the <strong>"Accept Job"</strong> button.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Your Current Job:</strong>
+                            <ul class="list-disc list-inside ml-4">
+                                <li>Once you accept a job, it appears in the <strong>"My Current Job"</strong> panel at the top.</li>
+                                <li>From here, you can:
+                                    <ul class="list-disc list-inside ml-4">
+                                        <li><strong>Navigate:</strong> Opens Google Maps with the route pre-filled for turn-by-turn directions.</li>
+                                        <li><strong>Complete:</strong> When you have finished the job, click this. You'll be prompted to add a completion comment and can optionally upload a photo (e.g., for proof of delivery).</li>
+                                    </ul>
+                                </li>
+                                <li>Clicking anywhere on the panel will open the full job details view, where you can also access the message chat with dispatch.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Your Status:</strong>
+                            <ul class="list-disc list-inside ml-4">
+                                <li>Use the <strong>"My Status"</strong> dropdown to set your availability. Set it to <strong>"Available"</strong> when you are ready for a job, and <strong>"On Break"</strong> when you are not. Your status is automatically set to "On Trip" when you accept a job.</li>
+                            </ul>
+                        </li>
                     </ul>
                 </div>
                  <div>
                     <h4 class="text-lg font-semibold text-teal-400">5. Key Features for Everyone</h4>
                      <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Messaging:</strong> Every job has its own private chat. A pulsing border on a job card means you have an unread message.</li>
-                        <li><strong>Customer Tracking Link:</strong> Dispatchers can generate a special link for customers to see their driver's location in real-time.</li>
-                        <li><strong>User Guide:</strong> Need a refresher? Click the <strong>Settings</strong> icon (⚙️) and then <strong>"User Guide"</strong> to see these instructions again.</li>
+                        <li><strong>Messaging:</strong> Every job has its own private chat log. When a new message arrives in a job you're viewing, the job card in the list will have a <strong>pulsing border</strong> to notify you.</li>
+                        <li><strong>Settings & Admin Controls:</strong>
+                            <ul class="list-disc list-inside ml-4">
+                                <li>The <strong>Settings icon (⚙️)</strong> gives you access to edit your profile, invite new users to your company, and view this user guide.</li>
+                                <li>If you are an administrator, you will also see an <strong>"Admin: User Roles"</strong> button. This allows you to manage the permissions for every user in your company, promoting them to dispatchers or changing their roles as needed.</li>
+                            </ul>
+                        </li>
                     </ul>
                 </div>
             </div>
