@@ -1083,6 +1083,9 @@
                     }
                     AppState.jobRouteRenderers = {};
 
+                    const finalDestination = job.destinations[job.destinations.length - 1];
+                    const waypoints = job.destinations.slice(0, -1).map(d => ({ location: d, stopover: true }));
+
                     if (job.driverLocation) {
                         const driverPos = { lat: job.driverLocation.latitude, lng: job.driverLocation.longitude };
                         AppState.driverMapMarkers['publicDriver'] = new google.maps.Marker({
@@ -1101,12 +1104,13 @@
                             AppState.jobRouteRenderers['publicRoute'] = renderer;
                             AppState.directionsService.route({
                                 origin: driverPos,
-                                destination: job.destinations[job.destinations.length - 1],
+                                destination: finalDestination,
+                                waypoints: waypoints,
                                 travelMode: google.maps.TravelMode.DRIVING
                             }, (response, status) => {
                                 if (status === 'OK') {
                                     renderer.setDirections(response);
-                                    const leg = response.routes[0].legs[0];
+                                    const leg = response.routes[0].legs[response.routes[0].legs.length - 1];
                                     document.getElementById('public-job-distance').textContent = leg.distance.text;
                                     document.getElementById('public-job-eta').textContent = leg.duration.text;
                                 }
@@ -1122,7 +1126,8 @@
                             AppState.jobRouteRenderers['publicRoute'] = renderer;
                             AppState.directionsService.route({
                                 origin: job.origin,
-                                destination: job.destinations[job.destinations.length - 1],
+                                destination: finalDestination,
+                                waypoints: waypoints,
                                 travelMode: google.maps.TravelMode.DRIVING
                             }, (response, status) => {
                                 if (status === 'OK') {
