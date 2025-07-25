@@ -2070,7 +2070,7 @@
                         status: 'pending-completion',
                         driverCompletionComment: comment,
                         assignedDrivers: newAssignedDrivers,
-                        proofOfDeliveryURL: podURL || jobData.proofOfDeliveryURL, // Keep old if new not provided
+                        proofOfDeliveryURL: podURL || jobData.proofOfDeliveryURL || null, // FIX: Ensure value is not undefined
                         log: arrayUnion({ text: `Marked as pending completion by ${AppState.currentUser.name}`, timestamp: new Date() })
                     };
 
@@ -2582,6 +2582,21 @@
         addDestinationBtn.addEventListener('click', addDestinationInput);
         
         // --- Tracking Link Logic ---
+
+        // IMPORTANT: FIREBASE RULES REQUIREMENT
+        // For the "Create Tracking Link" feature to work, you must update your Firestore security rules.
+        // This feature creates a public document that anyone with the link can view.
+        // Your rules need to allow authenticated users to create documents in the 'publicJobs' collection.
+        //
+        // Example Rule for firestore.rules:
+        // match /artifacts/{appId}/public/data/publicJobs/{jobId} {
+        //   // Allow authenticated users (drivers, dispatchers) to create the public tracking document.
+        //   allow create: if request.auth != null;
+        //   // Allow anyone with the link to read the job status and driver location.
+        //   allow read: if true;
+        //   // Optional: Restrict updates to prevent tampering.
+        //   allow update, delete: if false; // Or add more specific admin/owner logic
+        // }
         function setupTrackingLinkModal(job) {
             AppState.currentJobIdForModal = job.id;
             trackingLinkMobileInput.value = job.thirdPartyMobile || job.contactNumber || '';
