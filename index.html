@@ -591,13 +591,12 @@
                 <button id="job-details-accept-btn" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Accept Job</button>
             </div>
             <div class="mt-6 pt-4 border-t border-gray-700 flex justify-between items-center flex-shrink-0 space-x-2">
-                <div>
-                    <button id="edit-job-btn" class="hidden px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">Edit Job</button>
-                    <button id="unarchive-job-modal-btn" class="hidden px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Unarchive</button>
-                </div>
                 <div class="flex-grow flex justify-end space-x-2">
+                    <button id="edit-job-btn" class="hidden px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">Edit</button>
+                    <button id="archive-job-btn" class="hidden px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Archive</button>
+                    <button id="unarchive-job-modal-btn" class="hidden px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Unarchive</button>
                     <button id="print-job-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Print</button>
-                    <button id="cancel-job-btn" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Cancel Job</button>
+                    <button id="delete-job-btn" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
                     <button id="job-details-driver-cancel-btn" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Cancel Assignment</button>
                     <button id="job-details-close-btn" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500">Close</button>
                 </div>
@@ -795,8 +794,9 @@
         const jobDetailsAcceptBtn = document.getElementById('job-details-accept-btn');
         const jobDetailsDriverCancelBtn = document.getElementById('job-details-driver-cancel-btn');
         const editJobBtn = document.getElementById('edit-job-btn');
+        const archiveJobBtn = document.getElementById('archive-job-btn');
+        const deleteJobBtn = document.getElementById('delete-job-btn');
         const unarchiveJobModalBtn = document.getElementById('unarchive-job-modal-btn');
-        const cancelJobBtn = document.getElementById('cancel-job-btn');
         const podSection = document.getElementById('pod-section');
         const podImage = document.getElementById('pod-image');
         const driverCompletionCommentSection = document.getElementById('driver-completion-comment-section');
@@ -1357,11 +1357,13 @@
                     statusTag = `<span class="text-xs font-semibold px-2 py-1 bg-gray-600 text-white rounded-full">Archived</span>`;
                 } else if (job.status === 'pending-completion') {
                     statusClass = 'bg-green-900 hover:bg-green-800';
+                    statusTag = `<span class="text-xs font-semibold px-2 py-1 bg-green-600 text-white rounded-full">Pending</span>`;
                 } else if (job.status === 'in-progress') {
                     li.style.borderColor = jobColor;
-                    statusTag = `<span class="text-xs font-semibold px-2 py-1 bg-green-600 text-white rounded-full">In Progress</span>`;
+                    statusTag = `<span class="text-xs font-semibold px-2 py-1 bg-blue-600 text-white rounded-full">In Progress</span>`;
                 } else if (job.status === 'completed') {
                     borderColorClass = 'border-gray-600';
+                    statusTag = `<span class="text-xs font-semibold px-2 py-1 bg-gray-600 text-white rounded-full">Completed</span>`;
                 } else if (job.status === 'cancelled') {
                     statusTag = `<span class="text-xs font-semibold px-2 py-1 bg-red-600 text-white rounded-full">Cancelled</span>`;
                 } else if (job.status === 'unassigned') {
@@ -1376,19 +1378,6 @@
                 
                 const assignedDrivers = (job.assignedDrivers || []).map(driver => driver.name).join(', ');
                 
-                let actionButtons = '';
-                if (isArchivedView) {
-                    if (checkPermission('canDeleteJob')) {
-                        actionButtons = `<button data-job-id="${job.id}" class="unarchive-job-btn w-full mt-2 px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Unarchive</button>`;
-                    }
-                } else if (job.status === 'pending-completion' && checkPermission('canCreateJob')) {
-                    actionButtons = `<button data-job-id="${job.id}" class="finalize-job-btn w-full mt-2 px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-500">Finalize</button>`;
-                } else if (checkPermission('canDeleteJob')) {
-                    actionButtons = `<div class="grid grid-cols-2 gap-2 mt-2">
-                            <button data-job-id="${job.id}" class="archive-job-btn w-full px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Archive</button>
-                            <button data-job-id="${job.id}" class="delete-job-btn w-full px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>
-                        </div>`;
-                }
                 const finalDestination = job.destinations ? job.destinations[job.destinations.length - 1] : job.destination;
                 li.innerHTML = `
                     <div class="flex justify-between items-start">
@@ -1399,7 +1388,6 @@
                     <p class="text-gray-400"><strong class="text-gray-200">To:</strong> ${finalDestination}</p>
                     <p class="text-gray-400"><strong class="text-gray-200">Openings:</strong> ${ (job.assignedDrivers || []).length} of ${job.driversNeeded}</p>
                     ${assignedDrivers ? `<p class="text-gray-400"><strong class="text-gray-200">Drivers:</strong> ${assignedDrivers}</p>` : ''}
-                    ${actionButtons}
                 `;
                 jobsListEl.appendChild(li);
             });
@@ -1411,6 +1399,7 @@
                 await deleteDoc(doc(db, AppState.jobsPath, jobId));
                 await deleteDoc(doc(db, AppState.publicJobsPath, jobId)).catch(()=>{}); // Also delete public job
                 showToast('Job has been deleted.', 'success');
+                closeJobDetailsModal();
             } catch (error) {
                 console.error("Error deleting job:", error);
                 showToast("Failed to delete job.", "error");
@@ -1423,6 +1412,7 @@
                 await updateDoc(doc(db, AppState.jobsPath, jobId), { archived: true });
                 await updateDoc(doc(db, AppState.publicJobsPath, jobId), { archived: true }).catch(()=>{});
                 showToast('Job has been archived.', 'success');
+                closeJobDetailsModal();
             } catch (error) {
                 console.error("Error archiving job:", error);
                 showToast("Failed to archive job.", "error");
@@ -1435,26 +1425,10 @@
                 await updateDoc(doc(db, AppState.jobsPath, jobId), { archived: false });
                 await updateDoc(doc(db, AppState.publicJobsPath, jobId), { archived: false }).catch(()=>{});
                 showToast('Job has been unarchived.', 'success');
+                closeJobDetailsModal();
             } catch (error) {
                 console.error("Error unarchiving job:", error);
                 showToast("Failed to unarchive job.", "error");
-            }
-        }
-
-        async function cancelJob(jobId) {
-            if (!checkPermission('canDeleteJob')) return;
-            try {
-                const updateData = { 
-                    status: 'cancelled',
-                    log: arrayUnion({ text: `Job cancelled by ${AppState.currentUser.name}`, timestamp: new Date() })
-                };
-                await updateDoc(doc(db, AppState.jobsPath, jobId), updateData);
-                await updateDoc(doc(db, AppState.publicJobsPath, jobId), { status: 'cancelled' }).catch(()=>{});
-                showToast('Job has been cancelled.', 'success');
-                closeJobDetailsModal();
-            } catch (error) {
-                console.error("Error cancelling job:", error);
-                showToast("Failed to cancel job.", "error");
             }
         }
 
@@ -1860,7 +1834,8 @@
 
             // Reset all buttons and inputs first
             editJobBtn.classList.add('hidden');
-            cancelJobBtn.classList.add('hidden');
+            archiveJobBtn.classList.add('hidden');
+            deleteJobBtn.classList.add('hidden');
             unarchiveJobModalBtn.classList.add('hidden');
             jobDetailsDriverActions.classList.add('hidden');
             jobChatInput.disabled = false;
@@ -1870,13 +1845,15 @@
 
             if (job.archived) {
                 unarchiveJobModalBtn.classList.remove('hidden');
+                deleteJobBtn.classList.remove('hidden');
                 jobChatInput.disabled = true;
                 jobChatForm.querySelector('button').disabled = true;
                 if (trackingLinkBtn) trackingLinkBtn.disabled = true;
             } else {
                 // Logic for non-archived jobs
                 if (isDispatcher) {
-                    cancelJobBtn.classList.toggle('hidden', job.status === 'completed' || job.status === 'cancelled');
+                    archiveJobBtn.classList.remove('hidden');
+                    deleteJobBtn.classList.remove('hidden');
                     editJobBtn.classList.toggle('hidden', job.status === 'completed' || job.status === 'cancelled');
                 } else { // Driver view
                     jobDetailsDriverActions.classList.remove('hidden');
@@ -1886,7 +1863,8 @@
             }
             
             editJobBtn.dataset.jobId = job.id;
-            cancelJobBtn.dataset.jobId = job.id;
+            archiveJobBtn.dataset.jobId = job.id;
+            deleteJobBtn.dataset.jobId = job.id;
             unarchiveJobModalBtn.dataset.jobId = job.id;
             jobDetailsAcceptBtn.dataset.jobId = job.id;
             jobDetailsDriverCancelBtn.dataset.jobId = job.id;
@@ -2125,25 +2103,6 @@
         });
 
         jobsListEl.addEventListener('click', (e) => {
-            const button = e.target.closest('button');
-            if (button) {
-                // Handle button clicks (archive, delete, etc.)
-                const jobId = button.dataset.jobId;
-                if (button.classList.contains('delete-job-btn')) {
-                    showConfirmModal('Delete Job?', 'This action is permanent.', () => deleteJob(jobId));
-                } else if (button.classList.contains('archive-job-btn')) {
-                    archiveJob(jobId);
-                } else if (button.classList.contains('unarchive-job-btn')) {
-                    unarchiveJob(jobId);
-                } else if (button.classList.contains('finalize-job-btn')) {
-                    showCommentModal('Add Closing Comment', (comment) => {
-                        closeOutJob(jobId, comment);
-                    });
-                }
-                return; // Stop further processing if a button was clicked
-            }
-
-            // If a button was not clicked, check for the list item to open details
             const li = e.target.closest('li[data-job-id]');
             if (li) {
                 const job = AppState.allJobs.find(j => j.id === li.dataset.jobId);
@@ -2307,11 +2266,6 @@
             showCommentModal('Add Completion Comment', (comment, file) => {
                 completeJob(jobId, comment, file);
             });
-        });
-
-        cancelJobBtn.addEventListener('click', (e) => {
-            const jobId = e.target.dataset.jobId;
-            showConfirmModal('Cancel Job?', 'This will mark the job as cancelled. This action cannot be undone.', () => cancelJob(jobId));
         });
 
         startNavigationBtn.addEventListener('click', (e) => {
@@ -2730,34 +2684,38 @@
         createJobCancelBtn.addEventListener('click', () => createJobModal.classList.add('hidden'));
         
         jobDetailsCloseBtn.addEventListener('click', closeJobDetailsModal);
+        
+        // Consolidated listener for job details modal footer
         jobDetailsModal.addEventListener('click', (e) => {
-            if (e.target.id === 'job-details-accept-btn') {
-                const jobId = e.target.dataset.jobId;
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            const { jobId } = button.dataset;
+
+            if (button.id === 'job-details-accept-btn') {
                 showConfirmModal('Accept Job?', 'Are you sure you want to accept this job?', async () => {
                     await acceptJob(jobId);
                     closeJobDetailsModal();
                 });
-            } else if (e.target.id === 'job-details-driver-cancel-btn') {
-                const jobId = e.target.dataset.jobId;
+            } else if (button.id === 'job-details-driver-cancel-btn') {
                 showConfirmModal('Cancel Assignment?', 'Are you sure you want to remove yourself from this job?', () => cancelAcceptedJob(jobId));
+            } else if (button.id === 'edit-job-btn') {
+                const job = AppState.allJobs.find(j => j.id === jobId);
+                if (job) {
+                    closeJobDetailsModal();
+                    openCreateJobModal(job);
+                }
+            } else if (button.id === 'archive-job-btn') {
+                archiveJob(jobId);
+            } else if (button.id === 'unarchive-job-modal-btn') {
+                unarchiveJob(jobId);
+            } else if (button.id === 'delete-job-btn') {
+                showConfirmModal('Delete Job?', 'This action is permanent and cannot be undone.', () => deleteJob(jobId));
+            } else if (button.id === 'print-job-btn') {
+                window.print();
             } else if (e.target === jobDetailsModal) {
                 closeJobDetailsModal();
             }
-        });
-        
-        editJobBtn.addEventListener('click', (e) => {
-            const { jobId } = e.target.dataset;
-            const job = AppState.allJobs.find(j => j.id === jobId);
-            if (job) {
-                closeJobDetailsModal();
-                openCreateJobModal(job);
-            }
-        });
-
-        unarchiveJobModalBtn.addEventListener('click', (e) => {
-            const { jobId } = e.target.dataset;
-            unarchiveJob(jobId);
-            closeJobDetailsModal();
         });
 
         confirmCancelBtn.addEventListener('click', () => {
@@ -2769,7 +2727,6 @@
             confirmModal.classList.add('hidden');
             AppState.confirmCallback = null;
         });
-        printJobBtn.addEventListener('click', () => window.print());
 
         function addDestinationInput(value = '') {
             const destinationCount = destinationsContainer.children.length;
