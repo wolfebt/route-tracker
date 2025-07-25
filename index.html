@@ -591,7 +591,10 @@
                 <button id="job-details-accept-btn" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Accept Job</button>
             </div>
             <div class="mt-6 pt-4 border-t border-gray-700 flex justify-between items-center flex-shrink-0 space-x-2">
-                <button id="edit-job-btn" class="hidden px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">Edit Job</button>
+                <div>
+                    <button id="edit-job-btn" class="hidden px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">Edit Job</button>
+                    <button id="unarchive-job-modal-btn" class="hidden px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Unarchive</button>
+                </div>
                 <div class="flex-grow flex justify-end space-x-2">
                     <button id="print-job-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Print</button>
                     <button id="cancel-job-btn" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Cancel Job</button>
@@ -792,6 +795,7 @@
         const jobDetailsAcceptBtn = document.getElementById('job-details-accept-btn');
         const jobDetailsDriverCancelBtn = document.getElementById('job-details-driver-cancel-btn');
         const editJobBtn = document.getElementById('edit-job-btn');
+        const unarchiveJobModalBtn = document.getElementById('unarchive-job-modal-btn');
         const cancelJobBtn = document.getElementById('cancel-job-btn');
         const podSection = document.getElementById('pod-section');
         const podImage = document.getElementById('pod-image');
@@ -1349,7 +1353,9 @@
                 let borderColorClass = 'border-transparent';
                 let statusTag = '';
 
-                if (job.status === 'pending-completion') {
+                if (isArchivedView) {
+                    statusTag = `<span class="text-xs font-semibold px-2 py-1 bg-gray-600 text-white rounded-full">Archived</span>`;
+                } else if (job.status === 'pending-completion') {
                     statusClass = 'bg-green-900 hover:bg-green-800';
                 } else if (job.status === 'in-progress') {
                     li.style.borderColor = jobColor;
@@ -1371,20 +1377,17 @@
                 const assignedDrivers = (job.assignedDrivers || []).map(driver => driver.name).join(', ');
                 
                 let actionButtons = '';
-                if (job.status === 'pending-completion' && checkPermission('canCreateJob')) {
+                if (isArchivedView) {
+                    if (checkPermission('canDeleteJob')) {
+                        actionButtons = `<button data-job-id="${job.id}" class="unarchive-job-btn w-full mt-2 px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Unarchive</button>`;
+                    }
+                } else if (job.status === 'pending-completion' && checkPermission('canCreateJob')) {
                     actionButtons = `<button data-job-id="${job.id}" class="finalize-job-btn w-full mt-2 px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-500">Finalize</button>`;
                 } else if (checkPermission('canDeleteJob')) {
-                    if (isArchivedView) {
-                         actionButtons = `<div class="grid grid-cols-2 gap-2 mt-2">
-                             <button data-job-id="${job.id}" class="unarchive-job-btn w-full px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Unarchive</button>
-                             <button data-job-id="${job.id}" class="delete-job-btn w-full px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>
-                         </div>`;
-                    } else {
-                        actionButtons = `<div class="grid grid-cols-2 gap-2 mt-2">
-                             <button data-job-id="${job.id}" class="archive-job-btn w-full px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Archive</button>
-                             <button data-job-id="${job.id}" class="delete-job-btn w-full px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>
-                         </div>`;
-                    }
+                    actionButtons = `<div class="grid grid-cols-2 gap-2 mt-2">
+                            <button data-job-id="${job.id}" class="archive-job-btn w-full px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500">Archive</button>
+                            <button data-job-id="${job.id}" class="delete-job-btn w-full px-3 py-1 bg-red-800 text-white text-xs rounded hover:bg-red-700">Delete</button>
+                        </div>`;
                 }
                 const finalDestination = job.destinations ? job.destinations[job.destinations.length - 1] : job.destination;
                 li.innerHTML = `
@@ -1840,7 +1843,7 @@
 
             jobDetailsContent.innerHTML = `
                 <p><strong>Job Name:</strong> ${job.jobName || 'N/A'}</p>
-                <p><strong>Status:</strong> ${job.status}</p>
+                <p><strong>Status:</strong> ${job.archived ? 'Archived' : job.status}</p>
                 <p><strong>From:</strong> ${job.origin}</p>
                 ${destinationsHTML}
                 <p><strong>Contact:</strong> ${job.contactName || 'N/A'} - ${job.contactNumber || 'N/A'}</p>
@@ -1852,22 +1855,39 @@
             `;
             
             const isAssignedToMe = (job.assignedDrivers || []).some(d => d.id === AppState.currentUser.id);
-            
-            if (AppState.isDispatchView) {
-                jobDetailsDriverActions.classList.add('hidden');
-                cancelJobBtn.classList.toggle('hidden', job.status === 'completed' || job.status === 'cancelled' || !checkPermission('canDeleteJob'));
-                editJobBtn.classList.toggle('hidden', job.status === 'completed' || job.status === 'cancelled' || !checkPermission('canCreateJob'));
-                jobDetailsDriverCancelBtn.classList.add('hidden');
+            const isDispatcher = checkPermission('canCreateJob');
+            const trackingLinkBtn = trackingLinkContainer.querySelector('button');
+
+            // Reset all buttons and inputs first
+            editJobBtn.classList.add('hidden');
+            cancelJobBtn.classList.add('hidden');
+            unarchiveJobModalBtn.classList.add('hidden');
+            jobDetailsDriverActions.classList.add('hidden');
+            jobChatInput.disabled = false;
+            jobChatForm.querySelector('button').disabled = false;
+            if (trackingLinkBtn) trackingLinkBtn.disabled = false;
+
+
+            if (job.archived) {
+                unarchiveJobModalBtn.classList.remove('hidden');
+                jobChatInput.disabled = true;
+                jobChatForm.querySelector('button').disabled = true;
+                if (trackingLinkBtn) trackingLinkBtn.disabled = true;
             } else {
-                jobDetailsDriverActions.classList.remove('hidden');
-                jobDetailsAcceptBtn.classList.toggle('hidden', job.status !== 'unassigned');
-                jobDetailsDriverCancelBtn.classList.toggle('hidden', !isAssignedToMe || job.status !== 'in-progress');
-                cancelJobBtn.classList.add('hidden');
-                editJobBtn.classList.add('hidden');
+                // Logic for non-archived jobs
+                if (isDispatcher) {
+                    cancelJobBtn.classList.toggle('hidden', job.status === 'completed' || job.status === 'cancelled');
+                    editJobBtn.classList.toggle('hidden', job.status === 'completed' || job.status === 'cancelled');
+                } else { // Driver view
+                    jobDetailsDriverActions.classList.remove('hidden');
+                    jobDetailsAcceptBtn.classList.toggle('hidden', job.status !== 'unassigned');
+                    jobDetailsDriverCancelBtn.classList.toggle('hidden', !isAssignedToMe || job.status !== 'in-progress');
+                }
             }
             
             editJobBtn.dataset.jobId = job.id;
             cancelJobBtn.dataset.jobId = job.id;
+            unarchiveJobModalBtn.dataset.jobId = job.id;
             jobDetailsAcceptBtn.dataset.jobId = job.id;
             jobDetailsDriverCancelBtn.dataset.jobId = job.id;
             
@@ -1893,7 +1913,6 @@
             }
 
             // Tracking Link UI Logic
-            const isDispatcher = checkPermission('canCreateJob');
             const isAssignedDriver = (job.assignedDrivers || []).some(d => d.id === AppState.currentUser.id);
             trackingLinkSection.classList.toggle('hidden', !isDispatcher && !isAssignedDriver);
 
@@ -1909,6 +1928,7 @@
                 button.id = 'create-tracking-link-btn';
             }
             trackingLinkContainer.appendChild(button);
+            if(job.archived) button.disabled = true;
 
 
             const finalDestination = job.destinations ? job.destinations[job.destinations.length - 1] : job.destination;
@@ -2073,11 +2093,11 @@
                 optimizeRouteCheckbox.checked = jobToEdit.isOptimized || false;
 
                 (jobToEdit.destinations || []).forEach(dest => addDestinationInput(dest));
-                assignDriverSelect.classList.add('hidden'); // Hide assignment during edit
+                assignDriverSelect.parentElement.classList.add('hidden');
             } else {
                 createJobModalTitle.textContent = 'Create New Job';
                 addDestinationInput(); // Add one empty destination for new jobs
-                assignDriverSelect.classList.remove('hidden');
+                assignDriverSelect.parentElement.classList.remove('hidden');
                 const availableDrivers = AppState.allUsers.filter(u => {
                     const isActive = AppState.activeDrivers.some(d => d.id === u.id && d.status === 'On Trip');
                     return !isActive;
@@ -2732,6 +2752,12 @@
                 closeJobDetailsModal();
                 openCreateJobModal(job);
             }
+        });
+
+        unarchiveJobModalBtn.addEventListener('click', (e) => {
+            const { jobId } = e.target.dataset;
+            unarchiveJob(jobId);
+            closeJobDetailsModal();
         });
 
         confirmCancelBtn.addEventListener('click', () => {
