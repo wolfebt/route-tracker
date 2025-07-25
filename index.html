@@ -874,6 +874,25 @@
             currentJobIdForModal: null,
         };
 
+        // --- Helper Functions ---
+        function formatDuration(totalSeconds) {
+            if (isNaN(totalSeconds) || totalSeconds < 0) {
+                return 'N/A';
+            }
+            const days = Math.floor(totalSeconds / 86400);
+            totalSeconds %= 86400;
+            const hours = Math.floor(totalSeconds / 3600);
+            totalSeconds %= 3600;
+            const minutes = Math.floor(totalSeconds / 60);
+
+            let result = '';
+            if (days > 0) result += `${days}d `;
+            if (hours > 0) result += `${hours}h `;
+            if (minutes > 0 || (days === 0 && hours === 0)) result += `${minutes}m`;
+            
+            return result.trim();
+        }
+
         // --- Main App Initialization ---
         function initMap(elementId = "map", isPublic = false) {
             const mapElement = document.getElementById(elementId);
@@ -1038,6 +1057,9 @@
                         <p><strong>Status:</strong> ${job.status}</p>
                         <p><strong>From:</strong> ${job.origin}</p>
                         <p><strong>To:</strong> ${finalDestination}</p>
+                        <p><strong>Total Distance:</strong> ${job.totalDistance || 'N/A'}</p>
+                        <p><strong>Est. Travel Time:</strong> ${formatDuration(job.totalDuration)}</p>
+                        <hr class="my-2 border-gray-600">
                         <p><strong>Distance Remaining:</strong> <span id="public-job-distance">--</span></p>
                         <p><strong>ETA:</strong> <span id="public-job-eta">--</span></p>
                     `;
@@ -1843,8 +1865,8 @@
                 <p><strong>From:</strong> ${job.origin}</p>
                 ${destinationsHTML}
                 <p><strong>Contact:</strong> ${job.contactName || 'N/A'} - ${job.contactNumber || 'N/A'}</p>
-                <p><strong>Distance:</strong> <span id="job-details-distance">Calculating...</span></p>
-                <p><strong>Est. Travel Time:</strong> <span id="job-details-duration">Calculating...</span></p>
+                <p><strong>Distance:</strong> ${job.totalDistance || 'N/A'}</p>
+                <p><strong>Est. Travel Time:</strong> ${formatDuration(job.totalDuration)}</p>
                 <p><strong>Drivers Needed:</strong> ${job.driversNeeded}</p>
                 <p><strong>Assigned Drivers:</strong> ${assignedDrivers || 'None'}</p>
                 <p class="mt-2 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
@@ -1929,36 +1951,6 @@
             }
             trackingLinkContainer.appendChild(button);
             if(job.archived) button.disabled = true;
-
-
-            const finalDestination = job.destinations ? job.destinations[job.destinations.length - 1] : job.destination;
-            const waypoints = job.destinations ? job.destinations.slice(0, -1).map(d => ({ location: d, stopover: true })) : [];
-
-            if (AppState.directionsService) {
-                AppState.directionsService.route({
-                    origin: job.origin,
-                    destination: finalDestination,
-                    waypoints: waypoints,
-                    optimizeWaypoints: job.isOptimized || false,
-                    travelMode: google.maps.TravelMode.DRIVING
-                }, (response, status) => {
-                    const distanceEl = document.getElementById('job-details-distance');
-                    const durationEl = document.getElementById('job-details-duration');
-                    if (status === 'OK' && distanceEl && durationEl) {
-                        let totalDistance = 0;
-                        let totalDuration = 0;
-                        response.routes[0].legs.forEach(leg => {
-                            totalDistance += leg.distance.value;
-                            totalDuration += leg.duration.value;
-                        });
-                        distanceEl.textContent = `${(totalDistance / 1609.34).toFixed(1)} mi`; // Convert meters to miles
-                        durationEl.textContent = `${Math.round(totalDuration / 60)} mins`;
-                    } else {
-                        if(distanceEl) distanceEl.textContent = 'N/A';
-                        if(durationEl) durationEl.textContent = 'N/A';
-                    }
-                });
-            }
 
             jobHistoryLog.innerHTML = '';
             if (job.log && job.log.length > 0) {
@@ -2326,48 +2318,73 @@
                 contactNumber: contactNumberInput.value.trim(),
                 note: jobNoteInput.value.trim(), 
                 driversNeeded: parseInt(driversNeededInput.value, 10),
+                totalDistance: '',
+                totalDuration: 0,
             };
 
-            try {
-                if (editingJobId) {
-                    // Update existing job
-                    const jobRef = doc(db, AppState.jobsPath, editingJobId);
-                    jobData.log = arrayUnion({ text: `Job details updated by ${AppState.currentUser.name}`, timestamp: new Date() });
-                    await updateDoc(jobRef, jobData);
-                    showToast('Job updated successfully.', 'success');
-                } else {
-                    // Create new job
-                    jobData.assignedDrivers = [];
-                    jobData.createdAt = serverTimestamp();
-                    jobData.archived = false;
-                    jobData.status = 'unassigned';
-                    
-                    const assignedDriverId = assignDriverSelect.value;
-                    if (assignedDriverId) {
-                        const driver = AppState.allUsers.find(u => u.id === assignedDriverId);
-                        jobData.assignedDrivers.push({id: driver.id, name: driver.name });
-                        jobData.status = 'in-progress';
-                    }
-
-                    const docRef = await addDoc(collection(db, AppState.jobsPath), jobData);
-
-                    let logEntries = [{ text: `Created by ${AppState.currentUser.name}`, timestamp: new Date() }];
-                    if (assignedDriverId) {
-                        const driver = AppState.allUsers.find(u => u.id === assignedDriverId);
-                        logEntries.push({ text: `Assigned to ${driver.name}`, timestamp: new Date() });
-                    }
-                    
-                    await updateDoc(docRef, { log: logEntries });
-                    showToast('New job created.', 'success');
+            // Calculate route details before saving
+            const finalDestination = destinations[destinations.length - 1];
+            const waypoints = destinations.slice(0, -1).map(d => ({ location: d, stopover: true }));
+            
+            AppState.directionsService.route({
+                origin: jobData.origin,
+                destination: finalDestination,
+                waypoints: waypoints,
+                optimizeWaypoints: jobData.isOptimized,
+                travelMode: google.maps.TravelMode.DRIVING
+            }, async (response, status) => {
+                if (status === 'OK') {
+                    let totalDistanceMeters = 0;
+                    let totalDurationSeconds = 0;
+                    response.routes[0].legs.forEach(leg => {
+                        totalDistanceMeters += leg.distance.value;
+                        totalDurationSeconds += leg.duration.value;
+                    });
+                    jobData.totalDistance = `${(totalDistanceMeters / 1609.34).toFixed(1)} mi`;
+                    jobData.totalDuration = totalDurationSeconds;
                 }
-                
-                createJobForm.reset();
-                createJobModal.classList.add('hidden');
-            } catch (error) {
-                showToast(`Error: ${error.message}`, 'error');
-            } finally {
-                hideSpinner(button);
-            }
+
+                try {
+                    if (editingJobId) {
+                        // Update existing job
+                        const jobRef = doc(db, AppState.jobsPath, editingJobId);
+                        jobData.log = arrayUnion({ text: `Job details updated by ${AppState.currentUser.name}`, timestamp: new Date() });
+                        await updateDoc(jobRef, jobData);
+                        showToast('Job updated successfully.', 'success');
+                    } else {
+                        // Create new job
+                        jobData.assignedDrivers = [];
+                        jobData.createdAt = serverTimestamp();
+                        jobData.archived = false;
+                        jobData.status = 'unassigned';
+                        
+                        const assignedDriverId = assignDriverSelect.value;
+                        if (assignedDriverId) {
+                            const driver = AppState.allUsers.find(u => u.id === assignedDriverId);
+                            jobData.assignedDrivers.push({id: driver.id, name: driver.name });
+                            jobData.status = 'in-progress';
+                        }
+
+                        const docRef = await addDoc(collection(db, AppState.jobsPath), jobData);
+
+                        let logEntries = [{ text: `Created by ${AppState.currentUser.name}`, timestamp: new Date() }];
+                        if (assignedDriverId) {
+                            const driver = AppState.allUsers.find(u => u.id === assignedDriverId);
+                            logEntries.push({ text: `Assigned to ${driver.name}`, timestamp: new Date() });
+                        }
+                        
+                        await updateDoc(docRef, { log: logEntries });
+                        showToast('New job created.', 'success');
+                    }
+                    
+                    createJobForm.reset();
+                    createJobModal.classList.add('hidden');
+                } catch (error) {
+                    showToast(`Error: ${error.message}`, 'error');
+                } finally {
+                    hideSpinner(button);
+                }
+            });
         });
 
         function renderUserRoleManagement() {
@@ -2859,7 +2876,9 @@
                     destinations: jobData.destinations,
                     driverLocation: null,
                     status: jobData.status,
-                    jobDate: jobData.jobDate
+                    jobDate: jobData.jobDate,
+                    totalDistance: jobData.totalDistance,
+                    totalDuration: jobData.totalDuration
                 });
                 await batch.commit();
 
