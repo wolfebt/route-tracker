@@ -498,6 +498,10 @@
                 <input type="hidden" id="editing-job-id">
                 <div class="space-y-4">
                     <input type="text" id="job-name-input" placeholder="Job Name (e.g., Warehouse Delivery)" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div>
+                        <label for="job-date-input" class="block text-sm font-medium text-gray-300">Job Date:</label>
+                        <input type="date" id="job-date-input" required class="w-full mt-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
                     <input type="text" id="job-origin-input" placeholder="Job Origin" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     
                     <div id="destinations-container" class="space-y-2">
@@ -753,6 +757,7 @@
         const createJobModalTitle = document.getElementById('create-job-modal-title');
         const editingJobIdInput = document.getElementById('editing-job-id');
         const jobNameInput = document.getElementById('job-name-input');
+        const jobDateInput = document.getElementById('job-date-input');
         const jobOriginInput = document.getElementById('job-origin-input');
         const destinationsContainer = document.getElementById('destinations-container');
         const addDestinationBtn = document.getElementById('add-destination-btn');
@@ -1029,9 +1034,12 @@
                     const finalDestination = job.destinations ? job.destinations[job.destinations.length - 1] : 'N/A';
                     publicJobDetailsEl.innerHTML = `
                         <p><strong>Job:</strong> ${job.jobName || 'N/A'}</p>
+                        <p><strong>Date:</strong> ${job.jobDate || 'N/A'}</p>
                         <p><strong>Status:</strong> ${job.status}</p>
                         <p><strong>From:</strong> ${job.origin}</p>
                         <p><strong>To:</strong> ${finalDestination}</p>
+                        <p><strong>Distance Remaining:</strong> <span id="public-job-distance">--</span></p>
+                        <p><strong>ETA:</strong> <span id="public-job-eta">--</span></p>
                     `;
                     
                     // Clear previous markers/routes
@@ -1067,6 +1075,9 @@
                             }, (response, status) => {
                                 if (status === 'OK') {
                                     renderer.setDirections(response);
+                                    const leg = response.routes[0].legs[0];
+                                    document.getElementById('public-job-distance').textContent = leg.distance.text;
+                                    document.getElementById('public-job-eta').textContent = leg.duration.text;
                                 }
                             });
                          }
@@ -1379,15 +1390,21 @@
                 const assignedDrivers = (job.assignedDrivers || []).map(driver => driver.name).join(', ');
                 
                 const finalDestination = job.destinations ? job.destinations[job.destinations.length - 1] : job.destination;
+
+                const today = new Date().toISOString().split('T')[0];
+                const jobDateStr = job.jobDate === today ? '' : `<p class="text-orange-400 font-bold italic text-sm mt-1">${job.jobDate}</p>`;
+
                 li.innerHTML = `
                     <div class="flex justify-between items-start">
                         <p class="font-bold text-white">${job.jobName || 'Unnamed Job'}</p>
                         ${statusTag}
                     </div>
+                    ${jobDateStr}
                     <p class="text-gray-400"><strong class="text-gray-200">From:</strong> ${job.origin}</p>
                     <p class="text-gray-400"><strong class="text-gray-200">To:</strong> ${finalDestination}</p>
                     <p class="text-gray-400"><strong class="text-gray-200">Openings:</strong> ${ (job.assignedDrivers || []).length} of ${job.driversNeeded}</p>
                     ${assignedDrivers ? `<p class="text-gray-400"><strong class="text-gray-200">Drivers:</strong> ${assignedDrivers}</p>` : ''}
+                    <div id="job-eta-info-${job.id}" class="text-xs text-gray-300 mt-1"></div>
                 `;
                 jobsListEl.appendChild(li);
             });
@@ -1583,10 +1600,13 @@
                     travelMode: google.maps.TravelMode.DRIVING 
                 },
                 (response, status) => {
+                    const etaInfoEl = document.getElementById(`job-eta-info-${job.id}`);
                     if (status === "OK") {
                         renderer.setDirections(response);
                         const leg = response.routes[0].legs[response.routes[0].legs.length - 1];
-                        // NEW: Manual completion logic
+                        if (etaInfoEl) {
+                            etaInfoEl.innerHTML = `<span>Dist: ${leg.distance.text}</span> | <span>ETA: ${leg.duration.text}</span>`;
+                        }
                         if (leg && !AppState.isDispatchView && leg.distance.value <= 200) { 
                             arrivedBtn.classList.remove('hidden');
                             arrivedBtn.dataset.jobId = job.id;
@@ -1594,6 +1614,7 @@
                             arrivedBtn.classList.add('hidden');
                         }
                     } else { 
+                        if (etaInfoEl) etaInfoEl.innerHTML = '';
                         arrivedBtn.classList.add('hidden');
                         if(AppState.jobRouteRenderers[jobId]) {
                             AppState.jobRouteRenderers[jobId].setMap(null);
@@ -1817,6 +1838,7 @@
 
             jobDetailsContent.innerHTML = `
                 <p><strong>Job Name:</strong> ${job.jobName || 'N/A'}</p>
+                <p><strong>Date:</strong> ${job.jobDate || 'N/A'}</p>
                 <p><strong>Status:</strong> ${job.archived ? 'Archived' : job.status}</p>
                 <p><strong>From:</strong> ${job.origin}</p>
                 ${destinationsHTML}
@@ -2063,6 +2085,7 @@
                 createJobModalTitle.textContent = 'Edit Job';
                 editingJobIdInput.value = jobToEdit.id;
                 jobNameInput.value = jobToEdit.jobName || '';
+                jobDateInput.value = jobToEdit.jobDate || new Date().toISOString().split('T')[0];
                 jobOriginInput.value = jobToEdit.origin || '';
                 contactNameInput.value = jobToEdit.contactName || '';
                 contactNumberInput.value = jobToEdit.contactNumber || '';
@@ -2074,6 +2097,7 @@
                 assignDriverSelect.parentElement.classList.add('hidden');
             } else {
                 createJobModalTitle.textContent = 'Create New Job';
+                jobDateInput.value = new Date().toISOString().split('T')[0];
                 addDestinationInput(); // Add one empty destination for new jobs
                 assignDriverSelect.parentElement.classList.remove('hidden');
                 const availableDrivers = AppState.allUsers.filter(u => {
@@ -2294,6 +2318,7 @@
 
             const jobData = { 
                 jobName: jobNameInput.value.trim(), 
+                jobDate: jobDateInput.value,
                 origin: jobOriginInput.value.trim(), 
                 destinations: destinations,
                 isOptimized: optimizeRouteCheckbox.checked,
@@ -2833,7 +2858,8 @@
                     origin: jobData.origin,
                     destinations: jobData.destinations,
                     driverLocation: null,
-                    status: jobData.status
+                    status: jobData.status,
+                    jobDate: jobData.jobDate
                 });
                 await batch.commit();
 
