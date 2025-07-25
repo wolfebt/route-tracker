@@ -232,9 +232,8 @@
                         <div id="current-job-panel" class="hidden bg-blue-900 border border-blue-700 p-4 rounded-lg shadow-sm mt-4 cursor-pointer">
                             <h3 class="text-lg font-semibold text-white mb-2">My Current Job</h3>
                             <div id="current-job-details" class="text-sm text-blue-200 space-y-1"></div>
-                            <div class="grid grid-cols-3 gap-2 mt-3">
+                            <div class="grid grid-cols-2 gap-2 mt-3">
                                 <button id="start-navigation-btn" class="w-full px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Navigate</button>
-                                <button id="open-job-details-btn" class="w-full px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700">Messages</button>
                                 <button id="complete-job-btn" class="w-full px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">Complete</button>
                             </div>
                              <button id="arrived-btn" class="hidden w-full mt-3 px-4 py-2 bg-yellow-500 text-white font-bold rounded-lg hover:bg-yellow-600 animate-pulse">Arrived? Mark as Complete</button>
@@ -564,15 +563,22 @@
     <div id="tracking-link-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10001]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
             <h3 class="text-xl font-bold text-white mb-4">Tracking Link</h3>
-            <form id="tracking-link-form">
-                <p class="text-sm text-gray-400 mb-2">Send a real-time tracking link to a third party.</p>
-                <div class="mb-4">
-                    <label for="tracking-link-mobile" class="block text-sm font-medium text-gray-300">Mobile:</label>
-                    <input type="tel" id="tracking-link-mobile" placeholder="Enter mobile number to send link" class="w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
-                </div>
+            
+            <!-- Form to generate the link -->
+            <form id="tracking-link-form" class="space-y-4">
+                <p class="text-sm text-gray-400">Create a real-time tracking link to share with a third party.</p>
                 <button type="submit" id="generate-tracking-link-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Generate Link</button>
             </form>
+    
+            <!-- Details of the generated link -->
             <div id="tracking-link-details" class="hidden mt-4 space-y-4">
+                <div>
+                    <label for="tracking-link-mobile" class="block text-sm font-medium text-gray-300">Send to Mobile:</label>
+                    <div class="flex space-x-2 mt-1">
+                        <input type="tel" id="tracking-link-mobile" placeholder="Enter mobile number" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
+                        <button type="button" id="send-sms-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0">Send</button>
+                    </div>
+                </div>
                 <div class="flex space-x-2">
                     <input type="text" id="tracking-link-url" readonly class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white">
                     <button id="copy-tracking-link-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Copy</button>
@@ -762,6 +768,7 @@
         const trackingLinkModal = document.getElementById('tracking-link-modal');
         const trackingLinkForm = document.getElementById('tracking-link-form');
         const trackingLinkMobileInput = document.getElementById('tracking-link-mobile');
+        const sendSmsBtn = document.getElementById('send-sms-btn');
         const generateTrackingLinkBtn = document.getElementById('generate-tracking-link-btn');
         const trackingLinkDetails = document.getElementById('tracking-link-details');
         const trackingLinkUrlInput = document.getElementById('tracking-link-url');
@@ -1735,7 +1742,10 @@
             }
 
             // Tracking Link UI Logic
-            trackingLinkSection.classList.toggle('hidden', !checkPermission('canCreateJob'));
+            const isDispatcher = checkPermission('canCreateJob');
+            const isAssignedDriver = (job.assignedDrivers || []).some(d => d.id === AppState.currentUser.id);
+            trackingLinkSection.classList.toggle('hidden', !isDispatcher && !isAssignedDriver);
+
             trackingLinkContainer.innerHTML = '';
             const button = document.createElement('button');
             button.className = 'w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700';
@@ -1955,15 +1965,6 @@
              if (myJob) {
                  showJobDetailsModal(myJob);
              }
-        });
-
-        driverUi.addEventListener('click', (e) => {
-            if (e.target.id === 'open-job-details-btn') {
-                const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.some(d => d.id === AppState.currentUser.id));
-                if (myJob) {
-                    showJobDetailsModal(myJob);
-                }
-            }
         });
         
         async function acceptJob(jobId) {
@@ -2581,16 +2582,11 @@
         addDestinationBtn.addEventListener('click', addDestinationInput);
         
         // --- Tracking Link Logic ---
-        trackingLinkContainer.addEventListener('click', (e) => {
-            const jobId = e.target.dataset.jobId;
-            if (!jobId) return;
-            const job = AppState.allJobs.find(j => j.id === jobId);
-            if (!job) return;
+        function setupTrackingLinkModal(job) {
+            AppState.currentJobIdForModal = job.id;
+            trackingLinkMobileInput.value = job.thirdPartyMobile || job.contactNumber || '';
 
-            trackingLinkMobileInput.value = job.thirdPartyMobile || '';
-            
             if (job.thirdPartyInviteId) {
-                // Link exists, just show the details
                 const url = `${window.location.origin}${window.location.pathname}?jobId=${job.id}&inviteId=${job.thirdPartyInviteId}`;
                 trackingLinkUrlInput.value = url;
                 trackingLinkQrcodeEl.innerHTML = '';
@@ -2598,50 +2594,68 @@
                 trackingLinkForm.classList.add('hidden');
                 trackingLinkDetails.classList.remove('hidden');
             } else {
-                // No link, show the form to create one
                 trackingLinkForm.classList.remove('hidden');
                 trackingLinkDetails.classList.add('hidden');
             }
             trackingLinkModal.classList.remove('hidden');
+        }
+
+        trackingLinkContainer.addEventListener('click', (e) => {
+            const jobId = e.target.dataset.jobId;
+            if (!jobId) return;
+            const job = AppState.allJobs.find(j => j.id === jobId);
+            if (job) {
+                setupTrackingLinkModal(job);
+            }
         });
 
         trackingLinkForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const jobId = AppState.currentJobIdForModal;
-            if (!jobId) return;
+            if (!jobId) {
+                showToast("No job selected.", "error");
+                return;
+            }
 
-            const mobile = trackingLinkMobileInput.value.trim();
+            const jobData = AppState.allJobs.find(j => j.id === jobId);
+            if (!jobData) {
+                showToast("Job data not found. Please close and re-open the job details.", "error");
+                console.error("Could not find job data for jobId:", jobId);
+                return;
+            }
+
             const inviteId = crypto.randomUUID();
             const jobRef = doc(db, AppState.jobsPath, jobId);
             const publicJobRef = doc(db, AppState.publicJobsPath, jobId);
-            const jobData = AppState.allJobs.find(j => j.id === jobId);
 
             try {
                 const batch = writeBatch(db);
                 batch.update(jobRef, { 
                     thirdPartyInviteId: inviteId,
-                    thirdPartyMobile: mobile,
                     log: arrayUnion({ text: `Tracking link created by ${AppState.currentUser.name}`, timestamp: new Date() })
                 });
                 batch.set(publicJobRef, {
                     jobName: jobData.jobName,
                     origin: jobData.origin,
                     destinations: jobData.destinations,
-                    driverLocation: null, // Will be updated by driver
+                    driverLocation: null,
                     status: jobData.status
                 });
                 await batch.commit();
 
                 showToast("Tracking link generated!", "success");
-                // Now show the generated link details
-                const url = `${window.location.origin}${window.location.pathname}?jobId=${jobId}&inviteId=${inviteId}`;
-                trackingLinkUrlInput.value = url;
-                trackingLinkQrcodeEl.innerHTML = '';
-                new QRCode(trackingLinkQrcodeEl, { text: url, width: 128, height: 128 });
-                trackingLinkForm.classList.add('hidden');
-                trackingLinkDetails.classList.remove('hidden');
                 
-                // Update the button in the job details modal
+                // Manually update the job in the local state to reflect the change immediately
+                const updatedJobData = { ...jobData, thirdPartyInviteId: inviteId };
+                const jobIndex = AppState.allJobs.findIndex(j => j.id === jobId);
+                if (jobIndex > -1) {
+                    AppState.allJobs[jobIndex] = updatedJobData;
+                }
+                
+                // Re-setup the modal with the new data
+                setupTrackingLinkModal(updatedJobData);
+                
+                // Update the button in the job details modal without re-opening it
                 const buttonInDetails = document.querySelector(`#tracking-link-container button[data-job-id="${jobId}"]`);
                 if(buttonInDetails) {
                     buttonInDetails.textContent = 'View Tracking Link';
@@ -2651,6 +2665,27 @@
             } catch (error) {
                 console.error("Error generating tracking link:", error);
                 showToast("Failed to generate tracking link.", "error");
+            }
+        });
+
+        sendSmsBtn.addEventListener('click', async () => {
+            const mobile = trackingLinkMobileInput.value.trim();
+            const url = trackingLinkUrlInput.value;
+            const jobId = AppState.currentJobIdForModal;
+
+            if (!mobile || !url || !jobId) {
+                showToast("Mobile number and link are required.", "error");
+                return;
+            }
+            
+            console.log(`Simulating SMS to ${mobile} with link: ${url}`);
+            showToast(`Simulated SMS sent to ${mobile}`, 'success');
+
+            try {
+                const jobRef = doc(db, AppState.jobsPath, jobId);
+                await updateDoc(jobRef, { thirdPartyMobile: mobile });
+            } catch (error) {
+                console.error("Failed to update mobile number on job:", error);
             }
         });
 
