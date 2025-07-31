@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        #map, #public-map { height: 100%; width: 100%; }
+        #map, #public-map, #public-driver-map { height: 100%; width: 100%; }
         /* Custom scrollbar for dark theme */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1f2937; } /* gray-800 */
@@ -242,12 +242,13 @@
                         </div>
                         <div id="driver-status-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                             <h2 class="text-lg font-semibold text-gray-200 mb-2">My Status</h2>
-                            <div id="driver-status-control">
+                            <div id="driver-status-control" class="space-y-2">
                                 <label for="driver-status-select" class="block text-sm font-medium text-gray-300">Current Status:</label>
                                 <select id="driver-status-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border-gray-600 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md text-white">
                                     <option>Available</option>
                                     <option>On Break</option>
                                 </select>
+                                <button id="share-location-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Share Location</button>
                             </div>
                         </div>
                     </div>
@@ -278,7 +279,47 @@
         </div>
     </div>
 
+    <!-- Public Driver View Container -->
+    <div id="public-driver-container" class="hidden flex flex-col md:flex-row h-screen">
+        <div id="public-driver-map-container" class="w-full md:w-2/3 h-1/2 md:h-full">
+            <div id="public-driver-map" class="rounded-lg shadow-md bg-gray-700 flex items-center justify-center h-full w-full">
+                <p class="text-gray-400">Loading Map...</p>
+            </div>
+        </div>
+        <div class="w-full md:w-1/3 h-1/2 md:h-full flex flex-col bg-gray-800 p-4 space-y-4 overflow-y-auto border-l-2 border-indigo-600">
+            <h1 class="text-2xl font-bold text-white pb-2 border-b border-gray-700">Live Driver Tracking</h1>
+            <div id="public-driver-details" class="bg-gray-900 p-4 rounded-lg shadow-sm space-y-2 text-gray-300">
+                <!-- Public driver details will be rendered here -->
+            </div>
+        </div>
+    </div>
+
     <!-- Modals -->
+    <div id="location-share-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10001]">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+            <h3 class="text-xl font-bold text-white mb-4">Share My Location</h3>
+            <p class="text-sm text-gray-400 mb-4">Share a temporary link to your live location.</p>
+            
+            <div id="location-share-details" class="space-y-4">
+                <div>
+                    <label for="location-share-mobile" class="block text-sm font-medium text-gray-300">Send to Mobile:</label>
+                    <div class="flex space-x-2 mt-1">
+                        <input type="tel" id="location-share-mobile" placeholder="Enter mobile number" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
+                        <button type="button" id="send-location-sms-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0">Send</button>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <input type="text" id="location-share-url" readonly class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white">
+                    <button id="copy-location-share-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Copy</button>
+                </div>
+                <div class="text-center">
+                    <p class="text-gray-400 mb-2">Or scan QR Code</p>
+                    <div id="location-share-qrcode" class="flex justify-center p-2 bg-white rounded-lg w-36 h-36 mx-auto"></div>
+                </div>
+            </div>
+            <button id="location-share-close-btn" class="mt-6 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500">Close</button>
+        </div>
+    </div>
     <div id="company-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10004]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
             <h3 class="text-xl font-bold text-white mb-6">Select or Create Company</h3>
@@ -829,11 +870,23 @@
         const trackingLinkQrcodeEl = document.getElementById('tracking-link-qrcode');
         const trackingLinkCloseBtn = document.getElementById('tracking-link-close-btn');
 
+        // Location Share UI
+        const shareLocationBtn = document.getElementById('share-location-btn');
+        const locationShareModal = document.getElementById('location-share-modal');
+        const locationShareMobileInput = document.getElementById('location-share-mobile');
+        const sendLocationSmsBtn = document.getElementById('send-location-sms-btn');
+        const locationShareUrlInput = document.getElementById('location-share-url');
+        const copyLocationShareBtn = document.getElementById('copy-location-share-btn');
+        const locationShareQrcodeEl = document.getElementById('location-share-qrcode');
+        const locationShareCloseBtn = document.getElementById('location-share-close-btn');
 
         // Public View UI
         const publicJobContainer = document.getElementById('public-job-container');
         const publicMapEl = document.getElementById('public-map');
         const publicJobDetailsEl = document.getElementById('public-job-details');
+        const publicDriverContainer = document.getElementById('public-driver-container');
+        const publicDriverMapEl = document.getElementById('public-driver-map');
+        const publicDriverDetailsEl = document.getElementById('public-driver-details');
 
 
         // --- App State ---
@@ -844,6 +897,7 @@
             companyName: null,
             map: null,
             publicMap: null,
+            publicDriverMap: null,
             userMarker: null,
             driverMapMarkers: {},
             isSharingLocation: false,
@@ -858,6 +912,7 @@
             globalUsersPath: '',
             companiesPath: '',
             publicJobsPath: '',
+            publicDriversPath: '',
             // Company-specific paths are set dynamically
             membersPath: '',
             driversPath: '',
@@ -911,11 +966,11 @@
                 ],
             };
             const map = new google.maps.Map(mapElement, mapOptions);
-            if (isPublic) {
-                AppState.publicMap = map;
-            } else {
-                AppState.map = map;
-            }
+            
+            if (elementId === 'public-map') AppState.publicMap = map;
+            else if (elementId === 'public-driver-map') AppState.publicDriverMap = map;
+            else AppState.map = map;
+            
             return map;
         };
 
@@ -956,16 +1011,19 @@
                 AppState.globalUsersPath = `/artifacts/${appId}/public/data/users`;
                 AppState.companiesPath = `/artifacts/${appId}/public/data/companies`;
                 AppState.publicJobsPath = `/artifacts/${appId}/public/data/publicJobs`;
+                AppState.publicDriversPath = `/artifacts/${appId}/public/data/publicDrivers`;
                 
-                // NEW: Check for public tracking link on page load
+                // Check for public tracking link on page load
                 const urlParams = new URLSearchParams(window.location.search);
                 const publicJobId = urlParams.get('jobId');
+                const publicDriverId = urlParams.get('driverId');
                 const inviteId = urlParams.get('inviteId');
 
                 if (publicJobId && inviteId) {
-                    // This is a public tracking link visitor
                     await loadPublicJobView(publicJobId, inviteId);
-                } else {
+                } else if (publicDriverId && inviteId) {
+                    await loadPublicDriverView(publicDriverId, inviteId);
+                }else {
                     // This is a regular user, proceed with normal auth flow
                     await loadGoogleMapsScript(); // Load maps for regular users
                     startRegularAuthFlow();
@@ -1030,6 +1088,58 @@
                         // This block runs on explicit logout, after the initial check is done.
                         cleanupUserSession();
                     }
+                }
+            });
+        }
+
+        async function loadPublicDriverView(driverId, inviteId) {
+            loadingOverlay.classList.add('hidden');
+            authContainer.classList.add('hidden');
+            appContainer.classList.add('hidden');
+            publicDriverContainer.classList.remove('hidden');
+
+            await loadGoogleMapsScript();
+            initMap('public-driver-map');
+
+            const publicDriverRef = doc(db, AppState.publicDriversPath, driverId);
+
+            onSnapshot(publicDriverRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const driver = docSnap.data();
+                    if (driver.shareToken !== inviteId) {
+                         publicDriverDetailsEl.innerHTML = `<p class="text-red-400">This tracking link is invalid or has expired.</p>`;
+                         return;
+                    }
+
+                    publicDriverDetailsEl.innerHTML = `
+                        <p><strong>Driver:</strong> ${driver.name || 'N/A'}</p>
+                        <p><strong>Mobile:</strong> ${driver.phone || 'N/A'}</p>
+                        <p><strong>Status:</strong> ${driver.status || 'N/A'}</p>
+                        <p class="text-xs text-gray-400 mt-2">Last updated: ${driver.timestamp ? driver.timestamp.toDate().toLocaleString() : 'N/A'}</p>
+                    `;
+
+                    for (const key in AppState.driverMapMarkers) {
+                        AppState.driverMapMarkers[key].setMap(null);
+                    }
+                    AppState.driverMapMarkers = {};
+
+                    if (driver.location) {
+                        const driverPos = { lat: driver.location.latitude, lng: driver.location.longitude };
+                        if (AppState.driverMapMarkers['publicDriver']) {
+                            AppState.driverMapMarkers['publicDriver'].setPosition(driverPos);
+                        } else {
+                            AppState.driverMapMarkers['publicDriver'] = new google.maps.Marker({
+                                position: driverPos,
+                                map: AppState.publicDriverMap,
+                                title: "Driver Location",
+                                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
+                            });
+                        }
+                        AppState.publicDriverMap.setCenter(driverPos);
+                        AppState.publicDriverMap.setZoom(15);
+                    }
+                } else {
+                    publicDriverDetailsEl.innerHTML = `<p class="text-red-400">This tracking link is invalid or has expired.</p>`;
                 }
             });
         }
@@ -1340,6 +1450,19 @@
                     const publicJobRef = doc(db, AppState.publicJobsPath, myJob.id);
                     updateDoc(publicJobRef, { driverLocation: locationData.location }).catch(err => console.log("Could not update public job location"));
                 }
+                
+                // Update public driver location if being shared
+                const publicDriverRef = doc(db, AppState.publicDriversPath, AppState.currentUser.id);
+                getDoc(publicDriverRef).then(docSnap => {
+                    if (docSnap.exists()) {
+                        updateDoc(publicDriverRef, {
+                            location: locationData.location,
+                            timestamp: locationData.timestamp,
+                            status: locationData.status
+                        }).catch(err => console.log("Could not update public driver location"));
+                    }
+                });
+
             };
 
             const errorCallback = (error) => {
@@ -1359,6 +1482,9 @@
             if (AppState.currentUser && AppState.companyId) {
                 const driverLocRef = doc(db, AppState.driversPath, AppState.currentUser.id);
                 deleteDoc(driverLocRef).catch(err => console.log("No location to delete or error:", err));
+                
+                const publicDriverRef = doc(db, AppState.publicDriversPath, AppState.currentUser.id);
+                deleteDoc(publicDriverRef).catch(err => console.log("No public driver location to delete or error:", err));
             }
         }
         
@@ -1814,7 +1940,7 @@
                 await loader.importLibrary('routes');
                 
                 console.log("Google Maps libraries loaded successfully.");
-                if(!AppState.publicMap) initMap(); 
+                if(!AppState.publicMap && !AppState.publicDriverMap) initMap(); 
                 AppState.directionsService = new google.maps.DirectionsService();
                 setupAutocomplete();
 
@@ -2836,21 +2962,6 @@
         addDestinationBtn.addEventListener('click', () => addDestinationInput());
         
         // --- Tracking Link Logic ---
-
-        // IMPORTANT: FIREBASE RULES REQUIREMENT
-        // For the "Create Tracking Link" feature to work, you must update your Firestore security rules.
-        // This feature creates a public document that anyone with the link can view.
-        // Your rules need to allow authenticated users to create documents in the 'publicJobs' collection.
-        //
-        // Example Rule for firestore.rules:
-        // match /artifacts/{appId}/public/data/publicJobs/{jobId} {
-        //   // Allow authenticated users (drivers, dispatchers) to create the public tracking document.
-        //   allow create: if request.auth != null;
-        //   // Allow anyone with the link to read the job status and driver location.
-        //   allow read: if true;
-        //   // Optional: Restrict updates to prevent tampering.
-        //   allow update, delete: if false; // Or add more specific admin/owner logic
-        // }
         function setupTrackingLinkModal(job) {
             AppState.currentJobIdForModal = job.id;
             trackingLinkMobileInput.value = job.thirdPartyMobile || job.contactNumber || '';
@@ -2918,17 +3029,14 @@
 
                 showToast("Tracking link generated!", "success");
                 
-                // Manually update the job in the local state to reflect the change immediately
                 const updatedJobData = { ...jobData, thirdPartyInviteId: inviteId };
                 const jobIndex = AppState.allJobs.findIndex(j => j.id === jobId);
                 if (jobIndex > -1) {
                     AppState.allJobs[jobIndex] = updatedJobData;
                 }
                 
-                // Re-setup the modal with the new data
                 setupTrackingLinkModal(updatedJobData);
                 
-                // Update the button in the job details modal without re-opening it
                 const buttonInDetails = document.querySelector(`#tracking-link-container button[data-job-id="${jobId}"]`);
                 if(buttonInDetails) {
                     buttonInDetails.textContent = 'View Tracking Link';
@@ -2970,6 +3078,64 @@
 
         trackingLinkCloseBtn.addEventListener('click', () => {
             trackingLinkModal.classList.add('hidden');
+        });
+
+        // --- Driver Location Sharing ---
+        shareLocationBtn.addEventListener('click', async () => {
+            const driverId = AppState.currentUser.id;
+            const publicDriverRef = doc(db, AppState.publicDriversPath, driverId);
+            
+            try {
+                let docSnap = await getDoc(publicDriverRef);
+                let shareToken;
+
+                if (docSnap.exists() && docSnap.data().shareToken) {
+                    shareToken = docSnap.data().shareToken;
+                } else {
+                    shareToken = crypto.randomUUID();
+                    await setDoc(publicDriverRef, {
+                        name: AppState.currentUser.name,
+                        phone: AppState.currentUser.phone,
+                        shareToken: shareToken,
+                        timestamp: serverTimestamp()
+                    }, { merge: true });
+                }
+
+                const baseUrl = window.location.href.split('?')[0];
+                const url = `${baseUrl}?driverId=${driverId}&inviteId=${shareToken}`;
+                
+                locationShareUrlInput.value = url;
+                locationShareMobileInput.value = AppState.currentUser.phone || '';
+                locationShareQrcodeEl.innerHTML = '';
+                new QRCode(locationShareQrcodeEl, { text: url, width: 128, height: 128 });
+
+                locationShareModal.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error creating shareable location link:", error);
+                showToast("Could not create sharing link.", "error");
+            }
+        });
+
+        sendLocationSmsBtn.addEventListener('click', () => {
+            const mobile = locationShareMobileInput.value.trim();
+            const url = locationShareUrlInput.value;
+            if (!mobile || !url) {
+                showToast("Mobile number and link are required.", "error");
+                return;
+            }
+            console.log(`Simulating SMS to ${mobile} with link: ${url}`);
+            showToast(`Simulated SMS sent to ${mobile}`, 'success');
+        });
+
+        copyLocationShareBtn.addEventListener('click', () => {
+            locationShareUrlInput.select();
+            document.execCommand('copy');
+            showToast('Link copied!', 'success');
+        });
+
+        locationShareCloseBtn.addEventListener('click', () => {
+            locationShareModal.classList.add('hidden');
         });
 
 
