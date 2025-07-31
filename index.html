@@ -298,9 +298,21 @@
     <div id="location-share-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10001]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
             <h3 class="text-xl font-bold text-white mb-4">Share My Location</h3>
-            <p class="text-sm text-gray-400 mb-4">Share a temporary link to your live location.</p>
+            <p class="text-sm text-gray-400 mb-4">Share a temporary link to your live location. Set a destination to include ETA.</p>
             
-            <div id="location-share-details" class="space-y-4">
+            <div class="space-y-3">
+                <input type="text" id="location-share-destination" placeholder="Enter a destination (optional)" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
+                <div class="flex space-x-2">
+                    <button id="set-personal-route-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Set Route</button>
+                    <button id="clear-personal-route-btn" class="hidden w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Clear Route</button>
+                </div>
+                <div id="personal-route-info" class="text-sm text-gray-300 hidden">
+                    <p><strong>ETA:</strong> <span id="personal-route-eta">--</span></p>
+                    <p><strong>Distance:</strong> <span id="personal-route-distance">--</span></p>
+                </div>
+            </div>
+
+            <div id="location-share-details" class="mt-4 pt-4 border-t border-gray-600 space-y-4">
                 <div>
                     <label for="location-share-mobile" class="block text-sm font-medium text-gray-300">Send to Mobile:</label>
                     <div class="flex space-x-2 mt-1">
@@ -879,6 +891,12 @@
         const copyLocationShareBtn = document.getElementById('copy-location-share-btn');
         const locationShareQrcodeEl = document.getElementById('location-share-qrcode');
         const locationShareCloseBtn = document.getElementById('location-share-close-btn');
+        const locationShareDestinationInput = document.getElementById('location-share-destination');
+        const setPersonalRouteBtn = document.getElementById('set-personal-route-btn');
+        const clearPersonalRouteBtn = document.getElementById('clear-personal-route-btn');
+        const personalRouteInfo = document.getElementById('personal-route-info');
+        const personalRouteEta = document.getElementById('personal-route-eta');
+        const personalRouteDistance = document.getElementById('personal-route-distance');
 
         // Public View UI
         const publicJobContainer = document.getElementById('public-job-container');
@@ -901,8 +919,8 @@
             userMarker: null,
             driverMapMarkers: {},
             isSharingLocation: false,
-            locationWatchId: null, // Changed from locationInterval
-            allUsers: [], // Users within the current company
+            locationWatchId: null, 
+            allUsers: [], 
             allJobs: [],
             activeDrivers: [],
             activeJobTab: 'current',
@@ -913,13 +931,13 @@
             companiesPath: '',
             publicJobsPath: '',
             publicDriversPath: '',
-            // Company-specific paths are set dynamically
             membersPath: '',
             driversPath: '',
             jobsPath: '',
             directionsService: null,
-            jobRouteRenderers: {}, // Store renderers per job
-            jobColors: {}, // Store colors per job
+            jobRouteRenderers: {}, 
+            personalRouteRenderer: null,
+            jobColors: {}, 
             routeColors: ['#FF5733', '#33FF57', '#3357FF', '#FF33A1', '#A133FF', '#33FFA1', '#FFC300', '#C70039'],
             globalUnsubscribes: [],
             companyUnsubscribes: [],
@@ -949,7 +967,7 @@
         }
 
         // --- Main App Initialization ---
-        function initMap(elementId = "map", isPublic = false) {
+        function initMap(elementId = "map") {
             const mapElement = document.getElementById(elementId);
             if (!window.google || !window.google.maps) {
                 console.error("Google Maps script not loaded or API object not available.");
@@ -968,7 +986,13 @@
             const map = new google.maps.Map(mapElement, mapOptions);
             
             if (elementId === 'public-map') AppState.publicMap = map;
-            else if (elementId === 'public-driver-map') AppState.publicDriverMap = map;
+            else if (elementId === 'public-driver-map') {
+                AppState.publicDriverMap = map;
+                AppState.personalRouteRenderer = new google.maps.DirectionsRenderer({
+                    map: AppState.publicDriverMap, suppressMarkers: true, preserveViewport: false,
+                    polylineOptions: { strokeColor: '#60a5fa', strokeWeight: 5, strokeOpacity: 0.8 },
+                });
+            }
             else AppState.map = map;
             
             return map;
@@ -1111,32 +1135,48 @@
                          return;
                     }
 
+                    let destinationHTML = driver.destination ? `<p><strong>Destination:</strong> ${driver.destination}</p>` : '';
+                    let etaHTML = driver.eta ? `<p><strong>ETA:</strong> ${driver.eta}</p>` : '';
+                    let distanceHTML = driver.distance ? `<p><strong>Distance:</strong> ${driver.distance}</p>` : '';
+
                     publicDriverDetailsEl.innerHTML = `
                         <p><strong>Driver:</strong> ${driver.name || 'N/A'}</p>
                         <p><strong>Mobile:</strong> ${driver.phone || 'N/A'}</p>
                         <p><strong>Status:</strong> ${driver.status || 'N/A'}</p>
+                        ${destinationHTML}
+                        ${etaHTML}
+                        ${distanceHTML}
                         <p class="text-xs text-gray-400 mt-2">Last updated: ${driver.timestamp ? driver.timestamp.toDate().toLocaleString() : 'N/A'}</p>
                     `;
 
-                    for (const key in AppState.driverMapMarkers) {
-                        AppState.driverMapMarkers[key].setMap(null);
-                    }
-                    AppState.driverMapMarkers = {};
+                    if (AppState.driverMapMarkers['publicDriver']) AppState.driverMapMarkers['publicDriver'].setMap(null);
 
                     if (driver.location) {
                         const driverPos = { lat: driver.location.latitude, lng: driver.location.longitude };
-                        if (AppState.driverMapMarkers['publicDriver']) {
-                            AppState.driverMapMarkers['publicDriver'].setPosition(driverPos);
-                        } else {
-                            AppState.driverMapMarkers['publicDriver'] = new google.maps.Marker({
-                                position: driverPos,
-                                map: AppState.publicDriverMap,
-                                title: "Driver Location",
-                                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
+                        AppState.driverMapMarkers['publicDriver'] = new google.maps.Marker({
+                            position: driverPos,
+                            map: AppState.publicDriverMap,
+                            title: "Driver Location",
+                            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
+                        });
+                        
+                        if (driver.destination && AppState.directionsService) {
+                            AppState.directionsService.route({
+                                origin: driverPos,
+                                destination: driver.destination,
+                                travelMode: google.maps.TravelMode.DRIVING
+                            }, (response, status) => {
+                                if (status === 'OK') {
+                                    AppState.personalRouteRenderer.setDirections(response);
+                                } else {
+                                    AppState.personalRouteRenderer.setDirections({routes: []});
+                                }
                             });
+                        } else {
+                            AppState.personalRouteRenderer.setDirections({routes: []});
+                            AppState.publicDriverMap.setCenter(driverPos);
+                            AppState.publicDriverMap.setZoom(15);
                         }
-                        AppState.publicDriverMap.setCenter(driverPos);
-                        AppState.publicDriverMap.setZoom(15);
                     }
                 } else {
                     publicDriverDetailsEl.innerHTML = `<p class="text-red-400">This tracking link is invalid or has expired.</p>`;
@@ -1151,7 +1191,7 @@
             publicJobContainer.classList.remove('hidden');
 
             await loadGoogleMapsScript();
-            initMap('public-map', true);
+            initMap('public-map');
             
             const publicJobRef = doc(db, AppState.publicJobsPath, jobId);
             
@@ -1183,7 +1223,6 @@
                         <p><strong>ETA:</strong> <span id="public-job-eta">--</span></p>
                     `;
                     
-                    // Clear previous markers/routes
                     for (const key in AppState.driverMapMarkers) {
                         AppState.driverMapMarkers[key].setMap(null);
                     }
@@ -1205,7 +1244,6 @@
                             icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
                         });
                         
-                        // Draw route from driver to destination
                          if (AppState.directionsService) {
                             const renderer = new google.maps.DirectionsRenderer({
                                 map: AppState.publicMap, suppressMarkers: true, preserveViewport: false,
@@ -1227,7 +1265,6 @@
                             });
                          }
                     } else {
-                        // If no driver location, just draw the planned route
                          if (AppState.directionsService) {
                             const renderer = new google.maps.DirectionsRenderer({
                                 map: AppState.publicMap, suppressMarkers: false, preserveViewport: false,
@@ -1254,17 +1291,14 @@
         }
 
         async function setupUserSession(user) {
-            // Clear all previous global listeners
             AppState.globalUnsubscribes.forEach(unsub => unsub());
             AppState.globalUnsubscribes = [];
 
             const userDocRef = doc(db, AppState.globalUsersPath, user.uid);
             
-            // This is the primary listener for the user's global profile
             const userUnsubscribe = onSnapshot(userDocRef, async (userDocSnap) => {
                 let userData;
                 if (!userDocSnap.exists()) {
-                    // Create the global user profile if it doesn't exist
                     userData = { 
                         email: user.email || user.uid, 
                         name: user.displayName || `User-${user.uid.substring(0, 4)}`,
@@ -1278,13 +1312,13 @@
 
                 const companyChanged = AppState.currentUser?.currentCompanyId !== userData.currentCompanyId;
                 AppState.currentUser = { id: user.uid, ...userData };
-                AppState.isAuthReady = true; // Auth is now ready
+                AppState.isAuthReady = true; 
                 
                 authContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
 
                 if (AppState.currentUser.currentCompanyId) {
-                    if(companyChanged || !AppState.companyId) { // Load if company changed or wasn't loaded before
+                    if(companyChanged || !AppState.companyId) { 
                         await loadCompanyData(AppState.currentUser.currentCompanyId);
                     }
                 } else {
@@ -1295,13 +1329,13 @@
             }, (error) => {
                 console.error("Error listening to user document:", error);
                 showToast("Error loading your profile.", "error");
-                AppState.isAuthReady = true; // Still set to true to unblock UI, even on error
+                AppState.isAuthReady = true; 
             });
             AppState.globalUnsubscribes.push(userUnsubscribe);
         }
 
         async function loadCompanyData(companyId) {
-            if (!AppState.isAuthReady) return; // Prevent running before auth is ready
+            if (!AppState.isAuthReady) return; 
             cleanupCompanyState();
             sidebarLoader.style.display = 'flex';
             
@@ -1322,13 +1356,11 @@
                 AppState.companyName = companyData.name;
                 selectCompanyBtnLabel.textContent = AppState.companyName;
 
-                // Set company-specific paths
                 const companyBasePath = `${AppState.companiesPath}/${companyId}`;
                 AppState.membersPath = `${companyBasePath}/members`;
                 AppState.driversPath = `${companyBasePath}/driverLocations`;
                 AppState.jobsPath = `${companyBasePath}/jobs`;
 
-                // Listener for the current user's role/permissions within this company
                 const memberDocRef = doc(db, AppState.membersPath, AppState.currentUser.id);
                 const memberUnsubscribe = onSnapshot(memberDocRef, (memberDoc) => {
                     if (memberDoc.exists()) {
@@ -1340,14 +1372,12 @@
                 }, (err) => { console.error("Error listening to member doc:", err); sidebarLoader.style.display = 'none'; });
                 AppState.companyUnsubscribes.push(memberUnsubscribe);
 
-                // Listener for all members of the company
                 const membersUnsubscribe = onSnapshot(collection(db, AppState.membersPath), (snapshot) => {
                     AppState.allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderUI();
                 }, (err) => console.error("Error listening to members:", err));
                 AppState.companyUnsubscribes.push(membersUnsubscribe);
 
-                // Listener for active drivers in the company
                 const driversUnsubscribe = onSnapshot(collection(db, AppState.driversPath), (snapshot) => {
                     AppState.activeDrivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderUI();
@@ -1355,7 +1385,6 @@
                 }, (err) => console.error("Error listening to drivers:", err));
                 AppState.companyUnsubscribes.push(driversUnsubscribe);
                 
-                // Listener for jobs in the company
                 setupJobListener();
             } catch (error) {
                 console.error("Error loading company data:", error);
@@ -1387,7 +1416,7 @@
             AppState.allUsers = [];
             AppState.allJobs = [];
             AppState.activeDrivers = [];
-            renderUI(); // Re-render to clear lists
+            renderUI(); 
         }
 
         function cleanupUserSession() {
@@ -1396,7 +1425,7 @@
             AppState.globalUnsubscribes = [];
             cleanupCompanyState();
             AppState.currentUser = null;
-            AppState.isAuthReady = false; // Reset auth flag
+            AppState.isAuthReady = false; 
             
             for (const jobId in AppState.jobRouteRenderers) {
                 AppState.jobRouteRenderers[jobId].setMap(null);
@@ -1430,7 +1459,7 @@
             };
 
             const successCallback = (position) => {
-                if (!AppState.companyId) return; // Check again in case company was changed while waiting for location
+                if (!AppState.companyId) return; 
 
                 const newPos = { lat: position.coords.latitude, lng: position.coords.longitude };
                 const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.some(d => d.id === AppState.currentUser.id));
@@ -1445,21 +1474,37 @@
                 setDoc(doc(db, AppState.driversPath, AppState.currentUser.id), locationData, { merge: true })
                     .catch(err => console.error("Error sharing location:", err));
                 
-                // Also update public job doc if applicable
                 if (myJob && myJob.thirdPartyInviteId) {
                     const publicJobRef = doc(db, AppState.publicJobsPath, myJob.id);
                     updateDoc(publicJobRef, { driverLocation: locationData.location }).catch(err => console.log("Could not update public job location"));
                 }
                 
-                // Update public driver location if being shared
                 const publicDriverRef = doc(db, AppState.publicDriversPath, AppState.currentUser.id);
                 getDoc(publicDriverRef).then(docSnap => {
                     if (docSnap.exists()) {
-                        updateDoc(publicDriverRef, {
+                        const publicData = docSnap.data();
+                        const updateData = {
                             location: locationData.location,
                             timestamp: locationData.timestamp,
                             status: locationData.status
-                        }).catch(err => console.log("Could not update public driver location"));
+                        };
+
+                        if (publicData.destination && AppState.directionsService) {
+                            AppState.directionsService.route({
+                                origin: newPos,
+                                destination: publicData.destination,
+                                travelMode: google.maps.TravelMode.DRIVING
+                            }, (response, status) => {
+                                if (status === 'OK') {
+                                    const leg = response.routes[0].legs[0];
+                                    updateData.eta = leg.duration.text;
+                                    updateData.distance = leg.distance.text;
+                                }
+                                updateDoc(publicDriverRef, updateData).catch(err => console.log("Could not update public driver location with route"));
+                            });
+                        } else {
+                            updateDoc(publicDriverRef, updateData).catch(err => console.log("Could not update public driver location"));
+                        }
                     }
                 });
 
@@ -1647,10 +1692,6 @@
             });
         }
         
-        /**
-         * Intelligently renders map objects (markers, routes) by only updating what has changed.
-         * This avoids clearing and re-drawing everything on every data update.
-         */
         function renderMapObjects() {
             if (!AppState.map || !AppState.currentUser || !AppState.isAuthReady) return;
 
@@ -1658,11 +1699,9 @@
             const recentDrivers = AppState.activeDrivers.filter(driver => driver.timestamp && driver.timestamp.toMillis() > fiveMinutesAgo);
             const recentDriverIds = new Set(recentDrivers.map(d => d.id));
 
-            // --- 1. Update Driver Markers (Dispatcher View) ---
             if (AppState.isDispatchView) {
-                // Add or update markers for currently active drivers
                 recentDrivers.forEach(driver => {
-                    if (driver.id === AppState.currentUser.id) return; // Don't show self in dispatch view
+                    if (driver.id === AppState.currentUser.id) return; 
                     const position = { lat: driver.location.latitude, lng: driver.location.longitude };
                     if (AppState.driverMapMarkers[driver.id]) {
                         AppState.driverMapMarkers[driver.id].setPosition(position);
@@ -1675,7 +1714,6 @@
                     }
                 });
 
-                // Remove markers for drivers who are no longer active
                 for (const driverId in AppState.driverMapMarkers) {
                     if (!recentDriverIds.has(driverId)) {
                         AppState.driverMapMarkers[driverId].setMap(null);
@@ -1683,14 +1721,12 @@
                     }
                 }
             } else {
-                // If not in dispatch view, ensure all other driver markers are removed
                 for (const driverId in AppState.driverMapMarkers) {
                     AppState.driverMapMarkers[driverId].setMap(null);
                     delete AppState.driverMapMarkers[driverId];
                 }
             }
 
-            // --- 2. Update User's Own Marker (Driver View) ---
             if (!AppState.isDispatchView) {
                 const myLocationData = recentDrivers.find(d => d.id === AppState.currentUser.id);
                 if (myLocationData) {
@@ -1712,7 +1748,6 @@
                 AppState.userMarker = null;
             }
 
-            // --- 3. Update Job Routes ---
             let jobsToRenderRoutesFor;
             if (!AppState.isDispatchView) {
                 const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.some(d => d.id === AppState.currentUser.id));
@@ -1722,14 +1757,12 @@
             }
             const jobsToRenderIds = new Set(jobsToRenderRoutesFor.map(j => j.id));
 
-            // Add/Update routes for relevant jobs
             jobsToRenderRoutesFor.forEach(job => {
                 const driverId = !AppState.isDispatchView ? AppState.currentUser.id : job.assignedDrivers[0].id;
                 const driver = recentDrivers.find(d => d.id === driverId);
                 drawRouteForJob(job, driver?.location);
             });
             
-            // Remove routes for jobs that are no longer relevant
             for (const jobId in AppState.jobRouteRenderers) {
                 if (!jobsToRenderIds.has(jobId)) {
                     AppState.jobRouteRenderers[jobId].setMap(null);
@@ -1738,16 +1771,11 @@
             }
         }
 
-        /**
-         * Draws or updates a route for a specific job.
-         * Reuses the DirectionsRenderer if one already exists for the job.
-         */
         function drawRouteForJob(job, driverLocation) {
-            if (!AppState.directionsService) return; // Guard against missing service
+            if (!AppState.directionsService) return; 
             const jobId = job.id;
             let renderer = AppState.jobRouteRenderers[jobId];
 
-            // If a renderer doesn't exist for this job, create and store it.
             if (!renderer) {
                 const jobColor = getJobColor(jobId);
                 renderer = new google.maps.DirectionsRenderer({
@@ -1857,7 +1885,7 @@
         }
 
         function renderUI() {
-            if (!AppState.isAuthReady) return; // Don't render if auth isn't ready
+            if (!AppState.isAuthReady) return; 
             
             userWelcomeEl.textContent = `Welcome, ${AppState.currentUser.name}!`;
 
@@ -1868,23 +1896,18 @@
                 return;
             }
 
-            // Show/hide main UI sections based on the role-based flag
             driverUi.classList.toggle('hidden', AppState.isDispatchView);
             dispatchUi.classList.toggle('hidden', !AppState.isDispatchView);
             
-            // Execute logic based on the role
             if (!AppState.isDispatchView) {
-                // Driver-specific logic
                 startAutomaticLocationSharing();
                 updateDriverJobPanels();
             } else {
-                // Dispatcher-specific logic
                 stopAutomaticLocationSharing();
                 renderAllJobsList();
                 renderDriversList();
             }
             
-            // Show/hide admin controls based on permissions
             const isAdmin = checkPermission('canManageDrivers');
             adminControls.classList.toggle('hidden', !isAdmin);
             adminBadge.classList.toggle('hidden', !isAdmin);
@@ -1922,7 +1945,7 @@
                 currentJobPanel.classList.add('hidden');
                 availableJobsPanel.classList.remove('hidden'); 
                 driverStatusSelect.disabled = false;
-                arrivedBtn.classList.add('hidden'); // Hide arrived button if no job
+                arrivedBtn.classList.add('hidden'); 
             }
             renderAvailableJobsList();
         }
@@ -1951,12 +1974,19 @@
         }
 
         function setupAutocomplete() {
-            const originInput = document.getElementById('job-origin-input');
-            const originAutocomplete = new google.maps.places.Autocomplete(originInput, {
-                fields: ["address_components", "geometry", "icon", "name"],
-                strictBounds: false,
+            const inputs = [
+                document.getElementById('job-origin-input'),
+                document.getElementById('location-share-destination')
+            ];
+            inputs.forEach(input => {
+                if (input) {
+                    const autocomplete = new google.maps.places.Autocomplete(input, {
+                        fields: ["address_components", "geometry", "icon", "name"],
+                        strictBounds: false,
+                    });
+                    AppState.autocompleteInstances.push(autocomplete);
+                }
             });
-            AppState.autocompleteInstances.push(originAutocomplete);
         }
 
 
@@ -2035,7 +2065,6 @@
             const isDispatcher = checkPermission('canCreateJob');
             const trackingLinkBtn = trackingLinkContainer.querySelector('button');
 
-            // Reset all buttons and inputs first
             editJobBtn.classList.add('hidden');
             archiveJobBtn.classList.add('hidden');
             deleteJobBtn.classList.add('hidden');
@@ -2054,12 +2083,11 @@
                 jobChatForm.querySelector('button').disabled = true;
                 if (trackingLinkBtn) trackingLinkBtn.disabled = true;
             } else {
-                // Logic for non-archived jobs
                 if (isDispatcher) {
                     archiveJobBtn.classList.remove('hidden');
                     deleteJobBtn.classList.remove('hidden');
                     editJobBtn.classList.toggle('hidden', job.status === 'completed' || job.status === 'cancelled');
-                } else { // Driver view
+                } else { 
                     jobDetailsDriverActions.classList.remove('hidden');
                     jobDetailsAcceptBtn.classList.toggle('hidden', job.status !== 'unassigned');
                     jobDetailsDriverCancelBtn.classList.toggle('hidden', !isAssignedToMe || job.status !== 'in-progress');
@@ -2094,7 +2122,6 @@
                 dispatcherClosingCommentSection.classList.add('hidden');
             }
 
-            // Tracking Link UI Logic
             const isAssignedDriver = (job.assignedDrivers || []).some(d => d.id === AppState.currentUser.id);
             trackingLinkSection.classList.toggle('hidden', !isDispatcher && !isAssignedDriver);
 
@@ -2154,12 +2181,8 @@
             }
 
             try {
-                // Remove the user from the company's members list
                 await deleteDoc(doc(db, AppState.membersPath, userId));
-                // Optionally, remove their driver location data
                 await deleteDoc(doc(db, AppState.driversPath, userId)).catch(() => {});
-
-                // Set their global profile's company ID to null so they are prompted to rejoin
                 await updateDoc(doc(db, AppState.globalUsersPath, userId), { currentCompanyId: null });
 
                 showToast('User removed from company.', 'success');
@@ -2217,7 +2240,6 @@
                         name: newName,
                         phone: newPhone 
                     });
-                    // Also update their name in the company members list
                     await updateDoc(doc(db, AppState.membersPath, AppState.currentUser.id), { name: newName });
                     showToast('Profile updated!', 'success');
                 } catch (error) {
@@ -2250,7 +2272,7 @@
             } else {
                 createJobModalTitle.textContent = 'Create New Job';
                 jobDateInput.value = new Date().toISOString().split('T')[0];
-                addDestinationInput(); // Add one empty destination for new jobs
+                addDestinationInput(); 
                 assignDriverSelect.parentElement.classList.remove('hidden');
                 const availableDrivers = AppState.allUsers.filter(u => {
                     const isActive = AppState.activeDrivers.some(d => d.id === u.id && d.status === 'On Trip');
@@ -2287,7 +2309,6 @@
         });
 
         currentJobPanel.addEventListener('click', (e) => {
-             // Avoid triggering if a button inside the panel was clicked
              if (e.target.closest('button')) return;
              const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.some(d => d.id === AppState.currentUser.id));
              if (myJob) {
@@ -2383,7 +2404,7 @@
                 } catch (error) {
                     console.error("Error uploading POD:", error);
                     showToast("Could not upload proof of delivery image.", "error");
-                    return; // Stop if upload fails
+                    return;
                 }
             }
 
@@ -2398,7 +2419,7 @@
                         status: 'pending-completion',
                         driverCompletionComment: comment,
                         assignedDrivers: newAssignedDrivers,
-                        proofOfDeliveryURL: podURL || jobData.proofOfDeliveryURL || null, // FIX: Ensure value is not undefined
+                        proofOfDeliveryURL: podURL || jobData.proofOfDeliveryURL || null, 
                         log: arrayUnion({ text: `Marked as pending completion by ${AppState.currentUser.name}`, timestamp: new Date() })
                     };
 
@@ -2482,7 +2503,6 @@
                 totalDuration: 0,
             };
 
-            // Calculate route details before saving
             const finalDestination = destinations[destinations.length - 1];
             const waypoints = destinations.slice(0, -1).map(d => ({ location: d, stopover: true }));
             
@@ -2506,13 +2526,11 @@
 
                 try {
                     if (editingJobId) {
-                        // Update existing job
                         const jobRef = doc(db, AppState.jobsPath, editingJobId);
                         jobData.log = arrayUnion({ text: `Job details updated by ${AppState.currentUser.name}`, timestamp: new Date() });
                         await updateDoc(jobRef, jobData);
                         showToast('Job updated successfully.', 'success');
                     } else {
-                        // Create new job
                         jobData.assignedDrivers = [];
                         jobData.createdAt = serverTimestamp();
                         jobData.archived = false;
@@ -2602,7 +2620,7 @@
                 } catch (error) {
                     console.error("Error updating permissions:", error);
                     showToast("Failed to update permissions.", "error");
-                    e.target.checked = !isChecked; // Revert checkbox on failure
+                    e.target.checked = !isChecked; 
                 }
             }
         });
@@ -2656,7 +2674,6 @@
             const text = jobChatInput.value.trim();
             if (!text || !jobId) return;
 
-            // First, try to send the message. This is the most important part.
             try {
                 await addDoc(collection(db, AppState.jobsPath, jobId, 'messages'), {
                     text,
@@ -2666,20 +2683,14 @@
                 });
                 jobChatInput.value = '';
 
-                // Second, try to update the timestamp for the notification pulse.
-                // This might fail for drivers without update permissions, but that's okay.
-                // The message has already been sent.
                 try {
                     const jobRef = doc(db, AppState.jobsPath, jobId);
                     await updateDoc(jobRef, { lastMessageTimestamp: serverTimestamp() });
                 } catch (timestampError) {
-                    // This error is expected for users without job update permissions (like drivers).
-                    // We can ignore it or log it quietly for debugging.
                     console.log('Could not update message timestamp, likely due to permissions:', timestampError.message);
                 }
 
             } catch (error) {
-                // This will only catch critical errors, like if sending the message itself fails.
                 console.error("Error sending message:", error);
                 showToast("Could not send message.", "error");
             }
@@ -2688,7 +2699,7 @@
         // --- Company Logic ---
         async function openCompanyModal() {
             try {
-                createCompanyForm.reset(); // Clear the form fields
+                createCompanyForm.reset(); 
                 const companiesRef = collection(db, AppState.companiesPath);
                 const snapshot = await getDocs(query(companiesRef));
                 companyListEl.innerHTML = '';
@@ -2733,19 +2744,17 @@
                     return;
                 }
                 
-                // Add user to the company's members subcollection
                 const memberRef = doc(db, `${AppState.companiesPath}/${companyId}/members`, AppState.currentUser.id);
                 await setDoc(memberRef, {
                     name: AppState.currentUser.name,
                     email: AppState.currentUser.email,
-                    permissions: { // Default permissions for new members
+                    permissions: { 
                         canCreateJob: false,
                         canDeleteJob: false,
                         canManageDrivers: false
                     }
                 });
 
-                // Update the user's global profile to set their current company
                 const userRef = doc(db, AppState.globalUsersPath, AppState.currentUser.id);
                 await updateDoc(userRef, { currentCompanyId: companyId });
 
@@ -2774,7 +2783,6 @@
                     ownerId: AppState.currentUser.id
                 });
 
-                // The owner gets all permissions by default
                 const ownerMemberRef = doc(db, `${AppState.companiesPath}/${newCompanyRef.id}/members`, AppState.currentUser.id);
                 await setDoc(ownerMemberRef, {
                     name: AppState.currentUser.name,
@@ -2786,7 +2794,6 @@
                     }
                 });
                 
-                // Join the company you just created
                 const userRef = doc(db, AppState.globalUsersPath, AppState.currentUser.id);
                 await updateDoc(userRef, { currentCompanyId: newCompanyRef.id });
 
@@ -2887,7 +2894,6 @@
         
         jobDetailsCloseBtn.addEventListener('click', closeJobDetailsModal);
         
-        // Consolidated listener for job details modal footer
         jobDetailsModal.addEventListener('click', (e) => {
             const button = e.target.closest('button');
             if (!button) return;
@@ -2950,7 +2956,6 @@
 
             newDestDiv.querySelector('.remove-destination-btn').addEventListener('click', () => {
                 newDestDiv.remove();
-                // Re-label remaining destinations
                 Array.from(destinationsContainer.children).forEach((child, index) => {
                     child.querySelector('input').placeholder = `Destination ${index + 1}`;
                 });
@@ -2961,7 +2966,6 @@
 
         addDestinationBtn.addEventListener('click', () => addDestinationInput());
         
-        // --- Tracking Link Logic ---
         function setupTrackingLinkModal(job) {
             AppState.currentJobIdForModal = job.id;
             trackingLinkMobileInput.value = job.thirdPartyMobile || job.contactNumber || '';
@@ -3000,8 +3004,7 @@
 
             const jobData = AppState.allJobs.find(j => j.id === jobId);
             if (!jobData) {
-                showToast("Job data not found. Please close and re-open the job details.", "error");
-                console.error("Could not find job data for jobId:", jobId);
+                showToast("Job data not found.", "error");
                 return;
             }
 
@@ -3086,12 +3089,16 @@
             const publicDriverRef = doc(db, AppState.publicDriversPath, driverId);
             
             try {
-                let docSnap = await getDoc(publicDriverRef);
+                const docSnap = await getDoc(publicDriverRef);
                 let shareToken;
+                let publicData = {};
 
-                if (docSnap.exists() && docSnap.data().shareToken) {
-                    shareToken = docSnap.data().shareToken;
-                } else {
+                if (docSnap.exists()) {
+                    publicData = docSnap.data();
+                    shareToken = publicData.shareToken;
+                }
+                
+                if (!shareToken) {
                     shareToken = crypto.randomUUID();
                     await setDoc(publicDriverRef, {
                         name: AppState.currentUser.name,
@@ -3109,11 +3116,89 @@
                 locationShareQrcodeEl.innerHTML = '';
                 new QRCode(locationShareQrcodeEl, { text: url, width: 128, height: 128 });
 
+                if (publicData.destination) {
+                    locationShareDestinationInput.value = publicData.destination;
+                    personalRouteEta.textContent = publicData.eta || '--';
+                    personalRouteDistance.textContent = publicData.distance || '--';
+                    personalRouteInfo.classList.remove('hidden');
+                    setPersonalRouteBtn.classList.add('hidden');
+                    clearPersonalRouteBtn.classList.remove('hidden');
+                } else {
+                    locationShareDestinationInput.value = '';
+                    personalRouteInfo.classList.add('hidden');
+                    setPersonalRouteBtn.classList.remove('hidden');
+                    clearPersonalRouteBtn.classList.add('hidden');
+                }
+
                 locationShareModal.classList.remove('hidden');
 
             } catch (error) {
                 console.error("Error creating shareable location link:", error);
                 showToast("Could not create sharing link.", "error");
+            }
+        });
+
+        setPersonalRouteBtn.addEventListener('click', () => {
+            const destination = locationShareDestinationInput.value.trim();
+            if (!destination) {
+                showToast("Please enter a destination.", "error");
+                return;
+            }
+
+            const driver = AppState.activeDrivers.find(d => d.id === AppState.currentUser.id);
+            if (!driver || !driver.location) {
+                showToast("Your current location is not available yet. Please wait a moment.", "error");
+                return;
+            }
+
+            const origin = { lat: driver.location.latitude, lng: driver.location.longitude };
+
+            AppState.directionsService.route({
+                origin: origin,
+                destination: destination,
+                travelMode: google.maps.TravelMode.DRIVING
+            }, async (response, status) => {
+                if (status === 'OK') {
+                    const leg = response.routes[0].legs[0];
+                    const publicDriverRef = doc(db, AppState.publicDriversPath, AppState.currentUser.id);
+                    try {
+                        await updateDoc(publicDriverRef, {
+                            destination: destination,
+                            eta: leg.duration.text,
+                            distance: leg.distance.text
+                        });
+                        personalRouteEta.textContent = leg.duration.text;
+                        personalRouteDistance.textContent = leg.distance.text;
+                        personalRouteInfo.classList.remove('hidden');
+                        setPersonalRouteBtn.classList.add('hidden');
+                        clearPersonalRouteBtn.classList.remove('hidden');
+                        showToast("Personal route set!", "success");
+                    } catch (error) {
+                        console.error("Error setting personal route:", error);
+                        showToast("Could not set personal route.", "error");
+                    }
+                } else {
+                    showToast("Could not calculate route to destination.", "error");
+                }
+            });
+        });
+
+        clearPersonalRouteBtn.addEventListener('click', async () => {
+            const publicDriverRef = doc(db, AppState.publicDriversPath, AppState.currentUser.id);
+            try {
+                await updateDoc(publicDriverRef, {
+                    destination: null,
+                    eta: null,
+                    distance: null
+                });
+                locationShareDestinationInput.value = '';
+                personalRouteInfo.classList.add('hidden');
+                setPersonalRouteBtn.classList.remove('hidden');
+                clearPersonalRouteBtn.classList.add('hidden');
+                showToast("Personal route cleared.", "success");
+            } catch (error) {
+                console.error("Error clearing personal route:", error);
+                showToast("Could not clear personal route.", "error");
             }
         });
 
