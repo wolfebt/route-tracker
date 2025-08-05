@@ -159,14 +159,14 @@
     <!-- App Container -->
     <div id="app-container" class="hidden flex flex-col md:flex-row h-screen">
         <!-- Map View -->
-        <div id="map-container" class="w-full md:w-2/3 h-1/2 md:h-full">
+        <div id="map-container" class="w-full md:w-2/3 h-[40vh] md:h-full">
             <div id="map" class="rounded-lg shadow-md bg-gray-700 flex items-center justify-center">
                 <p class="text-gray-400">Loading Map...</p>
             </div>
         </div>
 
         <!-- Sidebar -->
-        <div class="w-full md:w-1/3 h-1/2 md:h-full flex flex-col bg-gray-800 p-4 space-y-4 overflow-y-auto border-l-2 border-teal-600">
+        <div class="w-full md:w-1/3 h-[60vh] md:h-full flex flex-col bg-gray-800 p-4 space-y-4 overflow-y-auto border-l-2 border-teal-600">
             <div id="sidebar-content" class="flex flex-col h-full relative">
                 <!-- Sidebar Loading Overlay -->
                 <div id="sidebar-loader" class="absolute inset-0 bg-gray-800 bg-opacity-75 flex-col items-center justify-center z-10 hidden">
@@ -265,13 +265,13 @@
     <!-- Public Job View Container -->
     <div id="public-job-container" class="hidden flex flex-col md:flex-row h-screen">
         <!-- Public Map View -->
-        <div id="public-map-container" class="w-full md:w-2/3 h-1/2 md:h-full">
+        <div id="public-map-container" class="w-full md:w-2/3 h-[40vh] md:h-full">
             <div id="public-map" class="rounded-lg shadow-md bg-gray-700 flex items-center justify-center h-full w-full">
                 <p class="text-gray-400">Loading Map...</p>
             </div>
         </div>
         <!-- Public Sidebar -->
-        <div class="w-full md:w-1/3 h-1/2 md:h-full flex flex-col bg-gray-800 p-4 space-y-4 overflow-y-auto border-l-2 border-teal-600">
+        <div class="w-full md:w-1/3 h-[60vh] md:h-full flex flex-col bg-gray-800 p-4 space-y-4 overflow-y-auto border-l-2 border-teal-600">
             <h1 class="text-2xl font-bold text-white pb-2 border-b border-gray-700">Live Job Tracking</h1>
             <div id="public-job-details" class="bg-gray-900 p-4 rounded-lg shadow-sm space-y-2 text-gray-300">
                 <!-- Public job details will be rendered here -->
@@ -281,12 +281,12 @@
 
     <!-- Public Driver View Container -->
     <div id="public-driver-container" class="hidden flex flex-col md:flex-row h-screen">
-        <div id="public-driver-map-container" class="w-full md:w-2/3 h-1/2 md:h-full">
+        <div id="public-driver-map-container" class="w-full md:w-2/3 h-[40vh] md:h-full">
             <div id="public-driver-map" class="rounded-lg shadow-md bg-gray-700 flex items-center justify-center h-full w-full">
                 <p class="text-gray-400">Loading Map...</p>
             </div>
         </div>
-        <div class="w-full md:w-1/3 h-1/2 md:h-full flex flex-col bg-gray-800 p-4 space-y-4 overflow-y-auto border-l-2 border-indigo-600">
+        <div class="w-full md:w-1/3 h-[60vh] md:h-full flex flex-col bg-gray-800 p-4 space-y-4 overflow-y-auto border-l-2 border-indigo-600">
             <h1 class="text-2xl font-bold text-white pb-2 border-b border-gray-700">Live Driver Tracking</h1>
             <div id="public-driver-details" class="bg-gray-900 p-4 rounded-lg shadow-sm space-y-2 text-gray-300">
                 <!-- Public driver details will be rendered here -->
@@ -422,7 +422,7 @@
                     <p>Route Tracker has two main roles, which are set by a company administrator. Your view of the app will change based on your role.</p>
                     <ul class="list-disc list-inside space-y-2 mt-2">
                         <li><strong>Dispatcher View (Admin):</strong> This is the command center. You can see all jobs (current and archived), the real-time location of all active drivers, and have access to management actions like creating jobs and managing user roles.</li>
-                        <li><strong>Driver View:</strong> This is the streamlined, on-the-road view. You will only see your currently assigned job and a list of open jobs available for you to accept.</li>
+                        <li><strong>Driver View:</strong> This is the streamlined, on-the-road view. You will only see your currently assigned job and a list of open jobs available for you to claim.</li>
                     </ul>
                 </div>
                 <div>
@@ -603,7 +603,7 @@
     </div>
     <div id="job-details-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg mx-4 flex flex-col" style="max-height: 90vh;">
-            <div id="job-details-printable" class="overflow-y-auto">
+            <div id="job-details-printable" class="overflow-y-auto flex-grow">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-2xl font-bold text-white">Job Details</h3>
                 </div>
@@ -2061,9 +2061,7 @@
                 <p class="mt-2 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
             `;
             
-            const isAssignedToMe = (job.assignedDrivers || []).some(d => d.id === AppState.currentUser.id);
             const isDispatcher = checkPermission('canCreateJob');
-            const trackingLinkBtn = trackingLinkContainer.querySelector('button');
 
             editJobBtn.classList.add('hidden');
             archiveJobBtn.classList.add('hidden');
@@ -2073,15 +2071,14 @@
             jobDetailsDriverCancelBtn.classList.add('hidden');
             jobChatInput.disabled = false;
             jobChatForm.querySelector('button').disabled = false;
-            if (trackingLinkBtn) trackingLinkBtn.disabled = false;
-
+            
+            const isAssignedToMe = (job.assignedDrivers || []).some(d => d.id === AppState.currentUser.id);
 
             if (job.archived) {
                 unarchiveJobModalBtn.classList.remove('hidden');
                 deleteJobBtn.classList.remove('hidden');
                 jobChatInput.disabled = true;
                 jobChatForm.querySelector('button').disabled = true;
-                if (trackingLinkBtn) trackingLinkBtn.disabled = true;
             } else {
                 if (isDispatcher) {
                     archiveJobBtn.classList.remove('hidden');
@@ -2122,22 +2119,35 @@
                 dispatcherClosingCommentSection.classList.add('hidden');
             }
 
-            const isAssignedDriver = (job.assignedDrivers || []).some(d => d.id === AppState.currentUser.id);
-            trackingLinkSection.classList.toggle('hidden', !isDispatcher && !isAssignedDriver);
-
-            trackingLinkContainer.innerHTML = '';
-            const button = document.createElement('button');
-            button.className = 'w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700';
-            button.dataset.jobId = job.id;
-            if (job.thirdPartyInviteId) {
+            // --- MODIFICATION START ---
+            trackingLinkContainer.innerHTML = ''; // Clear previous button
+            if (isDispatcher) {
+                trackingLinkSection.classList.remove('hidden');
+                const button = document.createElement('button');
+                button.className = 'w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700';
+                button.dataset.jobId = job.id;
+                if (job.thirdPartyInviteId) {
+                    button.textContent = 'View Tracking Link';
+                    button.id = 'view-tracking-link-btn';
+                } else {
+                    button.textContent = 'Create Tracking Link';
+                    button.id = 'create-tracking-link-btn';
+                }
+                trackingLinkContainer.appendChild(button);
+                if(job.archived) button.disabled = true;
+            } else if (job.thirdPartyInviteId) { // Driver can only see/share if it exists
+                trackingLinkSection.classList.remove('hidden');
+                const button = document.createElement('button');
+                button.className = 'w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700';
+                button.dataset.jobId = job.id;
                 button.textContent = 'View Tracking Link';
                 button.id = 'view-tracking-link-btn';
+                trackingLinkContainer.appendChild(button);
+                if(job.archived) button.disabled = true;
             } else {
-                button.textContent = 'Create Tracking Link';
-                button.id = 'create-tracking-link-btn';
+                trackingLinkSection.classList.add('hidden');
             }
-            trackingLinkContainer.appendChild(button);
-            if(job.archived) button.disabled = true;
+            // --- MODIFICATION END ---
 
             jobHistoryLog.innerHTML = '';
             if (job.log && job.log.length > 0) {
