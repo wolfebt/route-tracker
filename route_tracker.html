@@ -1011,14 +1011,14 @@
         };
 
         async function initializeFirebase() {
-            const hardcodedFirebaseConfig = {
-                apiKey: "AIzaSyBxtOjJtsJpz-xWEzJSQ1ug0EuDVIG0SNw",
-                authDomain: "route-tracker-e62b1.firebaseapp.com",
-                projectId: "route-tracker-e62b1",
-                storageBucket: "route-tracker-e62b1.appspot.com",
-                messagingSenderId: "1016000331711",
-                appId: "1:1016000331711:web:a122b8a52045ee4e832b0a",
-                measurementId: "G-B476Z21SKP"
+				const firebaseConfig = {
+					apiKey: "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI",
+					authDomain: "route-tracker-e62b1.firebaseapp.com",
+					projectId: "route-tracker-e62b1",
+					storageBucket: "route-tracker-e62b1.firebasestorage.app",
+					messagingSenderId: "1016000331711",
+					appId: "1:1016000331711:web:a122b8a52045ee4e832b0a",
+					measurementId: "G-B476Z21SKP"
             };
 
             const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : hardcodedFirebaseConfig;
@@ -1974,7 +1974,7 @@
         }
 
         async function loadGoogleMapsScript() {
-            const apiKey = "AIzaSyDUzkfgu-6zuMHoH-UV5vzFQySSjwAD9u8";
+            const apiKey = "AIzaSyBtO0PwM_NjL5GVkRh6kXK2LaDN2Kmmwn4";
             const loader = new Loader({
                 apiKey: apiKey,
                 version: "weekly",
