@@ -1011,7 +1011,7 @@
         };
 
         async function initializeFirebase() {
-				const firebaseConfig = {
+				const hardcodedFirebaseConfig = {
 					apiKey: "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI",
 					authDomain: "route-tracker-e62b1.firebaseapp.com",
 					projectId: "route-tracker-e62b1",
@@ -1974,7 +1974,8 @@
         }
 
         async function loadGoogleMapsScript() {
-            const apiKey = "AIzaSyD-S5lPYwKxGJjKb8J7LutJ-Xgr0ZoyZko";
+            // NOTE: This key has expired. Please replace it with your own valid Google Maps API key.
+            const apiKey = "YOUR_GOOGLE_MAPS_API_KEY";
             const loader = new Loader({
                 apiKey: apiKey,
                 version: "weekly",
@@ -3290,3 +3291,4 @@
     
 </body>
 </html>
+
