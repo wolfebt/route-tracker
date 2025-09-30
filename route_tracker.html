@@ -740,7 +740,6 @@
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, getDoc, arrayUnion, arrayRemove, runTransaction, enableIndexedDbPersistence, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
-        import { Loader } from "https://esm.sh/@googlemaps/js-api-loader";
 
         
         // --- Initialize Firebase and Services ---
@@ -1974,26 +1973,42 @@
         }
 
         async function loadGoogleMapsScript() {
-            // NOTE: This key has expired. Please replace it with your own valid Google Maps API key.
-            const apiKey = "YOUR_GOOGLE_MAPS_API_KEY";
-            const loader = new Loader({
-                apiKey: apiKey,
-                version: "weekly",
-            });
+            const apiKey = "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI";
 
+            if (!window.google || !window.google.maps) {
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&loading=async&libraries=places,routes`;
+                script.async = true;
+                script.defer = true;
+                document.head.appendChild(script);
+                script.onload = () => {
+                    console.log("Google Maps script loaded.");
+                    initializeMapAndServices();
+                };
+                script.onerror = () => {
+                     console.error("Error loading Google Maps script.");
+                     document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Script Error</p></div>`;
+                };
+            } else {
+                initializeMapAndServices();
+            }
+        }
+
+        async function initializeMapAndServices() {
             try {
-                await loader.importLibrary('maps');
-                await loader.importLibrary('places');
-                await loader.importLibrary('routes');
+                const { Map } = await google.maps.importLibrary("maps");
+                const { DirectionsService } = await google.maps.importLibrary("routes");
+                const { Autocomplete } = await google.maps.importLibrary("places");
+
+                console.log("Google Maps libraries imported successfully.");
                 
-                console.log("Google Maps libraries loaded successfully.");
-                if(!AppState.publicMap && !AppState.publicDriverMap) initMap(); 
+                if(!AppState.publicMap && !AppState.publicDriverMap) initMap();
                 AppState.directionsService = new google.maps.DirectionsService();
                 setupAutocomplete();
 
             } catch (e) {
-                console.error("Error loading Google Maps script:", e);
-                document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Script Error</p></div>`;
+                console.error("Error importing Google Maps libraries:", e);
+                document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Library Error</p></div>`;
             }
         }
 
