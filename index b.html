@@ -1,9 +1,14 @@
+<!--
+Vecto Mapping System
+Wolfe.BT
+TangentLLC
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Route Tracker - Dark</title>
+    <title>Vecto - Dark</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;500;600;700&display=swap" rel="stylesheet">
@@ -137,7 +142,7 @@
     <div id="loading-overlay" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-[10001]">
         <div class="text-center">
             <div class="spinner large-spinner mx-auto"></div>
-            <p class="text-gray-400 mt-4">Connecting to Route Tracker...</p>
+            <p class="text-gray-400 mt-4">Connecting to Vecto...</p>
         </div>
     </div>
 
@@ -147,7 +152,7 @@
     <!-- Auth Container -->
     <div id="auth-container" class="hidden flex items-center justify-center h-screen">
         <div class="w-full max-w-sm text-center">
-             <h1 class="text-4xl font-bold text-white mb-2">Route Tracker</h1>
+             <h1 class="text-4xl font-bold text-white mb-2">Vecto</h1>
              <p class="text-gray-400 mb-8">Please sign in to continue</p>
              <button id="google-signin-btn" class="bg-white text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md hover:bg-gray-200 flex items-center justify-center w-full">
                  <svg class="w-6 h-6 mr-3" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path></svg>
@@ -179,7 +184,7 @@
 
                 <div>
                     <div class="flex items-center justify-between pb-2 border-b border-gray-700">
-                        <h1 class="text-2xl font-bold text-white">Route Tracker</h1>
+                        <h1 class="text-2xl font-bold text-white">Vecto</h1>
                         <div class="flex items-center space-x-4">
                             <button id="settings-btn" class="text-gray-400 hover:text-white">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
@@ -258,7 +263,7 @@
                 </div>
                 <!-- Creator ID Tag -->
                 <div class="mt-auto pt-4 text-center text-xs font-thin text-gray-500">
-                    <p>Route Tracker</p>
+                    <p>Vecto</p>
                     <p>Wolfe.BT@TangentLLC</p>
                 </div>
             </div>
@@ -408,9 +413,9 @@
     </div>
     <div id="user-guide-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10004]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4 flex flex-col" style="max-height: 90vh;">
-            <h3 class="text-2xl font-bold text-white mb-4">Route Tracker</h3>
+            <h3 class="text-2xl font-bold text-white mb-4">Vecto</h3>
             <div class="overflow-y-auto text-gray-300 space-y-4">
-                <p>Welcome to Route Tracker! This guide will walk you through all the features of the app, whether you're a dispatcher managing the fleet or a driver on the road.</p>
+                <p>Welcome to Vecto! This guide will walk you through all the features of the app, whether you're a dispatcher managing the fleet or a driver on the road.</p>
                 <div>
                     <h4 class="text-lg font-semibold text-teal-400">1. Getting Started: Your First Login</h4>
                     <p>Before you can use the app, you'll need to sign in and join your company.</p>
@@ -428,7 +433,7 @@
                 </div>
                 <div>
                     <h4 class="text-lg font-semibold text-teal-400">2. The Two Views: Dispatcher vs. Driver</h4>
-                    <p>Route Tracker has two main roles, which are set by a company administrator. Your view of the app will change based on your role.</p>
+                    <p>Vecto has two main roles, which are set by a company administrator. Your view of the app will change based on your role.</p>
                     <ul class="list-disc list-inside space-y-2 mt-2">
                         <li><strong>Dispatcher View (Admin):</strong> This is the command center. You can see all jobs (current and archived), the real-time location of all active drivers, and have access to management actions like creating jobs and managing user roles.</li>
                         <li><strong>Driver View:</strong> This is the streamlined, on-the-road view. You will only see your currently assigned job and a list of open jobs available for you to claim.</li>
@@ -649,7 +654,7 @@
                 </div>
                 <!-- Creator ID Tag for Print -->
                 <div class="creator-tag-print pt-4 mt-4 border-t border-gray-300 text-center text-xs font-thin">
-                    <p>Route Tracker</p>
+                    <p>Vecto</p>
                     <p>Wolfe.BT@TangentLLC</p>
                 </div>
             </div>
@@ -2893,8 +2898,8 @@
         emailInviteForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const email = emailInviteInput.value;
-            const subject = `Invitation to join ${AppState.companyName} on Route Tracker`;
-            const body = `You've been invited to join ${AppState.companyName} on Route Tracker. Click this link to get started: ${shareLinkInput.value}`;
+            const subject = `Invitation to join ${AppState.companyName} on Vecto`;
+            const body = `You've been invited to join ${AppState.companyName} on Vecto. Click this link to get started: ${shareLinkInput.value}`;
             window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             emailInviteInput.value = '';
         });
