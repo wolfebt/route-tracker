@@ -740,7 +740,7 @@
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, getDoc, arrayUnion, arrayRemove, runTransaction, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
-        import { Loader } from "https://esm.sh/@googlemaps/js-api-loader";
+        import { setOptions, importLibrary } from "https://esm.sh/@googlemaps/js-api-loader";
 
         
         // --- Initialize Firebase and Services ---
@@ -1964,15 +1964,17 @@
 
         async function loadGoogleMapsScript() {
             const apiKey = "AIzaSyDUzkfgu-6zuMHoH-UV5vzFQySSjwAD9u8";
-            const loader = new Loader({
+            setOptions({
                 apiKey: apiKey,
                 version: "weekly",
             });
 
             try {
-                await loader.importLibrary('maps');
-                await loader.importLibrary('places');
-                await loader.importLibrary('routes');
+                const [maps, places, routes] = await Promise.all([
+                    importLibrary('maps'),
+                    importLibrary('places'),
+                    importLibrary('routes')
+                ]);
                 
                 console.log("Google Maps libraries loaded successfully.");
                 if(!AppState.publicMap && !AppState.publicDriverMap) initMap(); 
