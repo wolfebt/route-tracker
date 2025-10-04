@@ -1,4 +1,29 @@
 {
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/__/firebase/*",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "private, max-age=3600"
+          }
+        ]
+      }
+    ]
+  },
   "firestore": {
     "database": "(default)",
     "location": "nam5",

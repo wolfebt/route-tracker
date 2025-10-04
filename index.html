@@ -746,6 +746,7 @@ TangentLLC
 
 
     <!-- Firebase SDK Imports -->
+    <script src="/__/firebase/init.js?useEmulator=true"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -1023,30 +1024,21 @@ TangentLLC
         };
 
         async function initializeFirebase() {
-				const hardcodedFirebaseConfig = {
-					apiKey: "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI",
-					authDomain: "route-tracker-e62b1.firebaseapp.com",
-					projectId: "route-tracker-e62b1",
-					storageBucket: "route-tracker-e62b1.appspot.com",
-					messagingSenderId: "1016000331711",
-					appId: "1:1016000331711:web:a122b8a52045ee4e832b0a",
-					measurementId: "G-B476Z21SKP"
-            };
-
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : hardcodedFirebaseConfig;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-            if (!firebaseConfig || !appId) {
-                console.error("Firebase config or App ID not found.");
-                loadingOverlay.innerHTML = '<p class="text-red-400">Error: Application configuration is missing.</p>';
-                return;
-            }
-
             try {
-                app = initializeApp(firebaseConfig);
+                // When running with the emulator, /__/firebase/init.js is automatically
+                // generated and initializes the firebase app.
+                if (typeof firebase === 'undefined') {
+                    const errorMsg = "Firebase SDK not loaded. Ensure you are running the app via the Firebase emulator or that your deployment is configured correctly.";
+                    console.error(errorMsg);
+                    loadingOverlay.innerHTML = `<p class="text-red-400">${errorMsg}</p>`;
+                    return;
+                }
+
+                app = firebase.app();
                 auth = getAuth(app);
                 db = getFirestore(app);
                 storage = getStorage(app);
+
                 await enableIndexedDbPersistence(db).catch(err => {
                     if (err.code == 'failed-precondition') {
                         console.warn("Firestore persistence failed. Multiple tabs open?");
@@ -1054,6 +1046,12 @@ TangentLLC
                         console.warn("Firestore persistence not available in this browser.");
                     }
                 });
+
+                // Get the app ID from the initialized app options
+                const appId = app.options.appId;
+                if (!appId) {
+                    throw new Error("Firebase App ID could not be determined.");
+                }
 
                 // Define base paths
                 AppState.globalUsersPath = `/artifacts/${appId}/public/data/users`;
