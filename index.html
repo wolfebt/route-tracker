@@ -733,12 +733,6 @@ TangentLLC
                 <div id="admin-controls" class="hidden pt-4 border-t border-gray-700">
                      <button id="open-admin-settings-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Admin: User Roles</button>
                 </div>
-                <div class="pt-4 border-t border-gray-700">
-                    <h4 class="text-lg font-semibold text-gray-200 mb-2">API Keys</h4>
-                    <label for="gemini-api-key-input" class="block text-sm font-medium text-gray-300">Gemini API Key</label>
-                    <input type="password" id="gemini-api-key-input" placeholder="Enter your Gemini API Key" class="w-full mt-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button id="save-gemini-api-key-btn" class="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Key</button>
-                </div>
             </div>
             <button id="settings-cancel-btn" class="mt-6 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
         </div>
@@ -2248,22 +2242,7 @@ TangentLLC
         });
 
         settingsBtn.addEventListener('click', () => {
-            const savedApiKey = localStorage.getItem('geminiApiKey');
-            if (savedApiKey) {
-                document.getElementById('gemini-api-key-input').value = savedApiKey;
-            }
             settingsModal.classList.remove('hidden');
-        });
-
-        document.getElementById('save-gemini-api-key-btn').addEventListener('click', () => {
-            const apiKey = document.getElementById('gemini-api-key-input').value.trim();
-            if (apiKey) {
-                localStorage.setItem('geminiApiKey', apiKey);
-                showToast('Gemini API Key saved!', 'success');
-            } else {
-                localStorage.removeItem('geminiApiKey');
-                showToast('Gemini API Key cleared.', 'info');
-            }
         });
 
         openProfileModalBtn.addEventListener('click', () => {
