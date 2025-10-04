@@ -2021,7 +2021,7 @@ TangentLLC
             ];
             inputs.forEach(input => {
                 if (input) {
-                    const autocomplete = new googleMapsLibraries.places.Autocomplete(input, {
+                    const autocomplete = new googleMapsLibraries.Autocomplete(input, {
                         fields: ["address_components", "geometry", "icon", "name"],
                         strictBounds: false,
                     });
@@ -3027,7 +3027,7 @@ TangentLLC
             `;
             destinationsContainer.appendChild(newDestDiv);
             const newInput = newDestDiv.querySelector('input');
-            const autocomplete = new googleMapsLibraries.places.Autocomplete(newInput, {
+            const autocomplete = new googleMapsLibraries.Autocomplete(newInput, {
                 fields: ["address_components", "geometry", "icon", "name"],
                 strictBounds: false,
             });
