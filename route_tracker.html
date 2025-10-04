@@ -20,7 +20,7 @@ TangentLLC
         ::-webkit-scrollbar-track { background: #1f2937; } /* gray-800 */
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; } /* gray-600 */
         ::-webkit-scrollbar-thumb:hover { background: #6b7280; } /* gray-500 */
-        
+
         /* Style for disabled buttons */
         button:disabled {
             background-color: #4b5563; /* gray-600 */
@@ -54,7 +54,7 @@ TangentLLC
         .pac-matched {
             color: #60a5fa; /* blue-400 */
         }
-        
+
         /* Spinner */
         .spinner {
             display: inline-block;
@@ -198,7 +198,7 @@ TangentLLC
                             <span id="admin-badge" class="hidden bg-indigo-600 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">Admin</span>
                         </div>
                     </div>
-                    
+
                     <div id="company-selection-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                         <button id="select-company-btn" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                             <span id="select-company-btn-label" class="text-[1.5rem] leading-snug underline font-semibold">Select/Change Company</span>
@@ -313,7 +313,7 @@ TangentLLC
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
             <h3 class="text-xl font-bold text-white mb-4">Share My Location</h3>
             <p class="text-sm text-gray-400 mb-4">Share a temporary link to your live location. Set a destination to include ETA.</p>
-            
+
             <div class="space-y-3">
                 <input type="text" id="location-share-destination" placeholder="Enter a destination (optional)" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400">
                 <div class="flex space-x-2">
@@ -570,12 +570,12 @@ TangentLLC
                         <input type="date" id="job-date-input" required class="w-full mt-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <input type="text" id="job-origin-input" placeholder="Job Origin" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    
+
                     <div id="destinations-container" class="space-y-2">
                         <!-- Dynamic destination fields will be added here -->
                     </div>
                     <button type="button" id="add-destination-btn" class="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Add Destination</button>
-                    
+
                     <div id="optimize-route-container" class="hidden items-center">
                         <input id="optimize-route-checkbox" type="checkbox" class="h-4 w-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500">
                         <label for="optimize-route-checkbox" class="ml-2 block text-sm text-gray-300">Optimize Route</label>
@@ -679,13 +679,13 @@ TangentLLC
     <div id="tracking-link-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10001]">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
             <h3 class="text-xl font-bold text-white mb-4">Tracking Link</h3>
-            
+
             <!-- Form to generate the link -->
             <form id="tracking-link-form" class="space-y-4">
                 <p class="text-sm text-gray-400">Create a real-time tracking link to share with a third party.</p>
                 <button type="submit" id="generate-tracking-link-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Generate Link</button>
             </form>
-    
+
             <!-- Details of the generated link -->
             <div id="tracking-link-details" class="hidden mt-4 space-y-4">
                 <div>
@@ -733,12 +733,6 @@ TangentLLC
                 <div id="admin-controls" class="hidden pt-4 border-t border-gray-700">
                      <button id="open-admin-settings-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Admin: User Roles</button>
                 </div>
-                <div class="pt-4 border-t border-gray-700">
-                    <h4 class="text-lg font-semibold text-gray-200 mb-2">API Keys</h4>
-                    <label for="gemini-api-key-input" class="block text-sm font-medium text-gray-300">Gemini API Key</label>
-                    <input type="password" id="gemini-api-key-input" placeholder="Enter your Gemini API Key" class="w-full mt-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button id="save-gemini-api-key-btn" class="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Key</button>
-                </div>
             </div>
             <button id="settings-cancel-btn" class="mt-6 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
         </div>
@@ -753,11 +747,11 @@ TangentLLC
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
         import { setOptions, importLibrary } from "https://esm.sh/@googlemaps/js-api-loader";
 
-        
+
         // --- Initialize Firebase and Services ---
         let app, auth, db, storage;
         let googleMapsLibraries = {};
-        
+
         // --- UI Elements ---
         const loadingOverlay = document.getElementById('loading-overlay');
         const authContainer = document.getElementById('auth-container');
@@ -768,7 +762,7 @@ TangentLLC
         const sidebarLoader = document.getElementById('sidebar-loader');
         const adminBadge = document.getElementById('admin-badge');
         const offlineBanner = document.getElementById('offline-banner');
-        
+
         const driversListEl = document.getElementById('drivers-list');
         const refreshDriversBtn = document.getElementById('refresh-drivers-btn');
         const jobsListEl = document.getElementById('jobs-list');
@@ -783,7 +777,7 @@ TangentLLC
         const availableJobsPanel = document.getElementById('available-jobs-panel');
         const availableJobsList = document.getElementById('available-jobs-list');
         const managementActionsPanel = document.getElementById('management-actions-panel');
-        
+
         // Company UI
         const companySelectionPanel = document.getElementById('company-selection-panel');
         const selectCompanyBtn = document.getElementById('select-company-btn');
@@ -826,7 +820,7 @@ TangentLLC
         const profileNameInput = document.getElementById('profile-name-input');
         const profilePhoneInput = document.getElementById('profile-phone-input');
         const profileCancelBtn = document.getElementById('profile-cancel-btn');
-        
+
         const createJobModal = document.getElementById('create-job-modal');
         const openCreateJobModalBtn = document.getElementById('open-create-job-modal-btn');
         const createJobForm = document.getElementById('create-job-form');
@@ -856,7 +850,7 @@ TangentLLC
         const adminSettingsCancelBtn = document.getElementById('admin-settings-cancel-btn');
         const userRoleList = document.getElementById('user-role-list');
         const refreshUserRolesBtn = document.getElementById('refresh-user-roles-btn');
-        
+
         const settingsModal = document.getElementById('settings-modal');
         const settingsCancelBtn = document.getElementById('settings-cancel-btn');
         const openProfileModalBtn = document.getElementById('open-profile-modal-btn');
@@ -934,7 +928,7 @@ TangentLLC
         // --- App State ---
         const AppState = {
             currentUser: null,
-            isAuthReady: false, 
+            isAuthReady: false,
             companyId: null,
             companyName: null,
             map: null,
@@ -943,13 +937,13 @@ TangentLLC
             userMarker: null,
             driverMapMarkers: {},
             isSharingLocation: false,
-            locationWatchId: null, 
-            allUsers: [], 
+            locationWatchId: null,
+            allUsers: [],
             allJobs: [],
             activeDrivers: [],
             activeJobTab: 'current',
             isDispatchView: false,
-            confirmCallback: null, 
+            confirmCallback: null,
             commentCallback: null,
             globalUsersPath: '',
             companiesPath: '',
@@ -959,9 +953,9 @@ TangentLLC
             driversPath: '',
             jobsPath: '',
             directionsService: null,
-            jobRouteRenderers: {}, 
+            jobRouteRenderers: {},
             personalRouteRenderer: null,
-            jobColors: {}, 
+            jobColors: {},
             routeColors: ['#FF5733', '#33FF57', '#3357FF', '#FF33A1', '#A133FF', '#33FFA1', '#FFC300', '#C70039'],
             globalUnsubscribes: [],
             companyUnsubscribes: [],
@@ -986,7 +980,7 @@ TangentLLC
             if (days > 0) result += `${days}d `;
             if (hours > 0) result += `${hours}h `;
             if (minutes > 0 || (days === 0 && hours === 0)) result += `${minutes}m`;
-            
+
             return result.trim();
         }
 
@@ -998,17 +992,17 @@ TangentLLC
                 if(mapElement) mapElement.innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Error</p><p class="text-gray-400">Could not load Google Maps.</p></div>`;
                 return null;
             }
-            if(mapElement) mapElement.innerHTML = ''; 
+            if(mapElement) mapElement.innerHTML = '';
             const mapOptions = {
                 center: { lat: 39.8283, lng: -98.5795 }, // Center of the US
                 zoom: 4,
                 disableDefaultUI: true,
-                styles: [ 
+                styles: [
                     { elementType: "geometry", stylers: [{ color: "#242f3e" }] }, { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] }, { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] }, { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] }, { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] }, { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] }, { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] }, { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] }, { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] }, { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] }, { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] }, { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] }, { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] }, { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] }, { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] },
                 ],
             };
             const map = new google.maps.Map(mapElement, mapOptions);
-            
+
             if (elementId === 'public-map') AppState.publicMap = map;
             else if (elementId === 'public-driver-map') {
                 AppState.publicDriverMap = map;
@@ -1018,7 +1012,7 @@ TangentLLC
                 });
             }
             else AppState.map = map;
-            
+
             return map;
         };
 
@@ -1050,7 +1044,7 @@ TangentLLC
                 AppState.companiesPath = `/artifacts/${appId}/public/data/companies`;
                 AppState.publicJobsPath = `/artifacts/${appId}/public/data/publicJobs`;
                 AppState.publicDriversPath = `/artifacts/${appId}/public/data/publicDrivers`;
-                
+
                 // Check for public tracking link on page load
                 const urlParams = new URLSearchParams(window.location.search);
                 const publicJobId = urlParams.get('jobId');
@@ -1108,8 +1102,8 @@ TangentLLC
                     if (isInitialAuthCheck) {
                         isInitialAuthCheck = false; // Prevent re-running auto-login
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            try { 
-                                await signInWithCustomToken(auth, __initial_auth_token); 
+                            try {
+                                await signInWithCustomToken(auth, __initial_auth_token);
                             } catch (error) {
                                 console.error("Custom token sign-in failed, trying anonymous:", error);
                                 await signInAnonymously(auth).catch(anonError => console.error("Anonymous sign-in also failed:", anonError));
@@ -1144,8 +1138,11 @@ TangentLLC
             onSnapshot(publicDriverRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const driver = docSnap.data();
-                    if (driver.shareToken !== inviteId) {
+                    // Check if the link is valid and not expired
+                    if (driver.shareToken !== inviteId || (driver.expiresAt && driver.expiresAt.toDate() < new Date())) {
                          publicDriverDetailsEl.innerHTML = `<p class="text-red-400">This tracking link is invalid or has expired.</p>`;
+                         if (AppState.driverMapMarkers['publicDriver']) AppState.driverMapMarkers['publicDriver'].setMap(null);
+                         if (AppState.personalRouteRenderer) AppState.personalRouteRenderer.setDirections({routes: []});
                          return;
                     }
 
@@ -1173,7 +1170,7 @@ TangentLLC
                             title: "Driver Location",
                             icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
                         });
-                        
+
                         if (driver.destination && AppState.directionsService) {
                             AppState.directionsService.route({
                                 origin: driverPos,
@@ -1206,13 +1203,21 @@ TangentLLC
 
             await loadGoogleMapsScript();
             initMap('public-map');
-            
+
             const publicJobRef = doc(db, AppState.publicJobsPath, jobId);
-            
+
             onSnapshot(publicJobRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const job = docSnap.data();
-                    
+
+                    // Check if the link is valid and not expired
+                    if (job.thirdPartyInviteId !== inviteId || (job.expiresAt && job.expiresAt.toDate() < new Date())) {
+                        publicJobDetailsEl.innerHTML = `<p class="text-red-400">This tracking link is invalid or has expired.</p>`;
+                         for (const key in AppState.driverMapMarkers) { AppState.driverMapMarkers[key].setMap(null); }
+                         for (const key in AppState.jobRouteRenderers) { AppState.jobRouteRenderers[key].setMap(null); }
+                        return;
+                    }
+
                     let destinationsHTML = '';
                     if (job.destinations && job.destinations.length > 0) {
                         if (job.destinations.length > 1) {
@@ -1236,7 +1241,7 @@ TangentLLC
                         <p><strong>Distance Remaining:</strong> <span id="public-job-distance">--</span></p>
                         <p><strong>ETA:</strong> <span id="public-job-eta">--</span></p>
                     `;
-                    
+
                     for (const key in AppState.driverMapMarkers) {
                         AppState.driverMapMarkers[key].setMap(null);
                     }
@@ -1257,7 +1262,7 @@ TangentLLC
                             title: "Driver Location",
                             icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
                         });
-                        
+
                          if (AppState.directionsService) {
                             const renderer = new google.maps.DirectionsRenderer({
                                 map: AppState.publicMap, suppressMarkers: true, preserveViewport: false,
@@ -1309,12 +1314,12 @@ TangentLLC
             AppState.globalUnsubscribes = [];
 
             const userDocRef = doc(db, AppState.globalUsersPath, user.uid);
-            
+
             const userUnsubscribe = onSnapshot(userDocRef, async (userDocSnap) => {
                 let userData;
                 if (!userDocSnap.exists()) {
-                    userData = { 
-                        email: user.email || user.uid, 
+                    userData = {
+                        email: user.email || user.uid,
                         name: user.displayName || `User-${user.uid.substring(0, 4)}`,
                         phone: '',
                         currentCompanyId: null,
@@ -1326,13 +1331,13 @@ TangentLLC
 
                 const companyChanged = AppState.currentUser?.currentCompanyId !== userData.currentCompanyId;
                 AppState.currentUser = { id: user.uid, ...userData };
-                AppState.isAuthReady = true; 
-                
+                AppState.isAuthReady = true;
+
                 authContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
 
                 if (AppState.currentUser.currentCompanyId) {
-                    if(companyChanged || !AppState.companyId) { 
+                    if(companyChanged || !AppState.companyId) {
                         await loadCompanyData(AppState.currentUser.currentCompanyId);
                     }
                 } else {
@@ -1343,19 +1348,19 @@ TangentLLC
             }, (error) => {
                 console.error("Error listening to user document:", error);
                 showToast("Error loading your profile.", "error");
-                AppState.isAuthReady = true; 
+                AppState.isAuthReady = true;
             });
             AppState.globalUnsubscribes.push(userUnsubscribe);
         }
 
         async function loadCompanyData(companyId) {
-            if (!AppState.isAuthReady) return; 
+            if (!AppState.isAuthReady) return;
             cleanupCompanyState();
             sidebarLoader.style.display = 'flex';
-            
+
             AppState.companyId = companyId;
             const companyDocRef = doc(db, AppState.companiesPath, companyId);
-            
+
             try {
                 const companyDoc = await getDoc(companyDocRef);
 
@@ -1398,7 +1403,7 @@ TangentLLC
                     renderMapObjects();
                 }, (err) => console.error("Error listening to drivers:", err));
                 AppState.companyUnsubscribes.push(driversUnsubscribe);
-                
+
                 setupJobListener();
             } catch (error) {
                 console.error("Error loading company data:", error);
@@ -1412,7 +1417,7 @@ TangentLLC
             const jobsRef = collection(db, AppState.jobsPath);
             const jobsUnsubscribe = onSnapshot(query(jobsRef), (snapshot) => {
                 AppState.allJobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderUI(); 
+                renderUI();
                 renderMapObjects();
             }, (error) => {
                 console.error("Error listening to jobs collection:", error);
@@ -1430,7 +1435,7 @@ TangentLLC
             AppState.allUsers = [];
             AppState.allJobs = [];
             AppState.activeDrivers = [];
-            renderUI(); 
+            renderUI();
         }
 
         function cleanupUserSession() {
@@ -1439,8 +1444,8 @@ TangentLLC
             AppState.globalUnsubscribes = [];
             cleanupCompanyState();
             AppState.currentUser = null;
-            AppState.isAuthReady = false; 
-            
+            AppState.isAuthReady = false;
+
             for (const jobId in AppState.jobRouteRenderers) {
                 AppState.jobRouteRenderers[jobId].setMap(null);
             }
@@ -1461,7 +1466,7 @@ TangentLLC
         function checkPermission(permission) {
             return AppState.currentUser?.permissions?.[permission] === true;
         }
-        
+
         function startAutomaticLocationSharing() {
             if (AppState.locationWatchId || !AppState.companyId || !navigator.geolocation) return;
             AppState.isSharingLocation = true;
@@ -1473,7 +1478,7 @@ TangentLLC
             };
 
             const successCallback = (position) => {
-                if (!AppState.companyId) return; 
+                if (!AppState.companyId) return;
 
                 const newPos = { lat: position.coords.latitude, lng: position.coords.longitude };
                 const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.some(d => d.id === AppState.currentUser.id));
@@ -1487,12 +1492,12 @@ TangentLLC
                 };
                 setDoc(doc(db, AppState.driversPath, AppState.currentUser.id), locationData, { merge: true })
                     .catch(err => console.error("Error sharing location:", err));
-                
+
                 if (myJob && myJob.thirdPartyInviteId) {
                     const publicJobRef = doc(db, AppState.publicJobsPath, myJob.id);
                     updateDoc(publicJobRef, { driverLocation: locationData.location }).catch(err => console.log("Could not update public job location"));
                 }
-                
+
                 const publicDriverRef = doc(db, AppState.publicDriversPath, AppState.currentUser.id);
                 getDoc(publicDriverRef).then(docSnap => {
                     if (docSnap.exists()) {
@@ -1541,12 +1546,12 @@ TangentLLC
             if (AppState.currentUser && AppState.companyId) {
                 const driverLocRef = doc(db, AppState.driversPath, AppState.currentUser.id);
                 deleteDoc(driverLocRef).catch(err => console.log("No location to delete or error:", err));
-                
+
                 const publicDriverRef = doc(db, AppState.publicDriversPath, AppState.currentUser.id);
                 deleteDoc(publicDriverRef).catch(err => console.log("No public driver location to delete or error:", err));
             }
         }
-        
+
         driverStatusSelect.addEventListener('change', () => {
             if (AppState.isSharingLocation && AppState.companyId) {
                 const driverLocRef = doc(db, AppState.driversPath, AppState.currentUser.id);
@@ -1554,7 +1559,7 @@ TangentLLC
                     .catch(err => showToast("Could not update status.", "error"));
             }
         });
-        
+
         function getJobColor(jobId) {
             if (!AppState.jobColors[jobId]) {
                 const colorIndex = Object.keys(AppState.jobColors).length % AppState.routeColors.length;
@@ -1568,7 +1573,7 @@ TangentLLC
             const searchTerm = jobSearchInput.value.toLowerCase();
             let jobsToRender = AppState.allJobs.filter(job => !!job.archived === isArchivedView);
             if (searchTerm) {
-                jobsToRender = jobsToRender.filter(job => 
+                jobsToRender = jobsToRender.filter(job =>
                     (job.jobName || '').toLowerCase().includes(searchTerm) ||
                     (job.origin || '').toLowerCase().includes(searchTerm) ||
                     (job.destinations && job.destinations.some(d => d.toLowerCase().includes(searchTerm)))
@@ -1580,7 +1585,7 @@ TangentLLC
                 const li = document.createElement('li');
                 li.dataset.jobId = job.id;
                 const jobColor = getJobColor(job.id);
-                
+
                 let statusClass = 'bg-gray-800 hover:bg-gray-700';
                 let borderColorClass = 'border-transparent';
                 let statusTag = '';
@@ -1607,9 +1612,9 @@ TangentLLC
                 }
 
                 li.className = `p-3 rounded-md text-sm cursor-pointer border-l-4 ${statusClass} ${borderColorClass}`;
-                
+
                 const assignedDrivers = (job.assignedDrivers || []).map(driver => driver.name).join(', ');
-                
+
                  let destinationsDisplay = '';
                 if (job.destinations && job.destinations.length > 0) {
                     if (job.destinations.length > 1) {
@@ -1705,7 +1710,7 @@ TangentLLC
                 availableJobsList.appendChild(li);
             });
         }
-        
+
         function renderMapObjects() {
             if (!AppState.map || !AppState.currentUser || !AppState.isAuthReady) return;
 
@@ -1715,7 +1720,7 @@ TangentLLC
 
             if (AppState.isDispatchView) {
                 recentDrivers.forEach(driver => {
-                    if (driver.id === AppState.currentUser.id) return; 
+                    if (driver.id === AppState.currentUser.id) return;
                     const position = { lat: driver.location.latitude, lng: driver.location.longitude };
                     if (AppState.driverMapMarkers[driver.id]) {
                         AppState.driverMapMarkers[driver.id].setPosition(position);
@@ -1776,7 +1781,7 @@ TangentLLC
                 const driver = recentDrivers.find(d => d.id === driverId);
                 drawRouteForJob(job, driver?.location);
             });
-            
+
             for (const jobId in AppState.jobRouteRenderers) {
                 if (!jobsToRenderIds.has(jobId)) {
                     AppState.jobRouteRenderers[jobId].setMap(null);
@@ -1786,7 +1791,7 @@ TangentLLC
         }
 
         function drawRouteForJob(job, driverLocation) {
-            if (!AppState.directionsService) return; 
+            if (!AppState.directionsService) return;
             const jobId = job.id;
             let renderer = AppState.jobRouteRenderers[jobId];
 
@@ -1798,16 +1803,16 @@ TangentLLC
                 });
                 AppState.jobRouteRenderers[jobId] = renderer;
             }
-            
+
             const origin = driverLocation ? { lat: driverLocation.latitude, lng: driverLocation.longitude } : job.origin;
             const destinations = job.destinations || [job.destination];
             const finalDestination = destinations[destinations.length - 1];
             const waypoints = destinations.slice(0, -1).map(d => ({ location: d, stopover: true }));
-            
+
             AppState.directionsService.route(
-                { 
-                    origin: origin, 
-                    destination: finalDestination, 
+                {
+                    origin: origin,
+                    destination: finalDestination,
                     waypoints: waypoints,
                     optimizeWaypoints: job.isOptimized || false,
                     travelMode: google.maps.TravelMode.DRIVING
@@ -1820,13 +1825,13 @@ TangentLLC
                         if (etaInfoEl) {
                             etaInfoEl.innerHTML = `<span>Dist: ${leg.distance.text}</span> | <span>ETA: ${leg.duration.text}</span>`;
                         }
-                        if (leg && !AppState.isDispatchView && leg.distance.value <= 200) { 
+                        if (leg && !AppState.isDispatchView && leg.distance.value <= 200) {
                             arrivedBtn.classList.remove('hidden');
                             arrivedBtn.dataset.jobId = job.id;
                         } else {
                             arrivedBtn.classList.add('hidden');
                         }
-                    } else { 
+                    } else {
                         if (etaInfoEl) etaInfoEl.innerHTML = '';
                         arrivedBtn.classList.add('hidden');
                         if(AppState.jobRouteRenderers[jobId]) {
@@ -1837,7 +1842,7 @@ TangentLLC
                 }
             );
         }
-        
+
         function renderDriversList() {
             driversListEl.innerHTML = '';
             const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
@@ -1851,12 +1856,12 @@ TangentLLC
                 const user = AppState.allUsers.find(u => u.id === driver.id);
                 const phone = user ? user.phone : '';
                 const li = document.createElement('li');
-                
+
                 let statusText = driver.status || 'Online';
                 let statusColor = 'bg-gray-500';
 
-                const assignedJob = AppState.allJobs.find(job => 
-                    job.status === 'in-progress' && 
+                const assignedJob = AppState.allJobs.find(job =>
+                    job.status === 'in-progress' &&
                     job.assignedDrivers.some(d => d.id === driver.id)
                 );
 
@@ -1899,8 +1904,8 @@ TangentLLC
         }
 
         function renderUI() {
-            if (!AppState.isAuthReady) return; 
-            
+            if (!AppState.isAuthReady) return;
+
             userWelcomeEl.textContent = `Welcome, ${AppState.currentUser.name}!`;
 
             if (!AppState.companyId) {
@@ -1912,7 +1917,7 @@ TangentLLC
 
             driverUi.classList.toggle('hidden', AppState.isDispatchView);
             dispatchUi.classList.toggle('hidden', !AppState.isDispatchView);
-            
+
             if (!AppState.isDispatchView) {
                 startAutomaticLocationSharing();
                 updateDriverJobPanels();
@@ -1921,7 +1926,7 @@ TangentLLC
                 renderAllJobsList();
                 renderDriversList();
             }
-            
+
             const isAdmin = checkPermission('canManageDrivers');
             adminControls.classList.toggle('hidden', !isAdmin);
             adminBadge.classList.toggle('hidden', !isAdmin);
@@ -1932,9 +1937,9 @@ TangentLLC
             const myJob = AppState.allJobs.find(job => job.status === 'in-progress' && job.assignedDrivers.some(d => d.id === AppState.currentUser.id));
             if (myJob) {
                 currentJobPanel.classList.remove('hidden');
-                availableJobsPanel.classList.add('hidden'); 
+                availableJobsPanel.classList.add('hidden');
                 driverStatusSelect.disabled = true;
-                
+
                 let destinationsHTML = '';
                 if (myJob.destinations && myJob.destinations.length > 0) {
                     if (myJob.destinations.length > 1) {
@@ -1957,9 +1962,9 @@ TangentLLC
                 startNavigationBtn.dataset.destination = myJob.destinations[myJob.destinations.length - 1];
             } else {
                 currentJobPanel.classList.add('hidden');
-                availableJobsPanel.classList.remove('hidden'); 
+                availableJobsPanel.classList.remove('hidden');
                 driverStatusSelect.disabled = false;
-                arrivedBtn.classList.add('hidden'); 
+                arrivedBtn.classList.add('hidden');
             }
             renderAvailableJobsList();
         }
@@ -1990,6 +1995,24 @@ TangentLLC
             } catch (e) {
                 console.error("Error loading Google Maps script:", e);
                 document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Script Error</p></div>`;
+            }
+        }
+
+        async function initializeMapAndServices() {
+            try {
+                const { Map } = await google.maps.importLibrary("maps");
+                const { DirectionsService } = await google.maps.importLibrary("routes");
+                const { Autocomplete } = await google.maps.importLibrary("places");
+
+                console.log("Google Maps libraries imported successfully.");
+
+                if(!AppState.publicMap && !AppState.publicDriverMap) initMap();
+                AppState.directionsService = new google.maps.DirectionsService();
+                setupAutocomplete();
+
+            } catch (e) {
+                console.error("Error importing Google Maps libraries:", e);
+                document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Library Error</p></div>`;
             }
         }
 
@@ -2025,7 +2048,7 @@ TangentLLC
         function showConfirmModal(title, message, onConfirm) {
             confirmModalTitle.textContent = title;
             confirmModalMessage.textContent = message;
-            AppState.confirmCallback = onConfirm; 
+            AppState.confirmCallback = onConfirm;
             confirmModal.classList.remove('hidden');
         }
 
@@ -2055,7 +2078,7 @@ TangentLLC
         async function showJobDetailsModal(job) {
             AppState.currentJobIdForModal = job.id;
             const assignedDrivers = (job.assignedDrivers || []).map(driver => driver.name).join(', ');
-            
+
             let destinationsHTML = '';
             if (job.destinations && job.destinations.length > 0) {
                 if (job.destinations.length > 1) {
@@ -2080,7 +2103,7 @@ TangentLLC
                 <p><strong>Assigned Drivers:</strong> ${assignedDrivers || 'None'}</p>
                 <p class="mt-2 italic"><strong class="text-white">Note:</strong> ${job.note || 'N/A'}</p>
             `;
-            
+
             const isDispatcher = checkPermission('canCreateJob');
 
             editJobBtn.classList.add('hidden');
@@ -2092,7 +2115,7 @@ TangentLLC
             jobChatInput.disabled = false;
             jobChatForm.querySelector('button').disabled = false;
             finalizeJobBtn.classList.add('hidden'); // FINALIZE JOB FIX: Reset/hide button initially
-            
+
             const isAssignedToMe = (job.assignedDrivers || []).some(d => d.id === AppState.currentUser.id);
 
             if (job.archived) {
@@ -2110,20 +2133,20 @@ TangentLLC
                         finalizeJobBtn.classList.remove('hidden');
                         finalizeJobBtn.dataset.jobId = job.id;
                     }
-                } else { 
+                } else {
                     jobDetailsDriverActions.classList.remove('hidden');
                     jobDetailsAcceptBtn.classList.toggle('hidden', job.status !== 'unassigned');
                     jobDetailsDriverCancelBtn.classList.toggle('hidden', !isAssignedToMe || job.status !== 'in-progress');
                 }
             }
-            
+
             editJobBtn.dataset.jobId = job.id;
             archiveJobBtn.dataset.jobId = job.id;
             deleteJobBtn.dataset.jobId = job.id;
             unarchiveJobModalBtn.dataset.jobId = job.id;
             jobDetailsAcceptBtn.dataset.jobId = job.id;
             jobDetailsDriverCancelBtn.dataset.jobId = job.id;
-            
+
             if (job.proofOfDeliveryURL) {
                 podImage.src = job.proofOfDeliveryURL;
                 podSection.classList.remove('hidden');
@@ -2195,7 +2218,7 @@ TangentLLC
                 }).catch(err => console.error("Error updating last read timestamp:", err));
             }
         }
-        
+
         function showSpinner(button) {
             button.disabled = true;
             button.querySelector('.btn-text').classList.add('hidden');
@@ -2207,7 +2230,7 @@ TangentLLC
             button.querySelector('.btn-text').classList.remove('hidden');
             button.querySelector('.spinner').classList.add('hidden');
         }
-        
+
         async function deleteUserFromDb(userId) {
             if (!checkPermission('canManageDrivers')) {
                 showToast('You do not have permission to remove users.', 'error');
@@ -2220,7 +2243,7 @@ TangentLLC
                 await updateDoc(doc(db, AppState.globalUsersPath, userId), { currentCompanyId: null });
 
                 showToast('User removed from company.', 'success');
-                renderUserRoleManagement(); 
+                renderUserRoleManagement();
 
             } catch (error) {
                 console.error("Error removing user from company:", error);
@@ -2248,22 +2271,7 @@ TangentLLC
         });
 
         settingsBtn.addEventListener('click', () => {
-            const savedApiKey = localStorage.getItem('geminiApiKey');
-            if (savedApiKey) {
-                document.getElementById('gemini-api-key-input').value = savedApiKey;
-            }
             settingsModal.classList.remove('hidden');
-        });
-
-        document.getElementById('save-gemini-api-key-btn').addEventListener('click', () => {
-            const apiKey = document.getElementById('gemini-api-key-input').value.trim();
-            if (apiKey) {
-                localStorage.setItem('geminiApiKey', apiKey);
-                showToast('Gemini API Key saved!', 'success');
-            } else {
-                localStorage.removeItem('geminiApiKey');
-                showToast('Gemini API Key cleared.', 'info');
-            }
         });
 
         openProfileModalBtn.addEventListener('click', () => {
@@ -2272,7 +2280,7 @@ TangentLLC
             profilePhoneInput.value = AppState.currentUser.phone || '';
             profileModal.classList.remove('hidden');
         });
-        
+
         openAdminSettingsBtn.addEventListener('click', () => {
             settingsModal.classList.add('hidden');
             renderUserRoleManagement();
@@ -2285,9 +2293,9 @@ TangentLLC
             const newPhone = profilePhoneInput.value.trim();
             if (newName) {
                 try {
-                    await updateDoc(doc(db, AppState.globalUsersPath, AppState.currentUser.id), { 
+                    await updateDoc(doc(db, AppState.globalUsersPath, AppState.currentUser.id), {
                         name: newName,
-                        phone: newPhone 
+                        phone: newPhone
                     });
                     await updateDoc(doc(db, AppState.membersPath, AppState.currentUser.id), { name: newName });
                     showToast('Profile updated!', 'success');
@@ -2303,7 +2311,7 @@ TangentLLC
             createJobForm.reset();
             destinationsContainer.innerHTML = '';
             editingJobIdInput.value = '';
-            
+
             if (jobToEdit) {
                 createJobModalTitle.textContent = 'Edit Job';
                 editingJobIdInput.value = jobToEdit.id;
@@ -2321,7 +2329,7 @@ TangentLLC
             } else {
                 createJobModalTitle.textContent = 'Create New Job';
                 jobDateInput.value = new Date().toISOString().split('T')[0];
-                addDestinationInput(); 
+                addDestinationInput();
                 assignDriverSelect.parentElement.classList.remove('hidden');
                 const availableDrivers = AppState.allUsers.filter(u => {
                     const isActive = AppState.activeDrivers.some(d => d.id === u.id && d.status === 'On Trip');
@@ -2364,7 +2372,7 @@ TangentLLC
                  showJobDetailsModal(myJob);
              }
         });
-        
+
         async function acceptJob(jobId) {
             const jobRef = doc(db, AppState.jobsPath, jobId);
             try {
@@ -2373,7 +2381,7 @@ TangentLLC
                     if (!jobDoc.exists()) throw "Job does not exist!";
                     const jobData = jobDoc.data();
                     if ((jobData.assignedDrivers || []).length >= jobData.driversNeeded) throw "All driver slots are filled.";
-                    
+
                     const newLogEntry = { text: `Accepted by ${AppState.currentUser.name}`, timestamp: new Date() };
                     const updateData = {
                         status: (jobData.assignedDrivers || []).length + 1 >= jobData.driversNeeded ? 'in-progress' : 'unassigned',
@@ -2385,7 +2393,7 @@ TangentLLC
                     } else {
                         updateData.log = [newLogEntry];
                     }
-                    
+
                     transaction.update(jobRef, updateData);
 
                     if (AppState.isSharingLocation) {
@@ -2411,7 +2419,7 @@ TangentLLC
                         status: 'unassigned',
                         log: arrayUnion({ text: `Assignment cancelled by ${AppState.currentUser.name}`, timestamp: new Date() })
                     });
-                    
+
                     if (AppState.isSharingLocation) {
                         transaction.update(doc(db, AppState.driversPath, AppState.currentUser.id), { status: 'Available' });
                     }
@@ -2441,7 +2449,7 @@ TangentLLC
                 }
             }
         });
-        
+
         async function completeJob(jobId, comment, file) {
             const jobRef = doc(db, AppState.jobsPath, jobId);
             let podURL = '';
@@ -2463,12 +2471,12 @@ TangentLLC
                     if (!jobDoc.exists()) throw "Job not found";
                     const jobData = jobDoc.data();
                     const newAssignedDrivers = (jobData.assignedDrivers || []).filter(d => d.id !== AppState.currentUser.id);
-                    
+
                     const updateData = {
                         status: 'pending-completion',
                         driverCompletionComment: comment,
                         assignedDrivers: newAssignedDrivers,
-                        proofOfDeliveryURL: podURL || jobData.proofOfDeliveryURL || null, 
+                        proofOfDeliveryURL: podURL || jobData.proofOfDeliveryURL || null,
                         log: arrayUnion({ text: `Marked as pending completion by ${AppState.currentUser.name}`, timestamp: new Date() })
                     };
 
@@ -2506,7 +2514,7 @@ TangentLLC
                 completeJob(jobId, comment, file);
             });
         });
-        
+
         arrivedBtn.addEventListener('click', (e) => {
             const jobId = e.target.dataset.jobId;
             showCommentModal('Add Completion Comment', (comment, file) => {
@@ -2538,15 +2546,15 @@ TangentLLC
 
             const editingJobId = editingJobIdInput.value;
 
-            const jobData = { 
-                jobName: jobNameInput.value.trim(), 
+            const jobData = {
+                jobName: jobNameInput.value.trim(),
                 jobDate: jobDateInput.value,
-                origin: jobOriginInput.value.trim(), 
+                origin: jobOriginInput.value.trim(),
                 destinations: destinations,
                 isOptimized: optimizeRouteCheckbox.checked,
                 contactName: contactNameInput.value.trim(),
                 contactNumber: contactNumberInput.value.trim(),
-                note: jobNoteInput.value.trim(), 
+                note: jobNoteInput.value.trim(),
                 driversNeeded: parseInt(driversNeededInput.value, 10),
                 totalDistance: '',
                 totalDuration: 0,
@@ -2554,7 +2562,7 @@ TangentLLC
 
             const finalDestination = destinations[destinations.length - 1];
             const waypoints = destinations.slice(0, -1).map(d => ({ location: d, stopover: true }));
-            
+
             AppState.directionsService.route({
                 origin: jobData.origin,
                 destination: finalDestination,
@@ -2584,7 +2592,7 @@ TangentLLC
                         jobData.createdAt = serverTimestamp();
                         jobData.archived = false;
                         jobData.status = 'unassigned';
-                        
+
                         const assignedDriverId = assignDriverSelect.value;
                         if (assignedDriverId) {
                             const driver = AppState.allUsers.find(u => u.id === assignedDriverId);
@@ -2599,11 +2607,11 @@ TangentLLC
                             const driver = AppState.allUsers.find(u => u.id === assignedDriverId);
                             logEntries.push({ text: `Assigned to ${driver.name}`, timestamp: new Date() });
                         }
-                        
+
                         await updateDoc(docRef, { log: logEntries });
                         showToast('New job created.', 'success');
                     }
-                    
+
                     createJobForm.reset();
                     createJobModal.classList.add('hidden');
                 } catch (error) {
@@ -2620,7 +2628,7 @@ TangentLLC
             AppState.allUsers.forEach(user => {
                 const li = document.createElement('li');
                 li.className = 'bg-gray-700 p-3 rounded relative';
-                
+
                 const isCurrentUser = user.id === AppState.currentUser.id;
 
                 let deleteButtonHTML = '';
@@ -2652,8 +2660,8 @@ TangentLLC
             if (deleteBtn) {
                 const { userId, userEmail } = deleteBtn.dataset;
                 showConfirmModal(
-                    'Remove User?', 
-                    `This will remove "${userEmail}" from the company. They will need to be invited again to rejoin.`, 
+                    'Remove User?',
+                    `This will remove "${userEmail}" from the company. They will need to be invited again to rejoin.`,
                     () => deleteUserFromDb(userId)
                 );
             }
@@ -2669,7 +2677,7 @@ TangentLLC
                 } catch (error) {
                     console.error("Error updating permissions:", error);
                     showToast("Failed to update permissions.", "error");
-                    e.target.checked = !isChecked; 
+                    e.target.checked = !isChecked;
                 }
             }
         });
@@ -2748,7 +2756,7 @@ TangentLLC
         // --- Company Logic ---
         async function openCompanyModal() {
             try {
-                createCompanyForm.reset(); 
+                createCompanyForm.reset();
                 const companiesRef = collection(db, AppState.companiesPath);
                 const snapshot = await getDocs(query(companiesRef));
                 companyListEl.innerHTML = '';
@@ -2792,12 +2800,12 @@ TangentLLC
                     if(button) button.textContent = 'Join';
                     return;
                 }
-                
+
                 const memberRef = doc(db, `${AppState.companiesPath}/${companyId}/members`, AppState.currentUser.id);
                 await setDoc(memberRef, {
                     name: AppState.currentUser.name,
                     email: AppState.currentUser.email,
-                    permissions: { 
+                    permissions: {
                         canCreateJob: false,
                         canDeleteJob: false,
                         canManageDrivers: false
@@ -2828,7 +2836,7 @@ TangentLLC
                 await setDoc(newCompanyRef, {
                     name: name,
                     hasPassword: !!password,
-                    password: password || null, 
+                    password: password || null,
                     ownerId: AppState.currentUser.id
                 });
 
@@ -2842,7 +2850,7 @@ TangentLLC
                         canManageDrivers: true
                     }
                 });
-                
+
                 const userRef = doc(db, AppState.globalUsersPath, AppState.currentUser.id);
                 await updateDoc(userRef, { currentCompanyId: newCompanyRef.id });
 
@@ -2852,7 +2860,7 @@ TangentLLC
                 showToast("Failed to create company.", "error");
             }
         });
-        
+
         selectCompanyBtn.addEventListener('click', openCompanyModal);
         companyCancelBtn.addEventListener('click', () => {
             if (!AppState.companyId) {
@@ -2887,7 +2895,7 @@ TangentLLC
         // Modal Close Buttons
         openUserGuideBtn.addEventListener('click', () => userGuideModal.classList.remove('hidden'));
         userGuideCloseBtn.addEventListener('click', () => userGuideModal.classList.add('hidden'));
-        
+
         openInviteModalBtn.addEventListener('click', () => {
             if (!AppState.companyId) {
                 showToast("Please select a company before inviting others.", "error");
@@ -2940,9 +2948,9 @@ TangentLLC
         settingsCancelBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
         adminSettingsCancelBtn.addEventListener('click', () => adminSettingsModal.classList.add('hidden'));
         createJobCancelBtn.addEventListener('click', () => createJobModal.classList.add('hidden'));
-        
+
         jobDetailsCloseBtn.addEventListener('click', closeJobDetailsModal);
-        
+
         jobDetailsModal.addEventListener('click', (e) => {
             const button = e.target.closest('button');
             if (!button) return;
@@ -3021,7 +3029,7 @@ TangentLLC
         }
 
         addDestinationBtn.addEventListener('click', () => addDestinationInput());
-        
+
         function setupTrackingLinkModal(job) {
             AppState.currentJobIdForModal = job.id;
             trackingLinkMobileInput.value = job.thirdPartyMobile || job.contactNumber || '';
@@ -3067,10 +3075,11 @@ TangentLLC
             const inviteId = crypto.randomUUID();
             const jobRef = doc(db, AppState.jobsPath, jobId);
             const publicJobRef = doc(db, AppState.publicJobsPath, jobId);
+            const expiresAt = Timestamp.fromDate(new Date(Date.now() + 12 * 60 * 60 * 1000));
 
             try {
                 const batch = writeBatch(db);
-                batch.update(jobRef, { 
+                batch.update(jobRef, {
                     thirdPartyInviteId: inviteId,
                     log: arrayUnion({ text: `Tracking link created by ${AppState.currentUser.name}`, timestamp: new Date() })
                 });
@@ -3082,20 +3091,22 @@ TangentLLC
                     status: jobData.status,
                     jobDate: jobData.jobDate,
                     totalDistance: jobData.totalDistance,
-                    totalDuration: jobData.totalDuration
+                    totalDuration: jobData.totalDuration,
+                    thirdPartyInviteId: inviteId,
+                    expiresAt: expiresAt
                 });
                 await batch.commit();
 
                 showToast("Tracking link generated!", "success");
-                
+
                 const updatedJobData = { ...jobData, thirdPartyInviteId: inviteId };
                 const jobIndex = AppState.allJobs.findIndex(j => j.id === jobId);
                 if (jobIndex > -1) {
                     AppState.allJobs[jobIndex] = updatedJobData;
                 }
-                
+
                 setupTrackingLinkModal(updatedJobData);
-                
+
                 const buttonInDetails = document.querySelector(`#tracking-link-container button[data-job-id="${jobId}"]`);
                 if(buttonInDetails) {
                     buttonInDetails.textContent = 'View Tracking Link';
@@ -3117,7 +3128,7 @@ TangentLLC
                 showToast("Mobile number and link are required.", "error");
                 return;
             }
-            
+
             console.log(`Simulating SMS to ${mobile} with link: ${url}`);
             showToast(`Simulated SMS sent to ${mobile}`, 'success');
 
@@ -3143,7 +3154,7 @@ TangentLLC
         shareLocationBtn.addEventListener('click', async () => {
             const driverId = AppState.currentUser.id;
             const publicDriverRef = doc(db, AppState.publicDriversPath, driverId);
-            
+
             try {
                 const docSnap = await getDoc(publicDriverRef);
                 let shareToken;
@@ -3153,20 +3164,22 @@ TangentLLC
                     publicData = docSnap.data();
                     shareToken = publicData.shareToken;
                 }
-                
+
                 if (!shareToken) {
                     shareToken = crypto.randomUUID();
+                    const expiresAt = Timestamp.fromDate(new Date(Date.now() + 12 * 60 * 60 * 1000));
                     await setDoc(publicDriverRef, {
                         name: AppState.currentUser.name,
                         phone: AppState.currentUser.phone,
                         shareToken: shareToken,
-                        timestamp: serverTimestamp()
+                        timestamp: serverTimestamp(),
+                        expiresAt: expiresAt
                     }, { merge: true });
                 }
 
                 const baseUrl = window.location.href.split('?')[0];
                 const url = `${baseUrl}?driverId=${driverId}&inviteId=${shareToken}`;
-                
+
                 locationShareUrlInput.value = url;
                 locationShareMobileInput.value = AppState.currentUser.phone || '';
                 locationShareQrcodeEl.innerHTML = '';
@@ -3294,6 +3307,6 @@ TangentLLC
         };
 
     </script>
-    
+
 </body>
 </html>
