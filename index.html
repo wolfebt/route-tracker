@@ -1,7 +1,6 @@
 <!--
-Vecto Mapping System
-Wolfe.BT
-TangentLLC
+Vectorgraphic Mapping System
+Wolfe.BT@TangentLLC
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -142,7 +141,7 @@ TangentLLC
     <div id="loading-overlay" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-[10001]">
         <div class="text-center">
             <div class="spinner large-spinner mx-auto"></div>
-            <p class="text-gray-400 mt-4">Connecting to Vecto...</p>
+            <p class="text-gray-400 mt-4">Connecting to Route Tracker...</p>
         </div>
     </div>
 
@@ -433,7 +432,7 @@ TangentLLC
                 </div>
                 <div>
                     <h4 class="text-lg font-semibold text-teal-400">2. The Two Views: Dispatcher vs. Driver</h4>
-                    <p>Vecto has two main roles, which are set by a company administrator. Your view of the app will change based on your role.</p>
+                    <p>Route Tracker has two main roles, which are set by a company administrator. Your view of the app will change based on your role.</p>
                     <ul class="list-disc list-inside space-y-2 mt-2">
                         <li><strong>Dispatcher View (Admin):</strong> This is the command center. You can see all jobs (current and archived), the real-time location of all active drivers, and have access to management actions like creating jobs and managing user roles.</li>
                         <li><strong>Driver View:</strong> This is the streamlined, on-the-road view. You will only see your currently assigned job and a list of open jobs available for you to claim.</li>
@@ -741,6 +740,8 @@ TangentLLC
 
     <!-- Firebase SDK Imports -->
     <script type="module">
+        // --- Vecto - Vectorgraphic Map System ---
+        // --- Wolfe.BT@TangentLLC ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, getDoc, arrayUnion, arrayRemove, runTransaction, enableIndexedDbPersistence, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -750,7 +751,6 @@ TangentLLC
         
         // --- Initialize Firebase and Services ---
         let app, auth, db, storage;
-        let googleMapsLibraries = {};
         
         // --- UI Elements ---
         const loadingOverlay = document.getElementById('loading-overlay');
@@ -983,6 +983,24 @@ TangentLLC
             
             return result.trim();
         }
+        
+        function buildMarkerContent(name, color) {
+            const markerDiv = document.createElement('div');
+            markerDiv.style.width = '24px';
+            markerDiv.style.height = '24px';
+            markerDiv.style.borderRadius = '50%';
+            markerDiv.style.backgroundColor = color;
+            markerDiv.style.display = 'flex';
+            markerDiv.style.justifyContent = 'center';
+            markerDiv.style.alignItems = 'center';
+            markerDiv.style.color = 'white';
+            markerDiv.style.fontWeight = 'bold';
+            markerDiv.style.fontSize = '12px';
+            markerDiv.style.border = '2px solid white';
+            markerDiv.style.boxShadow = '0 0 5px rgba(0,0,0,0.5)';
+            markerDiv.textContent = name ? name.substring(0, 2).toUpperCase() : 'N/A';
+            return markerDiv;
+        }
 
         // --- Main App Initialization ---
         function initMap(elementId = "map") {
@@ -997,6 +1015,7 @@ TangentLLC
                 center: { lat: 39.8283, lng: -98.5795 }, // Center of the US
                 zoom: 4,
                 disableDefaultUI: true,
+                mapId: 'DEMO_MAP_ID', // REQUIRED for Advanced Markers
                 styles: [ 
                     { elementType: "geometry", stylers: [{ color: "#242f3e" }] }, { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] }, { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] }, { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] }, { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] }, { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] }, { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] }, { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] }, { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] }, { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] }, { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] }, { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] }, { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] }, { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] }, { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] },
                 ],
@@ -1017,7 +1036,17 @@ TangentLLC
         };
 
         async function initializeFirebase() {
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+            const hardcodedFirebaseConfig = {
+                apiKey: "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI",
+                authDomain: "route-tracker-e62b1.firebaseapp.com",
+                projectId: "route-tracker-e62b1",
+                storageBucket: "route-tracker-e62b1.appspot.com",
+                messagingSenderId: "1016000331711",
+                appId: "1:1016000331711:web:a122b8a52045ee4e832b0a",
+                measurementId: "G-B476Z21SKP"
+            };
+
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : hardcodedFirebaseConfig;
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
             if (!firebaseConfig || !appId) {
@@ -1138,8 +1167,11 @@ TangentLLC
             onSnapshot(publicDriverRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const driver = docSnap.data();
-                    if (driver.shareToken !== inviteId) {
+                    // Check if the link is valid and not expired
+                    if (driver.shareToken !== inviteId || (driver.expiresAt && driver.expiresAt.toDate() < new Date())) {
                          publicDriverDetailsEl.innerHTML = `<p class="text-red-400">This tracking link is invalid or has expired.</p>`;
+                         if (AppState.driverMapMarkers['publicDriver']) AppState.driverMapMarkers['publicDriver'].map = null;
+                         if (AppState.personalRouteRenderer) AppState.personalRouteRenderer.setDirections({routes: []});
                          return;
                     }
 
@@ -1157,15 +1189,15 @@ TangentLLC
                         <p class="text-xs text-gray-400 mt-2">Last updated: ${driver.timestamp ? driver.timestamp.toDate().toLocaleString() : 'N/A'}</p>
                     `;
 
-                    if (AppState.driverMapMarkers['publicDriver']) AppState.driverMapMarkers['publicDriver'].setMap(null);
+                    if (AppState.driverMapMarkers['publicDriver']) AppState.driverMapMarkers['publicDriver'].map = null;
 
                     if (driver.location) {
                         const driverPos = { lat: driver.location.latitude, lng: driver.location.longitude };
-                        AppState.driverMapMarkers['publicDriver'] = new google.maps.Marker({
+                        AppState.driverMapMarkers['publicDriver'] = new google.maps.marker.AdvancedMarkerElement({
                             position: driverPos,
                             map: AppState.publicDriverMap,
                             title: "Driver Location",
-                            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
+                            content: buildMarkerContent(driver.name, '#4285F4')
                         });
                         
                         if (driver.destination && AppState.directionsService) {
@@ -1207,6 +1239,14 @@ TangentLLC
                 if (docSnap.exists()) {
                     const job = docSnap.data();
                     
+                    // Check if the link is valid and not expired
+                    if (job.thirdPartyInviteId !== inviteId || (job.expiresAt && job.expiresAt.toDate() < new Date())) {
+                        publicJobDetailsEl.innerHTML = `<p class="text-red-400">This tracking link is invalid or has expired.</p>`;
+                         for (const key in AppState.driverMapMarkers) { AppState.driverMapMarkers[key].map = null; }
+                         for (const key in AppState.jobRouteRenderers) { AppState.jobRouteRenderers[key].setMap(null); }
+                        return;
+                    }
+
                     let destinationsHTML = '';
                     if (job.destinations && job.destinations.length > 0) {
                         if (job.destinations.length > 1) {
@@ -1232,7 +1272,7 @@ TangentLLC
                     `;
                     
                     for (const key in AppState.driverMapMarkers) {
-                        AppState.driverMapMarkers[key].setMap(null);
+                        AppState.driverMapMarkers[key].map = null;
                     }
                     AppState.driverMapMarkers = {};
                      for (const key in AppState.jobRouteRenderers) {
@@ -1245,11 +1285,11 @@ TangentLLC
 
                     if (job.driverLocation) {
                         const driverPos = { lat: job.driverLocation.latitude, lng: job.driverLocation.longitude };
-                        AppState.driverMapMarkers['publicDriver'] = new google.maps.Marker({
+                        AppState.driverMapMarkers['publicDriver'] = new google.maps.marker.AdvancedMarkerElement({
                             position: driverPos,
                             map: AppState.publicMap,
                             title: "Driver Location",
-                            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
+                            content: buildMarkerContent('DR', '#4285F4')
                         });
                         
                          if (AppState.directionsService) {
@@ -1440,11 +1480,11 @@ TangentLLC
             }
             AppState.jobRouteRenderers = {};
             for (const driverId in AppState.driverMapMarkers) {
-                AppState.driverMapMarkers[driverId].setMap(null);
+                AppState.driverMapMarkers[driverId].map = null;
             }
             AppState.driverMapMarkers = {};
             if (AppState.userMarker) {
-                AppState.userMarker.setMap(null);
+                AppState.userMarker.map = null;
                 AppState.userMarker = null;
             }
 
@@ -1712,25 +1752,25 @@ TangentLLC
                     if (driver.id === AppState.currentUser.id) return; 
                     const position = { lat: driver.location.latitude, lng: driver.location.longitude };
                     if (AppState.driverMapMarkers[driver.id]) {
-                        AppState.driverMapMarkers[driver.id].setPosition(position);
+                        AppState.driverMapMarkers[driver.id].position = position;
                     } else {
-                        AppState.driverMapMarkers[driver.id] = new google.maps.Marker({
+                        AppState.driverMapMarkers[driver.id] = new google.maps.marker.AdvancedMarkerElement({
                             position, map: AppState.map,
-                            label: { text: driver.name ? driver.name.substring(0, 2).toUpperCase() : 'DR', color: "white", fontWeight: 'bold' },
-                            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#f39c12', fillOpacity: 1, strokeColor: 'black', strokeWeight: 2 }
+                            content: buildMarkerContent(driver.name, '#f39c12'),
+                            title: driver.name || 'Driver'
                         });
                     }
                 });
 
                 for (const driverId in AppState.driverMapMarkers) {
                     if (!recentDriverIds.has(driverId)) {
-                        AppState.driverMapMarkers[driverId].setMap(null);
+                        AppState.driverMapMarkers[driverId].map = null;
                         delete AppState.driverMapMarkers[driverId];
                     }
                 }
             } else {
                 for (const driverId in AppState.driverMapMarkers) {
-                    AppState.driverMapMarkers[driverId].setMap(null);
+                    AppState.driverMapMarkers[driverId].map = null;
                     delete AppState.driverMapMarkers[driverId];
                 }
             }
@@ -1740,19 +1780,19 @@ TangentLLC
                 if (myLocationData) {
                     const pos = { lat: myLocationData.location.latitude, lng: myLocationData.location.longitude };
                     if (AppState.userMarker) {
-                        AppState.userMarker.setPosition(pos);
+                        AppState.userMarker.position = pos;
                     } else {
-                        AppState.userMarker = new google.maps.Marker({
+                        AppState.userMarker = new google.maps.marker.AdvancedMarkerElement({
                             position: pos, map: AppState.map, title: 'Your Location',
-                            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
+                            content: buildMarkerContent('ME', '#4285F4')
                         });
                     }
                 } else if (AppState.userMarker) {
-                    AppState.userMarker.setMap(null);
+                    AppState.userMarker.map = null;
                     AppState.userMarker = null;
                 }
             } else if (AppState.userMarker) {
-                AppState.userMarker.setMap(null);
+                AppState.userMarker.map = null;
                 AppState.userMarker = null;
             }
 
@@ -1959,26 +1999,23 @@ TangentLLC
         }
 
         async function loadGoogleMapsScript() {
-            const apiKey = typeof __google_maps_api_key !== 'undefined' ? __google_maps_api_key : null;
-            if (!apiKey) {
-                console.error("Google Maps API key is not defined.");
-                document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">API Key Error</p><p class="text-gray-400">Google Maps API key is missing.</p></div>`;
-                return;
-            }
+            const apiKey = "AIzaSyDUzkfgu-6zuMHoH-UV5vzFQySSjwAD9u8";
+            // Use the new functional API: setOptions()
+            setOptions({
+                apiKey: apiKey,
+                version: "quarterly",
+            });
 
             try {
-                setOptions({ apiKey, version: "weekly" });
-                const [maps, routes, places] = await Promise.all([
-                    importLibrary('maps'),
-                    importLibrary('routes'),
-                    importLibrary('places')
-                ]);
-
-                googleMapsLibraries = { ...maps, ...routes, ...places };
+                // Use the new functional API: importLibrary()
+                await importLibrary('maps');
+                await importLibrary('places');
+                await importLibrary('routes');
+                await importLibrary('marker');
+                
                 console.log("Google Maps libraries loaded successfully.");
-
-                if(!AppState.publicMap && !AppState.publicDriverMap) initMap();
-                AppState.directionsService = new googleMapsLibraries.DirectionsService();
+                if(!AppState.publicMap && !AppState.publicDriverMap) initMap(); 
+                AppState.directionsService = new google.maps.DirectionsService();
                 setupAutocomplete();
 
             } catch (e) {
@@ -2786,7 +2823,7 @@ TangentLLC
                 const userRef = doc(db, AppState.globalUsersPath, AppState.currentUser.id);
                 await updateDoc(userRef, { currentCompanyId: companyId });
 
-                showToast(`Successfully joined ${companyData.name}!`, "success");
+                showToast(`Successfully joined ${companyData.name}!`, 'success');
                 companyModal.classList.add('hidden');
                 companyPasswordModal.classList.add('hidden');
             } catch (error) {
@@ -2895,8 +2932,8 @@ TangentLLC
         emailInviteForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const email = emailInviteInput.value;
-            const subject = `Invitation to join ${AppState.companyName} on Vecto`;
-            const body = `You've been invited to join ${AppState.companyName} on Vecto. Click this link to get started: ${shareLinkInput.value}`;
+            const subject = `Invitation to join ${AppState.companyName} on Route Tracker`;
+            const body = `You've been invited to join ${AppState.companyName} on Route Tracker. Click this link to get started: ${shareLinkInput.value}`;
             window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             emailInviteInput.value = '';
         });
@@ -3046,6 +3083,7 @@ TangentLLC
             const inviteId = crypto.randomUUID();
             const jobRef = doc(db, AppState.jobsPath, jobId);
             const publicJobRef = doc(db, AppState.publicJobsPath, jobId);
+            const expiresAt = Timestamp.fromDate(new Date(Date.now() + 12 * 60 * 60 * 1000));
 
             try {
                 const batch = writeBatch(db);
@@ -3061,7 +3099,9 @@ TangentLLC
                     status: jobData.status,
                     jobDate: jobData.jobDate,
                     totalDistance: jobData.totalDistance,
-                    totalDuration: jobData.totalDuration
+                    totalDuration: jobData.totalDuration,
+                    thirdPartyInviteId: inviteId,
+                    expiresAt: expiresAt
                 });
                 await batch.commit();
 
@@ -3135,11 +3175,13 @@ TangentLLC
                 
                 if (!shareToken) {
                     shareToken = crypto.randomUUID();
+                    const expiresAt = Timestamp.fromDate(new Date(Date.now() + 12 * 60 * 60 * 1000));
                     await setDoc(publicDriverRef, {
                         name: AppState.currentUser.name,
                         phone: AppState.currentUser.phone,
                         shareToken: shareToken,
-                        timestamp: serverTimestamp()
+                        timestamp: serverTimestamp(),
+                        expiresAt: expiresAt
                     }, { merge: true });
                 }
 
@@ -3276,3 +3318,5 @@ TangentLLC
     
 </body>
 </html>
+
+
