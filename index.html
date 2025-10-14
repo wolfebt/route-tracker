@@ -209,6 +209,7 @@ TangentLLC
                         <div id="management-actions-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
                             <div id="dispatcher-actions" class="grid grid-cols-1 gap-2">
                                 <button id="open-create-job-modal-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Create Job</button>
+                                <button id="walking-mode-btn" class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 mt-2">Walking Mode</button>
                             </div>
                         </div>
                         <div id="job-dashboard-panel" class="bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
@@ -237,6 +238,25 @@ TangentLLC
                                 <button id="create-geofence-btn" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Create</button>
                             </div>
                             <ul id="geofences-list" class="space-y-2"></ul>
+                        </div>
+
+                        <div id="trail-creation-panel" class="hidden bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                            <h3 class="text-lg font-semibold text-gray-200 mb-2">Trail Creation</h3>
+                            <div class="space-y-2">
+                                <button id="start-recording-btn" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Start Recording</button>
+                                <button id="drop-point-btn" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 hidden">Drop Point</button>
+                                <div class="flex items-center justify-center hidden" id="auto-record-container">
+                                    <input id="auto-record-switch" type="checkbox" class="h-4 w-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500">
+                                    <label for="auto-record-switch" class="ml-2 block text-sm text-gray-300">Auto-record</label>
+                                </div>
+                                <button id="finish-save-btn" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 hidden">Finish & Save</button>
+                                <button id="navigate-to-trail-btn" class="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 hidden mt-2">Navigate Back to Trail</button>
+                            </div>
+                        </div>
+
+                        <div id="saved-trails-panel" class="hidden bg-gray-900 p-4 rounded-lg shadow-sm mt-4">
+                            <h3 class="text-lg font-semibold text-gray-200 mb-2">Saved Trails</h3>
+                            <ul id="saved-trails-list" class="space-y-2"></ul>
                         </div>
                     </div>
 
@@ -735,17 +755,6 @@ TangentLLC
             <h3 class="text-xl font-bold text-white mb-6">Settings</h3>
             <div class="space-y-4">
                 <button id="open-profile-modal-btn" class="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">Edit Profile</button>
-    <div id="geofence-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10002]">
-        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-            <h3 class="text-xl font-bold text-white mb-4">Create Geofence</h3>
-            <p class="text-gray-400 mb-4">Draw a polygon on the map to define the geofence area. Give it a name and save.</p>
-            <input type="text" id="geofence-name-input" placeholder="Geofence Name (e.g., Warehouse)" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <div class="flex justify-end space-x-2 mt-6">
-                <button type="button" id="geofence-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
-                <button type="button" id="geofence-save-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
-            </div>
-        </div>
-    </div>
                 <button id="open-user-guide-btn" class="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">User Guide</button>
                 <button id="open-invite-modal-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Invite Others</button>
                 <div id="admin-controls" class="hidden pt-4 border-t border-gray-700">
@@ -756,6 +765,38 @@ TangentLLC
         </div>
     </div>
 
+    <div id="geofence-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10002]">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+            <h3 class="text-xl font-bold text-white mb-4">Create Geofence</h3>
+            <p class="text-gray-400 mb-4">Draw a polygon on the map to define the geofence area. Give it a name and save.</p>
+            <input type="text" id="geofence-name-input" placeholder="Geofence Name (e.g., Warehouse)" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex items-center mt-4">
+                <input id="save-as-geofence-switch" type="checkbox" class="h-4 w-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500">
+                <label for="save-as-geofence-switch" class="ml-2 block text-sm text-gray-300">Save as Geofence</label>
+            </div>
+            <div class="flex justify-end space-x-2 mt-6">
+                <button type="button" id="geofence-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
+                <button type="button" id="geofence-save-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="trail-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10002]">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+            <h3 class="text-xl font-bold text-white mb-4">Save Trail</h3>
+            <p class="text-gray-400 mb-4">Give your new trail a name.</p>
+            <input type="text" id="trail-name-input" placeholder="Trail Name (e.g., North Ridge Trail)" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex items-center mt-4">
+                <input id="save-trail-as-geofence-switch" type="checkbox" class="h-4 w-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500">
+                <label for="save-trail-as-geofence-switch" class="ml-2 block text-sm text-gray-300">Save as Geofence</label>
+            </div>
+            <div class="flex justify-end space-x-2 mt-6">
+                <button type="button" id="trail-cancel-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Cancel</button>
+                <button type="button" id="trail-save-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Firebase SDK Imports -->
     <script type="module">
@@ -763,14 +804,14 @@ TangentLLC
         // --- Wolfe.BT@TangentLLC ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, getDoc, arrayUnion, arrayRemove, runTransaction, enableIndexedDbPersistence, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, getDoc, arrayUnion, arrayRemove, runTransaction, enableIndexedDbPersistence, Timestamp, connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
         import { setOptions, importLibrary } from "https://esm.sh/@googlemaps/js-api-loader";
 
         
         // --- Initialize Firebase and Services ---
         let app, auth, db, storage;
-        let mapsLibrary, placesLibrary, routesLibrary, markerLibrary, drawingLibrary;
+        let coreLibrary, mapsLibrary, placesLibrary, routesLibrary, markerLibrary, drawingLibrary, geometryLibrary;
         
         // --- UI Elements ---
         const loadingOverlay = document.getElementById('loading-overlay');
@@ -951,6 +992,23 @@ TangentLLC
         const geofenceSaveBtn = document.getElementById('geofence-save-btn');
         const geofenceNameInput = document.getElementById('geofence-name-input');
         const geofencesListEl = document.getElementById('geofences-list');
+        const geofencePanel = document.getElementById('geofence-panel');
+
+        // Trail Creation UI
+        const walkingModeBtn = document.getElementById('walking-mode-btn');
+        const trailCreationPanel = document.getElementById('trail-creation-panel');
+        const startRecordingBtn = document.getElementById('start-recording-btn');
+        const dropPointBtn = document.getElementById('drop-point-btn');
+        const autoRecordContainer = document.getElementById('auto-record-container');
+        const autoRecordSwitch = document.getElementById('auto-record-switch');
+        const finishSaveBtn = document.getElementById('finish-save-btn');
+        const savedTrailsPanel = document.getElementById('saved-trails-panel');
+        const savedTrailsListEl = document.getElementById('saved-trails-list');
+        const trailModal = document.getElementById('trail-modal');
+        const trailNameInput = document.getElementById('trail-name-input');
+        const trailCancelBtn = document.getElementById('trail-cancel-btn');
+        const trailSaveBtn = document.getElementById('trail-save-btn');
+        const navigateToTrailBtn = document.getElementById('navigate-to-trail-btn');
 
 
         // --- App State ---
@@ -995,6 +1053,10 @@ TangentLLC
             currentPolygon: null,
             geofences: [],
             geofencePolygons: {},
+            isRecording: false,
+            currentTrail: null,
+            lastRecordedPosition: null,
+            navigationRenderer: null,
         };
 
         // --- Helper Functions ---
@@ -1037,7 +1099,7 @@ TangentLLC
         // --- Main App Initialization ---
         function initMap(elementId = "map") {
             const mapElement = document.getElementById(elementId);
-            if (!window.google || !window.google.maps) {
+            if (!mapsLibrary) {
                 console.error("Google Maps script not loaded or API object not available.");
                 if(mapElement) mapElement.innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Error</p><p class="text-gray-400">Could not load Google Maps.</p></div>`;
                 return null;
@@ -1049,12 +1111,12 @@ TangentLLC
                 disableDefaultUI: true,
                 mapId: 'DEMO_MAP_ID', // REQUIRED for Advanced Markers. Styles are managed in Cloud Console.
             };
-            const map = new google.maps.Map(mapElement, mapOptions);
+            const map = new mapsLibrary.Map(mapElement, mapOptions);
             
             if (elementId === 'public-map') AppState.publicMap = map;
             else if (elementId === 'public-driver-map') {
                 AppState.publicDriverMap = map;
-                AppState.personalRouteRenderer = new google.maps.DirectionsRenderer({
+                AppState.personalRouteRenderer = new routesLibrary.DirectionsRenderer({
                     map: AppState.publicDriverMap, suppressMarkers: true, preserveViewport: false,
                     polylineOptions: { strokeColor: '#60a5fa', strokeWeight: 5, strokeOpacity: 0.8 },
                 });
@@ -1089,6 +1151,14 @@ TangentLLC
                 auth = getAuth(app);
                 db = getFirestore(app);
                 storage = getStorage(app);
+
+                // Connect to emulators if running locally
+                if (window.location.hostname === "127.0.0.1") {
+                    console.log("Connecting to local Firestore emulator.");
+                    connectFirestoreEmulator(db, '127.0.0.1', 8081);
+                }
+
+
                 await enableIndexedDbPersistence(db).catch(err => {
                     if (err.code == 'failed-precondition') {
                         console.warn("Firestore persistence failed. Multiple tabs open?");
@@ -1233,7 +1303,7 @@ TangentLLC
                             AppState.directionsService.route({
                                 origin: driverPos,
                                 destination: driver.destination,
-                                travelMode: google.maps.TravelMode.DRIVING
+                            travelMode: routesLibrary.TravelMode.DRIVING
                             }, (response, status) => {
                                 if (status === 'OK') {
                                     AppState.personalRouteRenderer.setDirections(response);
@@ -1322,7 +1392,7 @@ TangentLLC
                         });
                         
                          if (AppState.directionsService) {
-                            const renderer = new google.maps.DirectionsRenderer({
+                            const renderer = new routesLibrary.DirectionsRenderer({
                                 map: AppState.publicMap, suppressMarkers: true, preserveViewport: false,
                                 polylineOptions: { strokeColor: '#4285F4', strokeWeight: 5, strokeOpacity: 0.8 },
                             });
@@ -1331,7 +1401,7 @@ TangentLLC
                                 origin: driverPos,
                                 destination: finalDestination,
                                 waypoints: waypoints,
-                                travelMode: google.maps.TravelMode.DRIVING
+                                travelMode: routesLibrary.TravelMode.DRIVING
                             }, (response, status) => {
                                 if (status === 'OK') {
                                     renderer.setDirections(response);
@@ -1343,7 +1413,7 @@ TangentLLC
                          }
                     } else {
                          if (AppState.directionsService) {
-                            const renderer = new google.maps.DirectionsRenderer({
+                            const renderer = new routesLibrary.DirectionsRenderer({
                                 map: AppState.publicMap, suppressMarkers: false, preserveViewport: false,
                                 polylineOptions: { strokeColor: '#888888', strokeWeight: 5, strokeOpacity: 0.8 },
                             });
@@ -1352,7 +1422,7 @@ TangentLLC
                                 origin: job.origin,
                                 destination: finalDestination,
                                 waypoints: waypoints,
-                                travelMode: google.maps.TravelMode.DRIVING
+                                travelMode: routesLibrary.TravelMode.DRIVING
                             }, (response, status) => {
                                 if (status === 'OK') {
                                     renderer.setDirections(response);
@@ -1469,6 +1539,13 @@ TangentLLC
                     renderGeofencesOnMap();
                 }, (err) => console.error("Error listening to geofences:", err));
                 AppState.companyUnsubscribes.push(geofencesUnsubscribe);
+
+                const trailsPath = `${companyBasePath}/trails`;
+                const trailsUnsubscribe = onSnapshot(collection(db, trailsPath), (snapshot) => {
+                    AppState.trails = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderSavedTrailsList();
+                }, (err) => console.error("Error listening to trails:", err));
+                AppState.companyUnsubscribes.push(trailsUnsubscribe);
                 
                 setupJobListener();
             } catch (error) {
@@ -1578,7 +1655,7 @@ TangentLLC
                             AppState.directionsService.route({
                                 origin: newPos,
                                 destination: publicData.destination,
-                                travelMode: google.maps.TravelMode.DRIVING
+                                travelMode: routesLibrary.TravelMode.DRIVING
                             }, (response, status) => {
                                 if (status === 'OK') {
                                     const leg = response.routes[0].legs[0];
@@ -1593,10 +1670,63 @@ TangentLLC
                     }
                 });
 
-                if (AppState.isDispatchView) {
-                    checkGeofenceTransitions(AppState.currentUser.id, newPos);
+                checkGeofenceTransitions(AppState.currentUser.id, newPos);
+
+                if (AppState.userMarker) {
+                    AppState.userMarker.setPosition(newPos);
+                }
+
+                if (AppState.isRecording && autoRecordSwitch.checked) {
+                    if (!AppState.lastRecordedPosition || geometryLibrary.spherical.computeDistanceBetween(new mapsLibrary.LatLng(AppState.lastRecordedPosition), newPos) > 10) {
+                        const path = AppState.currentTrail.getPath();
+                        path.push(newPos);
+                        AppState.lastRecordedPosition = { lat: newPos.lat(), lng: newPos.lng() };
+                    }
+                }
+
+                if (AppState.currentTrail && !AppState.isRecording) {
+                    const isOutside = !geometryLibrary.poly.isLocationOnEdge(newPos, AppState.currentTrail, 0.0001);
+                    navigateToTrailBtn.classList.toggle('hidden', !isOutside);
+                } else {
+                    navigateToTrailBtn.classList.add('hidden');
                 }
             };
+
+            navigateToTrailBtn.addEventListener('click', () => {
+                if (AppState.userMarker && AppState.currentTrail) {
+                    let nearestPoint = null;
+                    let minDistance = Infinity;
+
+                    const trailPath = AppState.currentTrail.getPath();
+                    for (let i = 0; i < trailPath.getLength(); i++) {
+                        const pointOnTrail = trailPath.getAt(i);
+                        const distance = geometryLibrary.spherical.computeDistanceBetween(AppState.userMarker.getPosition(), pointOnTrail);
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            nearestPoint = pointOnTrail;
+                        }
+                    }
+
+                    if (nearestPoint) {
+                        AppState.directionsService.route({
+                            origin: AppState.userMarker.getPosition(),
+                            destination: nearestPoint,
+                            travelMode: routesLibrary.TravelMode.WALKING
+                        }, (response, status) => {
+                            if (status === 'OK') {
+                                if (!AppState.navigationRenderer) {
+                                    AppState.navigationRenderer = new routesLibrary.DirectionsRenderer({
+                                        map: AppState.map,
+                                        suppressMarkers: true,
+                                        polylineOptions: { strokeColor: '#00FF00', strokeWeight: 5, strokeOpacity: 0.8 },
+                                    });
+                                }
+                                AppState.navigationRenderer.setDirections(response);
+                            }
+                        });
+                    }
+                }
+            });
 
             const errorCallback = (error) => {
                 showToast(`Geolocation Error: ${error.message}`, "error");
@@ -1794,7 +1924,7 @@ TangentLLC
                     if (AppState.driverMapMarkers[driver.id]) {
                         AppState.driverMapMarkers[driver.id].position = position;
                     } else {
-                        AppState.driverMapMarkers[driver.id] = new google.maps.marker.AdvancedMarkerElement({
+                        AppState.driverMapMarkers[driver.id] = new markerLibrary.AdvancedMarkerElement({
                             position, map: AppState.map,
                             content: buildMarkerContent(driver.name, '#f39c12'),
                             title: driver.name || 'Driver'
@@ -1822,7 +1952,7 @@ TangentLLC
                     if (AppState.userMarker) {
                         AppState.userMarker.position = pos;
                     } else {
-                        AppState.userMarker = new google.maps.marker.AdvancedMarkerElement({
+                        AppState.userMarker = new markerLibrary.AdvancedMarkerElement({
                             position: pos, map: AppState.map, title: 'Your Location',
                             content: buildMarkerContent('ME', '#4285F4')
                         });
@@ -1866,7 +1996,7 @@ TangentLLC
 
             if (!renderer) {
                 const jobColor = getJobColor(jobId);
-                renderer = new google.maps.DirectionsRenderer({
+                renderer = new routesLibrary.DirectionsRenderer({
                     map: AppState.map, suppressMarkers: true, preserveViewport: true,
                     polylineOptions: { strokeColor: jobColor, strokeWeight: 5, strokeOpacity: 0.8 },
                 });
@@ -1884,7 +2014,7 @@ TangentLLC
                     destination: finalDestination, 
                     waypoints: waypoints,
                     optimizeWaypoints: job.isOptimized || false,
-                    travelMode: google.maps.TravelMode.DRIVING
+                    travelMode: routesLibrary.TravelMode.DRIVING
                 },
                 (response, status) => {
                     const etaInfoEl = document.getElementById(`job-eta-info-${job.id}`);
@@ -1947,6 +2077,59 @@ TangentLLC
             }
         });
 
+        function renderSavedTrailsList() {
+            savedTrailsListEl.innerHTML = '';
+            if (AppState.trails.length === 0) {
+                savedTrailsListEl.innerHTML = '<li class="text-gray-400 text-sm">No trails saved.</li>';
+                return;
+            }
+            AppState.trails.forEach(trail => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center bg-gray-800 p-2 rounded-md cursor-pointer';
+                li.dataset.trailId = trail.id;
+                li.innerHTML = `
+                    <p class="text-sm text-gray-200">${trail.name}</p>
+                    <button data-trail-id="${trail.id}" class="delete-trail-btn p-1 rounded-full hover:bg-red-800" title="Delete Trail">
+                        <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                `;
+                savedTrailsListEl.appendChild(li);
+            });
+        }
+
+        savedTrailsListEl.addEventListener('click', (e) => {
+            const trailLi = e.target.closest('li[data-trail-id]');
+            const deleteBtn = e.target.closest('.delete-trail-btn');
+
+            if (deleteBtn) {
+                const trailId = deleteBtn.dataset.trailId;
+                showConfirmModal('Delete Trail?', 'This action is permanent and cannot be undone.', async () => {
+                    try {
+                        await deleteDoc(doc(db, `${AppState.companiesPath}/${AppState.companyId}/trails`, trailId));
+                        showToast('Trail deleted successfully!', 'success');
+                    } catch (error) {
+                        console.error("Error deleting trail:", error);
+                        showToast("Failed to delete trail.", "error");
+                    }
+                });
+            } else if (trailLi) {
+                const trailId = trailLi.dataset.trailId;
+                const trail = AppState.trails.find(t => t.id === trailId);
+                if (trail) {
+                    if (AppState.currentTrail) {
+                        AppState.currentTrail.setMap(null);
+                    }
+                AppState.currentTrail = new mapsLibrary.Polyline({
+                        path: trail.path,
+                        map: AppState.map,
+                        strokeColor: '#0000FF',
+                        strokeOpacity: 1.0,
+                        strokeWeight: 3
+                    });
+                }
+            }
+        });
+
         function renderGeofencesOnMap() {
             for (const geofenceId in AppState.geofencePolygons) {
                 AppState.geofencePolygons[geofenceId].setMap(null);
@@ -1954,7 +2137,7 @@ TangentLLC
             AppState.geofencePolygons = {};
 
             AppState.geofences.forEach(geofence => {
-                const polygon = new google.maps.Polygon({
+                const polygon = new mapsLibrary.Polygon({
                     paths: geofence.path,
                     strokeColor: '#FF0000',
                     strokeOpacity: 0.8,
@@ -1972,8 +2155,8 @@ TangentLLC
             const lastStatus = driver && driver.geofenceStatus ? driver.geofenceStatus : {};
 
             AppState.geofences.forEach(geofence => {
-                const polygon = new google.maps.Polygon({ paths: geofence.path });
-                const isInside = google.maps.geometry.poly.containsLocation(newPos, polygon);
+                const polygon = new mapsLibrary.Polygon({ paths: geofence.path });
+                const isInside = geometryLibrary.poly.containsLocation(newPos, polygon);
                 const wasInside = lastStatus[geofence.id] === 'inside';
 
                 if (isInside && !wasInside) {
@@ -2116,24 +2299,22 @@ TangentLLC
 
         async function loadGoogleMapsScript() {
             const apiKey = "AIzaSyDUzkfgu-6zuMHoH-UV5vzFQySSjwAD9u8";
-            // Use the new functional API: setOptions()
-            setOptions({
-                apiKey: apiKey,
-                version: "quarterly",
-            });
+            setOptions({ apiKey, version: "quarterly" });
 
             try {
-                // Use the new functional API: importLibrary()
-                await importLibrary('maps');
-                await importLibrary('places');
-                await importLibrary('routes');
-                await importLibrary('marker');
-                await importLibrary('drawing');
-                await importLibrary('geometry');
+                [coreLibrary, mapsLibrary, markerLibrary, placesLibrary, routesLibrary, drawingLibrary, geometryLibrary] = await Promise.all([
+                    importLibrary('core'),
+                    importLibrary('maps'),
+                    importLibrary('marker'),
+                    importLibrary('places'),
+                    importLibrary('routes'),
+                    importLibrary('drawing'),
+                    importLibrary('geometry'),
+                ]);
                 
                 console.log("Google Maps libraries loaded successfully.");
                 if(!AppState.publicMap && !AppState.publicDriverMap) initMap(); 
-                AppState.directionsService = new google.maps.DirectionsService();
+                AppState.directionsService = new routesLibrary.DirectionsService();
                 setupAutocomplete();
 
             } catch (e) {
@@ -2149,7 +2330,7 @@ TangentLLC
             ];
             inputs.forEach(input => {
                 if (input) {
-                    const autocomplete = new google.maps.places.Autocomplete(input, {
+                    const autocomplete = new placesLibrary.Autocomplete(input, {
                         fields: ["address_components", "geometry", "icon", "name"],
                         strictBounds: false,
                     });
@@ -2694,7 +2875,7 @@ TangentLLC
                 destination: finalDestination,
                 waypoints: waypoints,
                 optimizeWaypoints: jobData.isOptimized,
-                travelMode: google.maps.TravelMode.DRIVING
+                travelMode: routesLibrary.TravelMode.DRIVING
             }, async (response, status) => {
                 if (status === 'OK') {
                     let totalDistanceMeters = 0;
@@ -3138,7 +3319,7 @@ TangentLLC
             `;
             destinationsContainer.appendChild(newDestDiv);
             const newInput = newDestDiv.querySelector('input');
-            const autocomplete = new google.maps.places.Autocomplete(newInput, {
+            const autocomplete = new placesLibrary.Autocomplete(newInput, {
                 fields: ["address_components", "geometry", "icon", "name"],
                 strictBounds: false,
             });
@@ -3351,7 +3532,7 @@ TangentLLC
             AppState.directionsService.route({
                 origin: origin,
                 destination: destination,
-                travelMode: google.maps.TravelMode.DRIVING
+                travelMode: routesLibrary.TravelMode.DRIVING
             }, async (response, status) => {
                 if (status === 'OK') {
                     const leg = response.routes[0].legs[0];
@@ -3420,16 +3601,16 @@ TangentLLC
 
         createGeofenceBtn.addEventListener('click', () => {
             if (!AppState.drawingManager) {
-                AppState.drawingManager = new google.maps.drawing.DrawingManager({
-                    drawingMode: google.maps.drawing.OverlayType.POLYGON,
+                AppState.drawingManager = new drawingLibrary.DrawingManager({
+                    drawingMode: mapsLibrary.drawing.OverlayType.POLYGON,
                     drawingControl: true,
                     drawingControlOptions: {
-                        position: google.maps.ControlPosition.TOP_CENTER,
-                        drawingModes: [google.maps.drawing.OverlayType.POLYGON],
+                        position: coreLibrary.ControlPosition.TOP_CENTER,
+                        drawingModes: [mapsLibrary.drawing.OverlayType.POLYGON],
                     },
                 });
 
-                google.maps.event.addListener(AppState.drawingManager, 'overlaycomplete', (event) => {
+                coreLibrary.event.addListener(AppState.drawingManager, 'overlaycomplete', (event) => {
                     if (AppState.currentPolygon) {
                         AppState.currentPolygon.setMap(null);
                     }
@@ -3474,6 +3655,111 @@ TangentLLC
                 console.error("Error saving geofence:", error);
                 showToast("Failed to save geofence.", "error");
             }
+        });
+
+        walkingModeBtn.addEventListener('click', () => {
+            const isWalkingMode = trailCreationPanel.classList.toggle('hidden');
+            savedTrailsPanel.classList.toggle('hidden', isWalkingMode);
+            geofencePanel.classList.toggle('hidden', !isWalkingMode);
+            jobDashboardPanel.classList.toggle('hidden', !isWalkingMode);
+            driversPanel.classList.toggle('hidden', !isWalkingMode);
+
+            if (!isWalkingMode) {
+                AppState.map.setMapTypeId('terrain');
+                walkingModeBtn.textContent = 'Exit Walking Mode';
+                walkingModeBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+                walkingModeBtn.classList.add('bg-gray-600', 'hover:bg-gray-700');
+            } else {
+                AppState.map.setMapTypeId('roadmap');
+                walkingModeBtn.textContent = 'Walking Mode';
+                walkingModeBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
+                walkingModeBtn.classList.remove('bg-gray-600', 'hover:bg-gray-700');
+            }
+        });
+
+        startRecordingBtn.addEventListener('click', () => {
+            AppState.isRecording = true;
+            AppState.currentTrail = new mapsLibrary.Polyline({
+                map: AppState.map,
+                strokeColor: '#FF0000',
+                strokeOpacity: 1.0,
+                strokeWeight: 3
+            });
+            startRecordingBtn.classList.add('hidden');
+            dropPointBtn.classList.remove('hidden');
+            autoRecordContainer.classList.remove('hidden');
+            finishSaveBtn.classList.remove('hidden');
+        });
+
+        dropPointBtn.addEventListener('click', () => {
+            if (AppState.userMarker) {
+                const path = AppState.currentTrail.getPath();
+                path.push(AppState.userMarker.getPosition());
+            }
+        });
+
+        autoRecordSwitch.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                AppState.lastRecordedPosition = AppState.userMarker ? AppState.userMarker.getPosition() : null;
+            } else {
+                AppState.lastRecordedPosition = null;
+            }
+        });
+
+        finishSaveBtn.addEventListener('click', () => {
+            trailModal.classList.remove('hidden');
+        });
+
+        trailSaveBtn.addEventListener('click', async () => {
+            const name = trailNameInput.value.trim();
+            const saveAsGeofence = document.getElementById('save-trail-as-geofence-switch').checked;
+
+            if (!name) {
+                showToast("Please enter a name for the trail.", "error");
+                return;
+            }
+            if (!AppState.currentTrail) {
+                showToast("No trail to save.", "error");
+                return;
+            }
+
+            const path = AppState.currentTrail.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
+
+            try {
+                if (saveAsGeofence) {
+                    await addDoc(collection(db, `${AppState.companiesPath}/${AppState.companyId}/geofences`), {
+                        name: name,
+                        path: path,
+                        createdAt: serverTimestamp()
+                    });
+                    showToast("Geofence saved successfully!", "success");
+                } else {
+                    await addDoc(collection(db, `${AppState.companiesPath}/${AppState.companyId}/trails`), {
+                        name: name,
+                        path: path,
+                        createdAt: serverTimestamp()
+                    });
+                    showToast("Trail saved successfully!", "success");
+                }
+                trailModal.classList.add('hidden');
+                trailNameInput.value = '';
+                if (AppState.currentTrail) {
+                    AppState.currentTrail.setMap(null);
+                    AppState.currentTrail = null;
+                }
+                AppState.isRecording = false;
+                startRecordingBtn.classList.remove('hidden');
+                dropPointBtn.classList.add('hidden');
+                autoRecordContainer.classList.add('hidden');
+                finishSaveBtn.classList.add('hidden');
+            } catch (error) {
+                console.error("Error saving trail:", error);
+                showToast("Failed to save trail.", "error");
+            }
+        });
+
+        trailCancelBtn.addEventListener('click', () => {
+            trailModal.classList.add('hidden');
         });
 
         geofenceCancelBtn.addEventListener('click', () => {
