@@ -250,7 +250,10 @@ TangentLLC
                                     <label for="auto-record-switch" class="ml-2 block text-sm text-gray-300">Auto-record</label>
                                 </div>
                                 <button id="finish-save-btn" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 hidden">Finish & Save</button>
-                                <button id="navigate-to-trail-btn" class="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 hidden mt-2">Navigate Back to Trail</button>
+                                <div id="trail-navigation-container" class="hidden mt-2 space-y-2">
+                                    <button id="navigate-to-trail-btn" class="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">Navigate to Nearest Point</button>
+                                    <button id="navigate-to-start-btn" class="w-full px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700">Navigate to Start</button>
+                                </div>
                             </div>
                         </div>
 
@@ -1008,7 +1011,9 @@ TangentLLC
         const trailNameInput = document.getElementById('trail-name-input');
         const trailCancelBtn = document.getElementById('trail-cancel-btn');
         const trailSaveBtn = document.getElementById('trail-save-btn');
+        const trailNavigationContainer = document.getElementById('trail-navigation-container');
         const navigateToTrailBtn = document.getElementById('navigate-to-trail-btn');
+        const navigateToStartBtn = document.getElementById('navigate-to-start-btn');
 
 
         // --- App State ---
@@ -1686,11 +1691,35 @@ TangentLLC
 
                 if (AppState.currentTrail && !AppState.isRecording) {
                     const isOutside = !geometryLibrary.poly.isLocationOnEdge(newPos, AppState.currentTrail, 0.0001);
-                    navigateToTrailBtn.classList.toggle('hidden', !isOutside);
+                    trailNavigationContainer.classList.toggle('hidden', !isOutside);
                 } else {
-                    navigateToTrailBtn.classList.add('hidden');
+                    trailNavigationContainer.classList.add('hidden');
                 }
             };
+
+            navigateToStartBtn.addEventListener('click', () => {
+                if (AppState.userMarker && AppState.currentTrail) {
+                    const startPoint = AppState.currentTrail.getPath().getAt(0);
+                    if (startPoint) {
+                        AppState.directionsService.route({
+                            origin: AppState.userMarker.getPosition(),
+                            destination: startPoint,
+                            travelMode: routesLibrary.TravelMode.WALKING
+                        }, (response, status) => {
+                            if (status === 'OK') {
+                                if (!AppState.navigationRenderer) {
+                                    AppState.navigationRenderer = new routesLibrary.DirectionsRenderer({
+                                        map: AppState.map,
+                                        suppressMarkers: true,
+                                        polylineOptions: { strokeColor: '#00FF00', strokeWeight: 5, strokeOpacity: 0.8 },
+                                    });
+                                }
+                                AppState.navigationRenderer.setDirections(response);
+                            }
+                        });
+                    }
+                }
+            });
 
             navigateToTrailBtn.addEventListener('click', () => {
                 if (AppState.userMarker && AppState.currentTrail) {
@@ -2119,13 +2148,14 @@ TangentLLC
                     if (AppState.currentTrail) {
                         AppState.currentTrail.setMap(null);
                     }
-                AppState.currentTrail = new mapsLibrary.Polyline({
+                    AppState.currentTrail = new mapsLibrary.Polyline({
                         path: trail.path,
                         map: AppState.map,
                         strokeColor: '#0000FF',
                         strokeOpacity: 1.0,
                         strokeWeight: 3
                     });
+                    trailNavigationContainer.classList.remove('hidden');
                 }
             }
         });
@@ -3689,6 +3719,7 @@ TangentLLC
             dropPointBtn.classList.remove('hidden');
             autoRecordContainer.classList.remove('hidden');
             finishSaveBtn.classList.remove('hidden');
+            trailNavigationContainer.classList.add('hidden');
         });
 
         dropPointBtn.addEventListener('click', () => {
