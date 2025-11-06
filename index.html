@@ -763,10 +763,17 @@ TangentLLC
                 <div id="admin-controls" class="hidden pt-4 border-t border-gray-700">
                      <button id="open-admin-settings-btn" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Admin: User Roles</button>
                 </div>
-                <div class="pt-4 border-t border-gray-700">
-                    <label for="google-maps-api-key-input" class="block text-sm font-medium text-gray-300">Google Maps API Key</label>
-                    <input type="text" id="google-maps-api-key-input" placeholder="Enter your API key" class="w-full mt-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button id="save-api-key-btn" class="w-full mt-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Save Key</button>
+                <div class="pt-4 border-t border-gray-700 space-y-4">
+                    <div>
+                        <label for="google-maps-api-key-input" class="block text-sm font-medium text-gray-300">Google Maps API Key</label>
+                        <input type="text" id="google-maps-api-key-input" placeholder="Enter your API key" class="w-full mt-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="save-api-key-btn" class="w-full mt-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Save Key</button>
+                    </div>
+                    <div>
+                        <label for="firebase-config-input" class="block text-sm font-medium text-gray-300">Firebase Config</label>
+                        <textarea id="firebase-config-input" placeholder="Paste your Firebase config JSON here" rows="6" class="w-full mt-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        <button id="save-firebase-config-btn" class="w-full mt-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Save Config</button>
+                    </div>
                 </div>
             </div>
             <button id="settings-cancel-btn" class="mt-6 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
@@ -927,6 +934,8 @@ TangentLLC
         const openAdminSettingsBtn = document.getElementById('open-admin-settings-btn');
         const googleMapsApiKeyInput = document.getElementById('google-maps-api-key-input');
         const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+        const firebaseConfigInput = document.getElementById('firebase-config-input');
+        const saveFirebaseConfigBtn = document.getElementById('save-firebase-config-btn');
 
         const confirmModal = document.getElementById('confirm-modal');
         const confirmModalTitle = document.getElementById('confirm-modal-title');
@@ -1139,24 +1148,21 @@ TangentLLC
         };
 
         async function initializeFirebase() {
-            const hardcodedFirebaseConfig = {
-                apiKey: "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI",
-                authDomain: "route-tracker-e62b1.firebaseapp.com",
-                projectId: "route-tracker-e62b1",
-                storageBucket: "route-tracker-e62b1.appspot.com",
-                messagingSenderId: "1016000331711",
-                appId: "1:1016000331711:web:a122b8a52045ee4e832b0a",
-                measurementId: "G-B476Z21SKP"
-            };
-
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : hardcodedFirebaseConfig;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-            if (!firebaseConfig || !appId) {
-                console.error("Firebase config or App ID not found.");
-                loadingOverlay.innerHTML = '<p class="text-red-400">Error: Application configuration is missing.</p>';
-                return;
+            const storedConfig = localStorage.getItem('firebaseConfig');
+            if (!storedConfig) {
+                return false;
             }
+
+            let firebaseConfig;
+            try {
+                firebaseConfig = JSON.parse(storedConfig);
+            } catch (e) {
+                console.error("Error parsing stored Firebase config:", e);
+                showToast("Invalid Firebase config format in local storage.", "error");
+                return false;
+            }
+
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
             try {
                 app = initializeApp(firebaseConfig);
@@ -1164,46 +1170,25 @@ TangentLLC
                 db = getFirestore(app);
                 storage = getStorage(app);
 
-                // Connect to emulators if running locally
                 if (window.location.hostname === "127.0.0.1") {
-                    console.log("Connecting to local Firestore emulator.");
                     connectFirestoreEmulator(db, '127.0.0.1', 8081);
                 }
 
-
                 await enableIndexedDbPersistence(db).catch(err => {
-                    if (err.code == 'failed-precondition') {
-                        console.warn("Firestore persistence failed. Multiple tabs open?");
-                    } else if (err.code == 'unimplemented') {
-                        console.warn("Firestore persistence not available in this browser.");
-                    }
+                    if (err.code == 'failed-precondition') console.warn("Firestore persistence failed.");
+                    else if (err.code == 'unimplemented') console.warn("Firestore persistence not available.");
                 });
 
-                // Define base paths
                 AppState.globalUsersPath = `/artifacts/${appId}/public/data/users`;
                 AppState.companiesPath = `/artifacts/${appId}/public/data/companies`;
                 AppState.publicJobsPath = `/artifacts/${appId}/public/data/publicJobs`;
                 AppState.publicDriversPath = `/artifacts/${appId}/public/data/publicDrivers`;
                 
-                // Check for public tracking link on page load
-                const urlParams = new URLSearchParams(window.location.search);
-                const publicJobId = urlParams.get('jobId');
-                const publicDriverId = urlParams.get('driverId');
-                const inviteId = urlParams.get('inviteId');
-
-                if (publicJobId && inviteId) {
-                    await loadPublicJobView(publicJobId, inviteId);
-                } else if (publicDriverId && inviteId) {
-                    await loadPublicDriverView(publicDriverId, inviteId);
-                }else {
-                    // This is a regular user, proceed with normal auth flow
-                    await loadGoogleMapsScript(); // Load maps for regular users
-                    startRegularAuthFlow();
-                }
-
+                return true;
             } catch (e) {
                 console.error("Critical Firebase initialization error:", e);
                 loadingOverlay.innerHTML = `<p class="text-red-400">Critical Error: ${e.message}</p>`;
+                return false;
             }
         }
 
@@ -2366,19 +2351,38 @@ TangentLLC
         }
 
         function setupAutocomplete() {
-            const inputs = [
+            const inputsToReplace = [
                 document.getElementById('job-origin-input'),
                 document.getElementById('location-share-destination')
             ];
-            inputs.forEach(input => {
-                if (input) {
-                    const autocomplete = new placesLibrary.Autocomplete(input, {
-                        fields: ["address_components", "geometry", "icon", "name"],
-                        strictBounds: false,
+
+            inputsToReplace.forEach(oldInput => {
+                if (oldInput && oldInput.parentElement) {
+                    const parent = oldInput.parentElement;
+                    const autocompleteElement = new placesLibrary.PlaceAutocompleteElement();
+
+                    autocompleteElement.className = oldInput.className;
+                    autocompleteElement.id = oldInput.id;
+
+                    parent.replaceChild(autocompleteElement, oldInput);
+
+                    Object.defineProperty(autocompleteElement, 'value', {
+                        get: function() {
+                            const input = this.shadowRoot.querySelector('input');
+                            return input ? input.value : '';
+                        },
+                        configurable: true
                     });
-                    AppState.autocompleteInstances.push(autocomplete);
+
+                    setTimeout(() => {
+                        const inputInside = autocompleteElement.shadowRoot.querySelector('input');
+                        if (inputInside) {
+                            inputInside.placeholder = oldInput.placeholder;
+                        }
+                    }, 100);
                 }
             });
+            AppState.autocompleteInstances = []; // Clear out the old instances
         }
 
 
@@ -2621,6 +2625,7 @@ TangentLLC
 
         settingsBtn.addEventListener('click', () => {
             googleMapsApiKeyInput.value = localStorage.getItem('googleMapsApiKey') || '';
+            firebaseConfigInput.value = localStorage.getItem('firebaseConfig') || '';
             settingsModal.classList.remove('hidden');
         });
 
@@ -2634,6 +2639,24 @@ TangentLLC
                 showToast("API Key removed.", "info");
             }
             settingsModal.classList.add('hidden');
+        });
+
+        saveFirebaseConfigBtn.addEventListener('click', () => {
+            const configString = firebaseConfigInput.value.trim();
+            if (configString) {
+                try {
+                    JSON.parse(configString);
+                    localStorage.setItem('firebaseConfig', configString);
+                    showToast("Firebase config saved. Initializing...", "success");
+                    settingsModal.classList.add('hidden');
+                    startApp();
+                } catch (e) {
+                    showToast("Invalid JSON format in Firebase config.", "error");
+                }
+            } else {
+                localStorage.removeItem('firebaseConfig');
+                showToast("Firebase config removed.", "info");
+            }
         });
 
         openProfileModalBtn.addEventListener('click', () => {
@@ -2899,7 +2922,7 @@ TangentLLC
             const button = document.getElementById('create-job-submit-btn');
             showSpinner(button);
 
-            const destinations = Array.from(destinationsContainer.querySelectorAll('input')).map(input => input.value.trim()).filter(val => val);
+            const destinations = Array.from(destinationsContainer.querySelectorAll('gmp-place-autocomplete-element')).map(input => input.value.trim()).filter(val => val);
             if (destinations.length === 0) {
                 showToast('Please add at least one destination.', 'error');
                 hideSpinner(button);
@@ -3366,24 +3389,49 @@ TangentLLC
             const destinationCount = destinationsContainer.children.length;
             const newDestDiv = document.createElement('div');
             newDestDiv.className = 'flex items-center space-x-2';
-            newDestDiv.innerHTML = `
-                <input type="text" placeholder="Destination ${destinationCount + 1}" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" value="${value}">
-                <button type="button" class="remove-destination-btn p-1 text-red-400 hover:text-red-300 ${destinationCount === 0 ? 'hidden' : ''}">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </button>
-            `;
-            destinationsContainer.appendChild(newDestDiv);
-            const newInput = newDestDiv.querySelector('input');
-            const autocomplete = new placesLibrary.Autocomplete(newInput, {
-                fields: ["address_components", "geometry", "icon", "name"],
-                strictBounds: false,
-            });
-            AppState.autocompleteInstances.push(autocomplete);
 
-            newDestDiv.querySelector('.remove-destination-btn').addEventListener('click', () => {
+            const autocompleteElement = new placesLibrary.PlaceAutocompleteElement();
+            autocompleteElement.className = 'w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500';
+
+            Object.defineProperty(autocompleteElement, 'value', {
+                get: function() {
+                    const input = this.shadowRoot.querySelector('input');
+                    return input ? input.value : '';
+                },
+                set: function(newValue) {
+                    setTimeout(() => {
+                        const input = this.shadowRoot.querySelector('input');
+                        if (input) input.value = newValue;
+                    }, 100);
+                },
+                configurable: true
+            });
+
+            setTimeout(() => {
+                const inputInside = autocompleteElement.shadowRoot.querySelector('input');
+                if (inputInside) {
+                    inputInside.placeholder = `Destination ${destinationCount + 1}`;
+                }
+            }, 100);
+
+            if (value) {
+                autocompleteElement.value = value;
+            }
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = `remove-destination-btn p-1 text-red-400 hover:text-red-300 ${destinationCount === 0 ? 'hidden' : ''}`;
+            removeBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+
+            newDestDiv.appendChild(autocompleteElement);
+            newDestDiv.appendChild(removeBtn);
+            destinationsContainer.appendChild(newDestDiv);
+
+            removeBtn.addEventListener('click', () => {
                 newDestDiv.remove();
                 Array.from(destinationsContainer.children).forEach((child, index) => {
-                    child.querySelector('input').placeholder = `Destination ${index + 1}`;
+                    const input = child.querySelector('gmp-place-autocomplete-element').shadowRoot.querySelector('input');
+                    if(input) input.placeholder = `Destination ${index + 1}`;
                 });
                  optimizeRouteContainer.classList.toggle('hidden', destinationsContainer.children.length <= 1);
             });
@@ -3839,8 +3887,32 @@ TangentLLC
             offlineBanner.classList.remove('hidden');
         });
 
+        async function startApp() {
+            loadingOverlay.classList.remove('hidden');
+            const firebaseReady = await initializeFirebase();
+            if (!firebaseReady) {
+                loadingOverlay.classList.add('hidden');
+                settingsModal.classList.remove('hidden');
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const publicJobId = urlParams.get('jobId');
+            const publicDriverId = urlParams.get('driverId');
+            const inviteId = urlParams.get('inviteId');
+
+            if (publicJobId && inviteId) {
+                await loadPublicJobView(publicJobId, inviteId);
+            } else if (publicDriverId && inviteId) {
+                await loadPublicDriverView(publicDriverId, inviteId);
+            } else {
+                await loadGoogleMapsScript();
+                startRegularAuthFlow();
+            }
+        }
+
         window.onload = () => {
-            initializeFirebase();
+            startApp();
         };
 
     </script>
