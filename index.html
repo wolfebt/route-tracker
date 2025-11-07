@@ -2314,6 +2314,7 @@ TangentLLC
             if (!apiKey) {
                 showToast("Google Maps API Key is not set. Please set it in the settings.", "error");
                 document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">API Key Missing</p><p class="text-gray-400">Please set your Google Maps API key in the settings menu.</p></div>`;
+                settingsModal.classList.remove('hidden');
                 return;
             }
             setOptions({ apiKey, version: "quarterly" });
