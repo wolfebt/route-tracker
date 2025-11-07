@@ -769,11 +769,6 @@ TangentLLC
                         <input type="text" id="google-maps-api-key-input" placeholder="Enter your API key" class="w-full mt-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <button id="save-api-key-btn" class="w-full mt-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Save Key</button>
                     </div>
-                    <div>
-                        <label for="firebase-config-input" class="block text-sm font-medium text-gray-300">Firebase Config</label>
-                        <textarea id="firebase-config-input" placeholder="Paste your Firebase config JSON here" rows="6" class="w-full mt-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                        <button id="save-firebase-config-btn" class="w-full mt-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Save Config</button>
-                    </div>
                 </div>
             </div>
             <button id="settings-cancel-btn" class="mt-6 w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Close</button>
@@ -935,7 +930,6 @@ TangentLLC
         const googleMapsApiKeyInput = document.getElementById('google-maps-api-key-input');
         const saveApiKeyBtn = document.getElementById('save-api-key-btn');
         const firebaseConfigInput = document.getElementById('firebase-config-input');
-        const saveFirebaseConfigBtn = document.getElementById('save-firebase-config-btn');
 
         const confirmModal = document.getElementById('confirm-modal');
         const confirmModalTitle = document.getElementById('confirm-modal-title');
@@ -1148,19 +1142,15 @@ TangentLLC
         };
 
         async function initializeFirebase() {
-            const storedConfig = localStorage.getItem('firebaseConfig');
-            if (!storedConfig) {
-                return false;
-            }
-
-            let firebaseConfig;
-            try {
-                firebaseConfig = JSON.parse(storedConfig);
-            } catch (e) {
-                console.error("Error parsing stored Firebase config:", e);
-                showToast("Invalid Firebase config format in local storage.", "error");
-                return false;
-            }
+            const firebaseConfig = {
+              apiKey: "AIzaSyBGro7OUoAC1xXaBo8JjLnOQSFjZCmdoBI",
+              authDomain: "route-tracker-e62b1.firebaseapp.com",
+              projectId: "route-tracker-e62b1",
+              storageBucket: "route-tracker-e62b1.firebasestorage.app",
+              messagingSenderId: "1016000331711",
+              appId: "1:1016000331711:web:a122b8a52045ee4e832b0a",
+              measurementId: "G-B476Z21SKP"
+            };
 
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
@@ -2641,23 +2631,6 @@ TangentLLC
             settingsModal.classList.add('hidden');
         });
 
-        saveFirebaseConfigBtn.addEventListener('click', () => {
-            const configString = firebaseConfigInput.value.trim();
-            if (configString) {
-                try {
-                    JSON.parse(configString);
-                    localStorage.setItem('firebaseConfig', configString);
-                    showToast("Firebase config saved. Initializing...", "success");
-                    settingsModal.classList.add('hidden');
-                    startApp();
-                } catch (e) {
-                    showToast("Invalid JSON format in Firebase config.", "error");
-                }
-            } else {
-                localStorage.removeItem('firebaseConfig');
-                showToast("Firebase config removed.", "info");
-            }
-        });
 
         openProfileModalBtn.addEventListener('click', () => {
             settingsModal.classList.add('hidden');
