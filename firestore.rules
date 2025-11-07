@@ -1,49 +1,102 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /artifacts/{appId}/public/data/users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+
+    // Helper function to check if a user is signed in
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    match /artifacts/{appId}/public/data/companies/{companyId} {
-      allow read, create: if request.auth != null;
-      allow update, delete: if resource.data.ownerId == request.auth.uid;
+    // Helper function to check if a user is a member of a specific company
+    function isCompanyMember(companyId, appId) {
+      return exists(/databases/$(database)/documents/artifacts/$(appId)/public/data/companies/$(companyId)/members/$(request.auth.uid));
     }
 
-    match /artifacts/{appId}/public/data/companies/{companyId}/members/{userId} {
-      allow read, write: if request.auth != null;
+    // Helper function to check if a user has a specific permission within a company
+    function hasPermission(companyId, appId, permission) {
+      return get(/databases/$(database)/documents/artifacts/$(appId)/public/data/companies/$(companyId)/members/$(request.auth.uid)).data.permissions[permission] == true;
     }
 
-    match /artifacts/{appId}/public/data/companies/{companyId}/driverLocations/{driverId} {
-      allow read, write: if request.auth != null;
-    }
+    // Path for all public data within an app
+    match /artifacts/{appId}/public/data {
 
-    match /artifacts/{appId}/public/data/companies/{companyId}/jobs/{jobId} {
-      allow read, write: if request.auth != null;
-    }
+      // --- Global User Profiles ---
+      // Users can create their own profile, and read/update it. They cannot access other users' profiles.
+      match /users/{userId} {
+        allow read, update: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn();
+      }
 
-    match /artifacts/{appId}/public/data/companies/{companyId}/jobs/{jobId}/messages/{messageId} {
-      allow read, write: if request.auth != null;
-    }
+      // --- Companies ---
+      // Any signed-in user can read the list of companies or create a new one.
+      // Only the original owner of a company can modify or delete it (good practice).
+      match /companies/{companyId} {
+        allow list, read, create: if isSignedIn();
+        allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
 
-    match /artifacts/{appId}/public/data/publicJobs/{jobId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
+        // --- Company Members ---
+        // Users can join a company (create their member doc).
+        // Admins can manage roles (update) and remove users (delete).
+        // All members of the company can see the list of other members.
+        match /members/{userId} {
+          allow create: if isSignedIn();
+          allow list, read: if isCompanyMember(companyId, appId);
+          allow update, delete: if hasPermission(companyId, appId, 'canManageDrivers');
+        }
 
-    match /artifacts/{appId}/public/data/publicDrivers/{driverId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
+        // --- Live Driver Locations (Private to Company) ---
+        // Drivers can create/update their own location.
+        // All members of the company can read/list driver locations.
+        match /driverLocations/{driverId} {
+          allow list, read: if isCompanyMember(companyId, appId);
+          allow create, update: if isSignedIn() && request.auth.uid == driverId;
+          allow delete: if isSignedIn() && (request.auth.uid == driverId || hasPermission(companyId, appId, 'canManageDrivers'));
+        }
 
-    match /artifacts/{appId}/public/data/companies/{companyId}/geofences/{geofenceId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
+        // --- Jobs ---
+        // Admins can do anything. Company members can read/list.
+        // Drivers can update a job to accept it or complete it.
+        match /jobs/{jobId} {
+          allow list, read: if isCompanyMember(companyId, appId);
+          allow create, delete: if hasPermission(companyId, appId, 'canCreateJob');
+          allow update: if hasPermission(companyId, appId, 'canCreateJob') ||
+                          (isCompanyMember(companyId, appId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assignedDrivers', 'status', 'driverCompletionComment', 'proofOfDeliveryURL', 'log', 'lastMessageTimestamp']));
 
-    match /artifacts/{appId}/public/data/companies/{companyId}/trails/{trailId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+          // --- Job Messages ---
+          // Any company member can read and send messages on a job.
+          match /messages/{messageId} {
+            allow list, read, create: if isCompanyMember(companyId, appId);
+          }
+        }
+
+        // --- Geofences & Trails ---
+        // Anyone can read geofences and trails.
+        // Only admins can create, update or delete them.
+        match /geofences/{geofenceId} {
+          allow list, read: if true;
+          allow create, update, delete: if hasPermission(companyId, appId, 'canManageDrivers');
+        }
+
+        match /trails/{trailId} {
+          allow list, read: if true;
+          allow create, update, delete: if hasPermission(companyId, appId, 'canManageDrivers');
+        }
+      }
+
+      // --- Publicly Sharable Job Links ---
+      // Anyone can read. Authenticated users (dispatchers/drivers) can create/update them.
+      match /publicJobs/{jobId} {
+        allow read: if true;
+        allow create, update: if isSignedIn();
+      }
+
+      // --- Publicly Sharable Driver Location Links ---
+      // Anyone can read. Only the driver themselves can create or update their own public doc.
+      match /publicDrivers/{driverId} {
+        allow read: if true;
+        allow create, update, delete: if isSignedIn() && request.auth.uid == driverId;
+      }
     }
   }
 }
