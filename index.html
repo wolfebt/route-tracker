@@ -2342,37 +2342,25 @@ TangentLLC
         }
 
         function setupAutocomplete() {
-            const inputsToReplace = [
-                document.getElementById('job-origin-input'),
-                document.getElementById('location-share-destination')
+            const inputsToUpdate = [
+                { id: 'job-origin-input', placeholder: 'Job Origin' },
+                { id: 'location-share-destination', placeholder: 'Enter a destination (optional)' }
             ];
 
-            inputsToReplace.forEach(oldInput => {
+            inputsToUpdate.forEach(inputInfo => {
+                const oldInput = document.getElementById(inputInfo.id);
                 if (oldInput && oldInput.parentElement) {
                     const parent = oldInput.parentElement;
-                    const autocompleteElement = new placesLibrary.PlaceAutocompleteElement();
+                    const autocompleteElement = document.createElement('gmp-place-autocomplete');
 
                     autocompleteElement.className = oldInput.className;
                     autocompleteElement.id = oldInput.id;
+                    autocompleteElement.placeholder = inputInfo.placeholder;
 
                     parent.replaceChild(autocompleteElement, oldInput);
-
-                    Object.defineProperty(autocompleteElement, 'value', {
-                        get: function() {
-                            const input = this.shadowRoot.querySelector('input');
-                            return input ? input.value : '';
-                        },
-                        configurable: true
-                    });
-
-                    setTimeout(() => {
-                        const inputInside = autocompleteElement.shadowRoot.querySelector('input');
-                        if (inputInside) {
-                            inputInside.placeholder = oldInput.placeholder;
-                        }
-                    }, 100);
                 }
             });
+
             AppState.autocompleteInstances = []; // Clear out the old instances
         }
 
@@ -3364,30 +3352,9 @@ TangentLLC
             const newDestDiv = document.createElement('div');
             newDestDiv.className = 'flex items-center space-x-2';
 
-            const autocompleteElement = new placesLibrary.PlaceAutocompleteElement();
+            const autocompleteElement = document.createElement('gmp-place-autocomplete');
             autocompleteElement.className = 'w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500';
-
-            Object.defineProperty(autocompleteElement, 'value', {
-                get: function() {
-                    const input = this.shadowRoot.querySelector('input');
-                    return input ? input.value : '';
-                },
-                set: function(newValue) {
-                    setTimeout(() => {
-                        const input = this.shadowRoot.querySelector('input');
-                        if (input) input.value = newValue;
-                    }, 100);
-                },
-                configurable: true
-            });
-
-            setTimeout(() => {
-                const inputInside = autocompleteElement.shadowRoot.querySelector('input');
-                if (inputInside) {
-                    inputInside.placeholder = `Destination ${destinationCount + 1}`;
-                }
-            }, 100);
-
+            autocompleteElement.placeholder = `Destination ${destinationCount + 1}`;
             if (value) {
                 autocompleteElement.value = value;
             }
