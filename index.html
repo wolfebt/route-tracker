@@ -816,9 +816,6 @@ TangentLLC
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, getDoc, arrayUnion, arrayRemove, runTransaction, enableIndexedDbPersistence, Timestamp, connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
-        import { setOptions, importLibrary } from "https://esm.sh/@googlemaps/js-api-loader";
-
-        
         // --- Initialize Firebase and Services ---
         let app, auth, db, storage;
         let coreLibrary, mapsLibrary, placesLibrary, routesLibrary, markerLibrary, drawingLibrary, geometryLibrary;
@@ -2317,62 +2314,50 @@ TangentLLC
                 settingsModal.classList.remove('hidden');
                 return;
             }
-            setOptions({ apiKey, version: "quarterly" });
 
-            try {
-                [coreLibrary, mapsLibrary, markerLibrary, placesLibrary, routesLibrary, drawingLibrary, geometryLibrary] = await Promise.all([
-                    importLibrary('core'),
-                    importLibrary('maps'),
-                    importLibrary('marker'),
-                    importLibrary('places'),
-                    importLibrary('routes'),
-                    importLibrary('drawing'),
-                    importLibrary('geometry'),
-                ]);
-                
-                console.log("Google Maps libraries loaded successfully.");
-                if(!AppState.publicMap && !AppState.publicDriverMap) initMap(); 
-                AppState.directionsService = new routesLibrary.DirectionsService();
-                setupAutocomplete();
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,routes,drawing,geometry&callback=onGoogleMapsLoaded`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
 
-            } catch (e) {
-                console.error("Error loading Google Maps script:", e);
-                document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Script Error</p></div>`;
-            }
+        window.onGoogleMapsLoaded = async () => {
+            console.log("Google Maps libraries loaded successfully.");
+
+            mapsLibrary = google.maps;
+            coreLibrary = google.maps;
+            markerLibrary = google.maps.marker;
+            placesLibrary = google.maps.places;
+            routesLibrary = google.maps.routes;
+            drawingLibrary = google.maps.drawing;
+            geometryLibrary = google.maps.geometry;
+
+            if(!AppState.publicMap && !AppState.publicDriverMap) initMap();
+            AppState.directionsService = new routesLibrary.DirectionsService();
+            setupAutocomplete();
         }
 
         function setupAutocomplete() {
-            const inputsToReplace = [
-                document.getElementById('job-origin-input'),
-                document.getElementById('location-share-destination')
+            const inputsToUpdate = [
+                { id: 'job-origin-input', placeholder: 'Job Origin' },
+                { id: 'location-share-destination', placeholder: 'Enter a destination (optional)' }
             ];
 
-            inputsToReplace.forEach(oldInput => {
+            inputsToUpdate.forEach(inputInfo => {
+                const oldInput = document.getElementById(inputInfo.id);
                 if (oldInput && oldInput.parentElement) {
                     const parent = oldInput.parentElement;
-                    const autocompleteElement = new placesLibrary.PlaceAutocompleteElement();
+                    const autocompleteElement = document.createElement('gmp-place-autocomplete');
 
                     autocompleteElement.className = oldInput.className;
-                    autocompleteElement.id = oldInput.id;
+                    autocompleteElement.id = inputInfo.id;
+                    autocompleteElement.setAttribute('placeholder', inputInfo.placeholder);
 
                     parent.replaceChild(autocompleteElement, oldInput);
-
-                    Object.defineProperty(autocompleteElement, 'value', {
-                        get: function() {
-                            const input = this.shadowRoot.querySelector('input');
-                            return input ? input.value : '';
-                        },
-                        configurable: true
-                    });
-
-                    setTimeout(() => {
-                        const inputInside = autocompleteElement.shadowRoot.querySelector('input');
-                        if (inputInside) {
-                            inputInside.placeholder = oldInput.placeholder;
-                        }
-                    }, 100);
                 }
             });
+
             AppState.autocompleteInstances = []; // Clear out the old instances
         }
 
@@ -3364,30 +3349,9 @@ TangentLLC
             const newDestDiv = document.createElement('div');
             newDestDiv.className = 'flex items-center space-x-2';
 
-            const autocompleteElement = new placesLibrary.PlaceAutocompleteElement();
+            const autocompleteElement = document.createElement('gmp-place-autocomplete');
             autocompleteElement.className = 'w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500';
-
-            Object.defineProperty(autocompleteElement, 'value', {
-                get: function() {
-                    const input = this.shadowRoot.querySelector('input');
-                    return input ? input.value : '';
-                },
-                set: function(newValue) {
-                    setTimeout(() => {
-                        const input = this.shadowRoot.querySelector('input');
-                        if (input) input.value = newValue;
-                    }, 100);
-                },
-                configurable: true
-            });
-
-            setTimeout(() => {
-                const inputInside = autocompleteElement.shadowRoot.querySelector('input');
-                if (inputInside) {
-                    inputInside.placeholder = `Destination ${destinationCount + 1}`;
-                }
-            }, 100);
-
+            autocompleteElement.setAttribute('placeholder', `Destination ${destinationCount + 1}`);
             if (value) {
                 autocompleteElement.value = value;
             }
