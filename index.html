@@ -2331,7 +2331,7 @@ TangentLLC
             coreLibrary = google.maps;
             markerLibrary = google.maps.marker;
             placesLibrary = google.maps.places;
-            routesLibrary = google.maps.routes;
+            routesLibrary = google.maps;
             drawingLibrary = google.maps.drawing;
             geometryLibrary = google.maps.geometry;
 
@@ -3350,6 +3350,9 @@ TangentLLC
                 input.value = value;
             }
             
+            // Initialize Autocomplete
+            new google.maps.places.Autocomplete(input);
+
             // Initialize Autocomplete
             new google.maps.places.Autocomplete(input);
 
