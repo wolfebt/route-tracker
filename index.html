@@ -601,6 +601,8 @@ TangentLLC
                     </div>
                     <input type="text" id="job-origin-input" placeholder="Job Origin" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     
+                    <hr class="my-4 border-gray-600">
+
                     <div id="destinations-container" class="space-y-2">
                         <!-- Dynamic destination fields will be added here -->
                     </div>
@@ -2316,7 +2318,7 @@ TangentLLC
             }
 
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,routes,drawing,geometry&callback=onGoogleMapsLoaded`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,routes,drawing,geometry&v=weekly&loading=async&callback=onGoogleMapsLoaded`;
             script.async = true;
             script.defer = true;
             document.head.appendChild(script);
@@ -2334,31 +2336,22 @@ TangentLLC
             geometryLibrary = google.maps.geometry;
 
             if(!AppState.publicMap && !AppState.publicDriverMap) initMap();
-            AppState.directionsService = new routesLibrary.DirectionsService();
+            AppState.directionsService = new google.maps.DirectionsService();
             setupAutocomplete();
         }
 
         function setupAutocomplete() {
             const inputsToUpdate = [
-                { id: 'job-origin-input', placeholder: 'Job Origin' },
-                { id: 'location-share-destination', placeholder: 'Enter a destination (optional)' }
+                'job-origin-input',
+                'location-share-destination'
             ];
         
-            inputsToUpdate.forEach(inputInfo => {
-                const oldInput = document.getElementById(inputInfo.id);
-                if (oldInput && oldInput.parentElement) {
-                    const parent = oldInput.parentElement;
-                    const autocompleteElement = document.createElement('gmp-place-autocomplete');
-                    
-                    autocompleteElement.className = oldInput.className;
-                    autocompleteElement.id = inputInfo.id;
-                    autocompleteElement.setAttribute('placeholder', inputInfo.placeholder);
-                    
-                    parent.replaceChild(autocompleteElement, oldInput);
+            inputsToUpdate.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    new google.maps.places.Autocomplete(input);
                 }
             });
-        
-            AppState.autocompleteInstances = []; // Clear out the old instances
         }
 
 
@@ -2881,7 +2874,7 @@ TangentLLC
             const button = document.getElementById('create-job-submit-btn');
             showSpinner(button);
 
-            const destinations = Array.from(destinationsContainer.querySelectorAll('gmp-place-autocomplete-element')).map(input => input.value.trim()).filter(val => val);
+            const destinations = Array.from(destinationsContainer.querySelectorAll('input')).map(input => input.value.trim()).filter(val => val);
             if (destinations.length === 0) {
                 showToast('Please add at least one destination.', 'error');
                 hideSpinner(button);
@@ -3349,27 +3342,31 @@ TangentLLC
             const newDestDiv = document.createElement('div');
             newDestDiv.className = 'flex items-center space-x-2';
 
-            const autocompleteElement = document.createElement('gmp-place-autocomplete');
-            autocompleteElement.className = 'w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500';
-            autocompleteElement.setAttribute('placeholder', `Destination ${destinationCount + 1}`);
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500';
+            input.placeholder = `Destination ${destinationCount + 1}`;
             if (value) {
-                autocompleteElement.value = value;
+                input.value = value;
             }
+
+            // Initialize Autocomplete
+            new google.maps.places.Autocomplete(input);
 
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
             removeBtn.className = `remove-destination-btn p-1 text-red-400 hover:text-red-300 ${destinationCount === 0 ? 'hidden' : ''}`;
             removeBtn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
 
-            newDestDiv.appendChild(autocompleteElement);
+            newDestDiv.appendChild(input);
             newDestDiv.appendChild(removeBtn);
             destinationsContainer.appendChild(newDestDiv);
 
             removeBtn.addEventListener('click', () => {
                 newDestDiv.remove();
                 Array.from(destinationsContainer.children).forEach((child, index) => {
-                    const input = child.querySelector('gmp-place-autocomplete-element').shadowRoot.querySelector('input');
-                    if(input) input.placeholder = `Destination ${index + 1}`;
+                    const inp = child.querySelector('input');
+                    if(inp) inp.placeholder = `Destination ${index + 1}`;
                 });
                  optimizeRouteContainer.classList.toggle('hidden', destinationsContainer.children.length <= 1);
             });
