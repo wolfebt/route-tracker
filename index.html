@@ -2346,23 +2346,10 @@ TangentLLC
                 'location-share-destination'
             ];
         
-            inputsToUpdate.forEach(inputInfo => {
-                const oldInput = document.getElementById(inputInfo.id);
-                if (oldInput && oldInput.parentElement) {
-                    const parent = oldInput.parentElement;
-                    const autocompleteElement = document.createElement('gmp-place-autocomplete');
-                    
-                    autocompleteElement.className = oldInput.className;
-                    autocompleteElement.id = inputInfo.id;
-                    autocompleteElement.setAttribute('placeholder', inputInfo.placeholder);
-                    
-                    autocompleteElement.addEventListener('gmp-places-place-select', (event) => {
-                        if (event.place) {
-                            autocompleteElement.dataset.value = event.place.formattedAddress || event.place.name;
-                        }
-                    });
-
-                    parent.replaceChild(autocompleteElement, oldInput);
+            inputsToUpdate.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    new google.maps.places.Autocomplete(input);
                 }
             });
         }
@@ -2887,7 +2874,7 @@ TangentLLC
             const button = document.getElementById('create-job-submit-btn');
             showSpinner(button);
 
-            const destinations = Array.from(destinationsContainer.querySelectorAll('gmp-place-autocomplete')).map(input => (input.dataset.value || '').trim()).filter(val => val);
+            const destinations = Array.from(destinationsContainer.querySelectorAll('input')).map(input => input.value.trim()).filter(val => val);
             if (destinations.length === 0) {
                 showToast('Please add at least one destination.', 'error');
                 hideSpinner(button);
@@ -2899,7 +2886,7 @@ TangentLLC
             const jobData = { 
                 jobName: jobNameInput.value.trim(), 
                 jobDate: jobDateInput.value,
-                origin: (jobOriginInput.dataset.value || '').trim(), 
+                origin: jobOriginInput.value.trim(), 
                 destinations: destinations,
                 isOptimized: optimizeRouteCheckbox.checked,
                 contactName: contactNameInput.value.trim(),
@@ -3355,22 +3342,14 @@ TangentLLC
             const newDestDiv = document.createElement('div');
             newDestDiv.className = 'flex items-center space-x-2';
 
-            const autocompleteElement = document.createElement('gmp-place-autocomplete');
-            autocompleteElement.className = 'w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500';
-            autocompleteElement.setAttribute('placeholder', `Destination ${destinationCount + 1}`);
-            
-            autocompleteElement.addEventListener('gmp-places-place-select', (event) => {
-                if (event.place) {
-                    autocompleteElement.dataset.value = event.place.formattedAddress || event.place.name;
-                }
-            });
-
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500';
+            input.placeholder = `Destination ${destinationCount + 1}`;
             if (value) {
-                // Pre-fill if editing
-                autocompleteElement.dataset.value = value;
-                // Note: cannot easily set displayed text on gmp-place-autocomplete without the extended library or shadow dom access
+                input.value = value;
             }
-
+            
             // Initialize Autocomplete
             new google.maps.places.Autocomplete(input);
 
@@ -3386,8 +3365,8 @@ TangentLLC
             removeBtn.addEventListener('click', () => {
                 newDestDiv.remove();
                 Array.from(destinationsContainer.children).forEach((child, index) => {
-                    const input = child.querySelector('gmp-place-autocomplete');
-                    if(input) input.placeholder = `Destination ${index + 1}`;
+                    const inp = child.querySelector('input');
+                    if(inp) inp.placeholder = `Destination ${index + 1}`;
                 });
                  optimizeRouteContainer.classList.toggle('hidden', destinationsContainer.children.length <= 1);
             });
