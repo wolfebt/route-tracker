@@ -2316,7 +2316,7 @@ TangentLLC
             }
 
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,routes,drawing,geometry&callback=onGoogleMapsLoaded`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,routes,drawing,geometry&v=weekly&loading=async&callback=onGoogleMapsLoaded`;
             script.async = true;
             script.defer = true;
             document.head.appendChild(script);
@@ -2334,7 +2334,7 @@ TangentLLC
             geometryLibrary = google.maps.geometry;
 
             if(!AppState.publicMap && !AppState.publicDriverMap) initMap();
-            AppState.directionsService = new routesLibrary.DirectionsService();
+            AppState.directionsService = new google.maps.DirectionsService();
             setupAutocomplete();
         }
 
@@ -2881,7 +2881,7 @@ TangentLLC
             const button = document.getElementById('create-job-submit-btn');
             showSpinner(button);
 
-            const destinations = Array.from(destinationsContainer.querySelectorAll('gmp-place-autocomplete-element')).map(input => input.value.trim()).filter(val => val);
+            const destinations = Array.from(destinationsContainer.querySelectorAll('gmp-place-autocomplete')).map(input => input.value.trim()).filter(val => val);
             if (destinations.length === 0) {
                 showToast('Please add at least one destination.', 'error');
                 hideSpinner(button);
@@ -3368,7 +3368,7 @@ TangentLLC
             removeBtn.addEventListener('click', () => {
                 newDestDiv.remove();
                 Array.from(destinationsContainer.children).forEach((child, index) => {
-                    const input = child.querySelector('gmp-place-autocomplete-element').shadowRoot.querySelector('input');
+                    const input = child.querySelector('gmp-place-autocomplete');
                     if(input) input.placeholder = `Destination ${index + 1}`;
                 });
                  optimizeRouteContainer.classList.toggle('hidden', destinationsContainer.children.length <= 1);
