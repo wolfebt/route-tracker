@@ -2354,6 +2354,12 @@ TangentLLC
                     autocompleteElement.id = inputInfo.id;
                     autocompleteElement.setAttribute('placeholder', inputInfo.placeholder);
                     
+                    autocompleteElement.addEventListener('gmp-places-place-select', (event) => {
+                        if (event.place) {
+                            autocompleteElement.dataset.value = event.place.formattedAddress || event.place.name;
+                        }
+                    });
+
                     parent.replaceChild(autocompleteElement, oldInput);
                 }
             });
@@ -2881,7 +2887,7 @@ TangentLLC
             const button = document.getElementById('create-job-submit-btn');
             showSpinner(button);
 
-            const destinations = Array.from(destinationsContainer.querySelectorAll('gmp-place-autocomplete')).map(input => input.value.trim()).filter(val => val);
+            const destinations = Array.from(destinationsContainer.querySelectorAll('gmp-place-autocomplete')).map(input => (input.dataset.value || '').trim()).filter(val => val);
             if (destinations.length === 0) {
                 showToast('Please add at least one destination.', 'error');
                 hideSpinner(button);
@@ -2893,7 +2899,7 @@ TangentLLC
             const jobData = { 
                 jobName: jobNameInput.value.trim(), 
                 jobDate: jobDateInput.value,
-                origin: jobOriginInput.value.trim(), 
+                origin: (jobOriginInput.dataset.value || '').trim(), 
                 destinations: destinations,
                 isOptimized: optimizeRouteCheckbox.checked,
                 contactName: contactNameInput.value.trim(),
@@ -3352,8 +3358,17 @@ TangentLLC
             const autocompleteElement = document.createElement('gmp-place-autocomplete');
             autocompleteElement.className = 'w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500';
             autocompleteElement.setAttribute('placeholder', `Destination ${destinationCount + 1}`);
+            
+            autocompleteElement.addEventListener('gmp-places-place-select', (event) => {
+                if (event.place) {
+                    autocompleteElement.dataset.value = event.place.formattedAddress || event.place.name;
+                }
+            });
+
             if (value) {
-                autocompleteElement.value = value;
+                // Pre-fill if editing
+                autocompleteElement.dataset.value = value;
+                // Note: cannot easily set displayed text on gmp-place-autocomplete without the extended library or shadow dom access
             }
 
             const removeBtn = document.createElement('button');
