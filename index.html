@@ -1031,11 +1031,12 @@ Wolfe.BT@TangentLLC
                 return null;
             }
             if(mapElement) mapElement.innerHTML = ''; 
-            const mapId = localStorage.getItem('googleMapsMapId');
+            const mapId = localStorage.getItem('googleMapsMapId') || 'DEMO_MAP_ID';
             const mapOptions = {
                 center: { lat: 39.8283, lng: -98.5795 }, // Center of the US
                 zoom: 4,
                 disableDefaultUI: true,
+                mapId: mapId, // REQUIRED for Advanced Markers
             };
             if (mapId) {
                 mapOptions.mapId = mapId;
@@ -2047,7 +2048,7 @@ Wolfe.BT@TangentLLC
 
         async function loadGoogleMapsScript() {
             const apiKey = localStorage.getItem('googleMapsApiKey');
-
+            
             if (!apiKey) {
                 console.warn("Google Maps API Key not found in localStorage.");
                 settingsModal.classList.remove('hidden');
@@ -2098,10 +2099,10 @@ Wolfe.BT@TangentLLC
             // Deprecated: google.maps.places.Autocomplete
             // Replaced by gmp-place-autocomplete in addDestinationInput and manual replacements below.
             // This function is kept to initialize the 'Job Origin' and 'Location Share Destination' which are static in HTML.
-
+            
             // Re-creating static inputs as gmp-place-autocomplete is complex due to the need to replace DOM elements.
             // Instead, we will transform the existing inputs into containers for the web component.
-
+            
             const originInput = document.getElementById('job-origin-input');
             if (originInput && originInput.tagName === 'INPUT') {
                 const container = document.createElement('div');
@@ -2109,13 +2110,13 @@ Wolfe.BT@TangentLLC
                 container.className = originInput.className;
                 container.style.padding = '0'; // Remove padding from container to let component fill it
                 container.style.border = 'none';
-
+                
                 originInput.parentNode.replaceChild(container, originInput);
-
+                
                 const placeAutocomplete = document.createElement('gmp-place-autocomplete');
                 placeAutocomplete.id = 'job-origin-input'; // Keep ID for reference
                 placeAutocomplete.placeholder = 'Job Origin';
-                placeAutocomplete.className = 'w-full';
+                placeAutocomplete.className = 'w-full'; 
                 container.appendChild(placeAutocomplete);
             }
 
@@ -2128,7 +2129,7 @@ Wolfe.BT@TangentLLC
                 container.style.border = 'none';
 
                 shareDestInput.parentNode.replaceChild(container, shareDestInput);
-
+                
                 const placeAutocomplete = document.createElement('gmp-place-autocomplete');
                 placeAutocomplete.id = 'location-share-destination';
                 placeAutocomplete.placeholder = 'Enter a destination (optional)';
@@ -2384,7 +2385,7 @@ Wolfe.BT@TangentLLC
         saveSettingsBtn.addEventListener('click', () => {
             const key = googleMapsApiKeyInput.value.trim();
             const mapId = googleMapsMapIdInput.value.trim();
-
+            
             if (key) {
                 localStorage.setItem('googleMapsApiKey', key);
             } else {
@@ -2678,7 +2679,7 @@ Wolfe.BT@TangentLLC
             };
 
             const originVal = getPlaceValue('job-origin-input');
-
+            
             // Destinations
             const destinationElements = Array.from(destinationsContainer.querySelectorAll('.destination-input'));
             const destinations = destinationElements.map(el => {
@@ -2702,7 +2703,7 @@ Wolfe.BT@TangentLLC
             const jobData = { 
                 jobName: jobNameInput.value.trim(), 
                 jobDate: jobDateInput.value,
-                origin: originVal,
+                origin: originVal, 
                 destinations: destinations,
                 isOptimized: optimizeRouteCheckbox.checked,
                 contactName: contactNameInput.value.trim(),
@@ -3157,7 +3158,7 @@ Wolfe.BT@TangentLLC
             const destinationCount = destinationsContainer.children.length;
             const newDestDiv = document.createElement('div');
             newDestDiv.className = 'flex items-center space-x-2';
-
+            
             // Create container for web component
             const inputContainer = document.createElement('div');
             inputContainer.className = "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -3184,7 +3185,7 @@ Wolfe.BT@TangentLLC
             removeBtn.type = 'button';
             removeBtn.className = `remove-destination-btn p-1 text-red-400 hover:text-red-300 ${destinationCount === 0 ? 'hidden' : ''}`;
             removeBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-
+            
             newDestDiv.appendChild(inputContainer);
             newDestDiv.appendChild(removeBtn);
 
