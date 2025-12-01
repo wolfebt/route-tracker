@@ -13,6 +13,13 @@ Wolfe.BT@TangentLLC
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
+        /* Dark Theme for GMP Autocomplete */
+        gmp-place-autocomplete {
+            --gmp-px-color-surface: #374151; /* gray-700 */
+            --gmp-px-color-on-surface: #e5e7eb; /* gray-200 */
+            --gmp-px-color-on-surface-variant: #9ca3af; /* gray-400 */
+            --gmp-px-color-primary: #2563eb; /* blue-600 */
+        }
         #map, #public-map, #public-driver-map { height: 100%; width: 100%; }
         /* Custom scrollbar for dark theme */
         ::-webkit-scrollbar { width: 8px; }
@@ -726,6 +733,13 @@ Wolfe.BT@TangentLLC
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
             <h3 class="text-xl font-bold text-white mb-6">Settings</h3>
             <div class="space-y-4">
+                <div>
+                    <label for="google-maps-api-key-input" class="block text-sm font-medium text-gray-300">Google Maps API Key</label>
+                    <div class="flex space-x-2 mt-1">
+                        <input type="password" id="google-maps-api-key-input" placeholder="Enter API Key" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="save-api-key-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0">Save</button>
+                    </div>
+                </div>
                 <button id="open-profile-modal-btn" class="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">Edit Profile</button>
                 <button id="open-user-guide-btn" class="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">User Guide</button>
                 <button id="open-invite-modal-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Invite Others</button>
@@ -744,7 +758,7 @@ Wolfe.BT@TangentLLC
         // --- Wolfe.BT@TangentLLC ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, getDoc, arrayUnion, arrayRemove, runTransaction, enableIndexedDbPersistence, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, addDoc, serverTimestamp, GeoPoint, deleteDoc, query, where, getDocs, updateDoc, writeBatch, getDoc, arrayUnion, arrayRemove, runTransaction, Timestamp, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
         import { setOptions, importLibrary } from "https://esm.sh/@googlemaps/js-api-loader";
 
@@ -853,6 +867,8 @@ Wolfe.BT@TangentLLC
         
         const settingsModal = document.getElementById('settings-modal');
         const settingsCancelBtn = document.getElementById('settings-cancel-btn');
+        const googleMapsApiKeyInput = document.getElementById('google-maps-api-key-input');
+        const saveApiKeyBtn = document.getElementById('save-api-key-btn');
         const openProfileModalBtn = document.getElementById('open-profile-modal-btn');
         const adminControls = document.getElementById('admin-controls');
         const openAdminSettingsBtn = document.getElementById('open-admin-settings-btn');
@@ -960,7 +976,7 @@ Wolfe.BT@TangentLLC
             globalUnsubscribes: [],
             companyUnsubscribes: [],
             currentJobChatUnsubscribe: null,
-            autocompleteInstances: [],
+            // autocompleteInstances removed
             passwordJoinCompanyId: null,
             currentJobIdForModal: null,
         };
@@ -1016,9 +1032,6 @@ Wolfe.BT@TangentLLC
                 zoom: 4,
                 disableDefaultUI: true,
                 mapId: 'DEMO_MAP_ID', // REQUIRED for Advanced Markers
-                styles: [ 
-                    { elementType: "geometry", stylers: [{ color: "#242f3e" }] }, { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] }, { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] }, { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] }, { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] }, { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] }, { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] }, { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] }, { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] }, { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] }, { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] }, { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] }, { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] }, { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] }, { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] }, { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] },
-                ],
             };
             const map = new google.maps.Map(mapElement, mapOptions);
             
@@ -1058,15 +1071,12 @@ Wolfe.BT@TangentLLC
             try {
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
-                db = getFirestore(app);
-                storage = getStorage(app);
-                await enableIndexedDbPersistence(db).catch(err => {
-                    if (err.code == 'failed-precondition') {
-                        console.warn("Firestore persistence failed. Multiple tabs open?");
-                    } else if (err.code == 'unimplemented') {
-                        console.warn("Firestore persistence not available in this browser.");
-                    }
+                db = initializeFirestore(app, {
+                    localCache: persistentLocalCache({
+                        tabManager: persistentMultipleTabManager()
+                    })
                 });
+                storage = getStorage(app);
 
                 // Define base paths
                 AppState.globalUsersPath = `/artifacts/${appId}/public/data/users`;
@@ -1999,17 +2009,25 @@ Wolfe.BT@TangentLLC
         }
 
         async function loadGoogleMapsScript() {
-            const apiKey = "AIzaSyDUzkfgu-6zuMHoH-UV5vzFQySSjwAD9u8";
+            const apiKey = localStorage.getItem('googleMapsApiKey');
+
+            if (!apiKey) {
+                console.warn("Google Maps API Key not found in localStorage.");
+                settingsModal.classList.remove('hidden');
+                document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-yellow-400">API Key Missing</p><p class="text-gray-400">Please enter your Google Maps API Key in Settings.</p></div>`;
+                return;
+            }
+
             // Use the new functional API: setOptions()
             setOptions({
                 apiKey: apiKey,
-                version: "quarterly",
+                version: "weekly",
             });
 
             try {
                 // Use the new functional API: importLibrary()
                 await importLibrary('maps');
-                await importLibrary('places');
+                const { PlaceAutocompleteElement } = await importLibrary('places');
                 await importLibrary('routes');
                 await importLibrary('marker');
                 
@@ -2020,24 +2038,58 @@ Wolfe.BT@TangentLLC
 
             } catch (e) {
                 console.error("Error loading Google Maps script:", e);
-                document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Map Script Error</p></div>`;
+                const isAuthError = e.message && (e.message.includes("ExpiredKeyMapError") || e.message.includes("InvalidKeyMapError") || e.message.includes("NotAuthorizedMapError"));
+                let errorMsg = "Map Script Error";
+                if (isAuthError) {
+                    errorMsg = "Invalid or Expired API Key. Please update in Settings.";
+                     localStorage.removeItem('googleMapsApiKey');
+                     settingsModal.classList.remove('hidden');
+                }
+                document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">${errorMsg}</p></div>`;
             }
         }
 
         function setupAutocomplete() {
-            const inputs = [
-                document.getElementById('job-origin-input'),
-                document.getElementById('location-share-destination')
-            ];
-            inputs.forEach(input => {
-                if (input) {
-                    const autocomplete = new google.maps.places.Autocomplete(input, {
-                        fields: ["address_components", "geometry", "icon", "name"],
-                        strictBounds: false,
-                    });
-                    AppState.autocompleteInstances.push(autocomplete);
-                }
-            });
+            // Deprecated: google.maps.places.Autocomplete
+            // Replaced by gmp-place-autocomplete in addDestinationInput and manual replacements below.
+            // This function is kept to initialize the 'Job Origin' and 'Location Share Destination' which are static in HTML.
+
+            // Re-creating static inputs as gmp-place-autocomplete is complex due to the need to replace DOM elements.
+            // Instead, we will transform the existing inputs into containers for the web component.
+
+            const originInput = document.getElementById('job-origin-input');
+            if (originInput && originInput.tagName === 'INPUT') {
+                const container = document.createElement('div');
+                container.id = 'job-origin-container';
+                container.className = originInput.className;
+                container.style.padding = '0'; // Remove padding from container to let component fill it
+                container.style.border = 'none';
+
+                originInput.parentNode.replaceChild(container, originInput);
+
+                const placeAutocomplete = document.createElement('gmp-place-autocomplete');
+                placeAutocomplete.id = 'job-origin-input'; // Keep ID for reference
+                placeAutocomplete.placeholder = 'Job Origin';
+                placeAutocomplete.className = 'w-full';
+                container.appendChild(placeAutocomplete);
+            }
+
+            const shareDestInput = document.getElementById('location-share-destination');
+            if (shareDestInput && shareDestInput.tagName === 'INPUT') {
+                 const container = document.createElement('div');
+                container.id = 'location-share-destination-container';
+                container.className = shareDestInput.className;
+                container.style.padding = '0';
+                container.style.border = 'none';
+
+                shareDestInput.parentNode.replaceChild(container, shareDestInput);
+
+                const placeAutocomplete = document.createElement('gmp-place-autocomplete');
+                placeAutocomplete.id = 'location-share-destination';
+                placeAutocomplete.placeholder = 'Enter a destination (optional)';
+                placeAutocomplete.className = 'w-full';
+                container.appendChild(placeAutocomplete);
+            }
         }
 
 
@@ -2279,7 +2331,20 @@ Wolfe.BT@TangentLLC
         });
 
         settingsBtn.addEventListener('click', () => {
+            googleMapsApiKeyInput.value = localStorage.getItem('googleMapsApiKey') || '';
             settingsModal.classList.remove('hidden');
+        });
+
+        saveApiKeyBtn.addEventListener('click', () => {
+            const key = googleMapsApiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem('googleMapsApiKey', key);
+                showToast('API Key saved. Reloading...', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                localStorage.removeItem('googleMapsApiKey');
+                showToast('API Key cleared.', 'info');
+            }
         });
 
         openProfileModalBtn.addEventListener('click', () => {
@@ -2545,7 +2610,28 @@ Wolfe.BT@TangentLLC
             const button = document.getElementById('create-job-submit-btn');
             showSpinner(button);
 
-            const destinations = Array.from(destinationsContainer.querySelectorAll('input')).map(input => input.value.trim()).filter(val => val);
+            // Handle gmp-place-autocomplete elements
+            const getPlaceValue = (elementId) => {
+                const el = document.getElementById(elementId);
+                // Check if it's a web component or fallback
+                if (el && el.tagName === 'GMP-PLACE-AUTOCOMPLETE') {
+                    const place = el.place;
+                    if (place) return place.formatted_address || place.name;
+                    // Fallback: If no place selected, check if we stored an original value (for edit mode)
+                    return el.dataset.originalValue || '';
+                }
+                return el ? el.value.trim() : '';
+            };
+
+            const originVal = getPlaceValue('job-origin-input');
+
+            // Destinations
+            const destinationElements = Array.from(destinationsContainer.querySelectorAll('gmp-place-autocomplete'));
+            const destinations = destinationElements.map(el => {
+                const place = el.getPlace ? el.getPlace() : null;
+                return place ? (place.formatted_address || place.name) : (el.value || '');
+            }).filter(val => val);
+
             if (destinations.length === 0) {
                 showToast('Please add at least one destination.', 'error');
                 hideSpinner(button);
@@ -2557,7 +2643,7 @@ Wolfe.BT@TangentLLC
             const jobData = { 
                 jobName: jobNameInput.value.trim(), 
                 jobDate: jobDateInput.value,
-                origin: jobOriginInput.value.trim(), 
+                origin: originVal,
                 destinations: destinations,
                 isOptimized: optimizeRouteCheckbox.checked,
                 contactName: contactNameInput.value.trim(),
@@ -3012,24 +3098,43 @@ Wolfe.BT@TangentLLC
             const destinationCount = destinationsContainer.children.length;
             const newDestDiv = document.createElement('div');
             newDestDiv.className = 'flex items-center space-x-2';
-            newDestDiv.innerHTML = `
-                <input type="text" placeholder="Destination ${destinationCount + 1}" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" value="${value}">
-                <button type="button" class="remove-destination-btn p-1 text-red-400 hover:text-red-300 ${destinationCount === 0 ? 'hidden' : ''}">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </button>
-            `;
-            destinationsContainer.appendChild(newDestDiv);
-            const newInput = newDestDiv.querySelector('input');
-            const autocomplete = new google.maps.places.Autocomplete(newInput, {
-                fields: ["address_components", "geometry", "icon", "name"],
-                strictBounds: false,
-            });
-            AppState.autocompleteInstances.push(autocomplete);
 
-            newDestDiv.querySelector('.remove-destination-btn').addEventListener('click', () => {
+            // Create container for web component
+            const inputContainer = document.createElement('div');
+            inputContainer.className = "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500";
+            inputContainer.style.padding = '0'; // Let component fill it
+            inputContainer.style.border = 'none';
+
+            if (value) {
+                // If editing, use a standard input to show the current value
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = value;
+                input.className = "w-full px-4 py-2 bg-gray-700 border-none text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 destination-input";
+                input.placeholder = `Destination ${destinationCount + 1}`;
+                inputContainer.appendChild(input);
+            } else {
+                 // For new destinations, use the autocomplete
+                const placeAutocomplete = document.createElement('gmp-place-autocomplete');
+                placeAutocomplete.placeholder = `Destination ${destinationCount + 1}`;
+                placeAutocomplete.className = 'w-full destination-input';
+                inputContainer.appendChild(placeAutocomplete);
+            }
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = `remove-destination-btn p-1 text-red-400 hover:text-red-300 ${destinationCount === 0 ? 'hidden' : ''}`;
+            removeBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+
+            newDestDiv.appendChild(inputContainer);
+            newDestDiv.appendChild(removeBtn);
+
+            destinationsContainer.appendChild(newDestDiv);
+
+            removeBtn.addEventListener('click', () => {
                 newDestDiv.remove();
-                Array.from(destinationsContainer.children).forEach((child, index) => {
-                    child.querySelector('input').placeholder = `Destination ${index + 1}`;
+                Array.from(destinationsContainer.querySelectorAll('gmp-place-autocomplete')).forEach((el, index) => {
+                    el.placeholder = `Destination ${index + 1}`;
                 });
                  optimizeRouteContainer.classList.toggle('hidden', destinationsContainer.children.length <= 1);
             });
@@ -3216,7 +3321,18 @@ Wolfe.BT@TangentLLC
         });
 
         setPersonalRouteBtn.addEventListener('click', () => {
-            const destination = locationShareDestinationInput.value.trim();
+            let destination = '';
+            const destEl = document.getElementById('location-share-destination');
+            if (destEl && destEl.tagName === 'GMP-PLACE-AUTOCOMPLETE') {
+                 if (destEl.getPlace && destEl.getPlace()) {
+                     destination = destEl.getPlace().formatted_address || destEl.getPlace().name;
+                 } else {
+                     destination = destEl.value || '';
+                 }
+            } else {
+                destination = destEl ? destEl.value.trim() : '';
+            }
+
             if (!destination) {
                 showToast("Please enter a destination.", "error");
                 return;
