@@ -983,6 +983,7 @@ Wolfe.BT@TangentLLC
             // autocompleteInstances removed
             passwordJoinCompanyId: null,
             currentJobIdForModal: null,
+            useAdvancedMarkers: false,
         };
 
         // --- Helper Functions ---
@@ -1023,7 +1024,7 @@ Wolfe.BT@TangentLLC
         }
 
         // --- Main App Initialization ---
-        function initMap(elementId = "map") {
+        function initMap(elementId = "map", forceSimple = false) {
             const mapElement = document.getElementById(elementId);
             if (!window.google || !window.google.maps) {
                 console.error("Google Maps script not loaded or API object not available.");
@@ -1038,6 +1039,13 @@ Wolfe.BT@TangentLLC
                 disableDefaultUI: true,
                 mapId: mapId, // REQUIRED for Advanced Markers
             };
+
+            AppState.useAdvancedMarkers = false;
+            if (mapId) {
+                mapOptions.mapId = mapId;
+                AppState.useAdvancedMarkers = true;
+            }
+
             const map = new google.maps.Map(mapElement, mapOptions);
             
             if (elementId === 'public-map') AppState.publicMap = map;
@@ -1208,12 +1216,20 @@ Wolfe.BT@TangentLLC
 
                     if (driver.location) {
                         const driverPos = { lat: driver.location.latitude, lng: driver.location.longitude };
-                        AppState.driverMapMarkers['publicDriver'] = new google.maps.marker.AdvancedMarkerElement({
-                            position: driverPos,
-                            map: AppState.publicDriverMap,
-                            title: "Driver Location",
-                            content: buildMarkerContent(driver.name, '#4285F4')
-                        });
+                        // Note: public views don't have access to AppState.useAdvancedMarkers from initMap easily as initMap is called locally.
+                        // But initMap logic sets AppState.useAdvancedMarkers global.
+                        if (AppState.useAdvancedMarkers && google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+                             AppState.driverMapMarkers['publicDriver'] = new google.maps.marker.AdvancedMarkerElement({
+                                position: driverPos,
+                                map: AppState.publicDriverMap,
+                                title: "Driver Location",
+                                content: buildMarkerContent(driver.name, '#4285F4')
+                            });
+                        } else {
+                            AppState.driverMapMarkers['publicDriver'] = new google.maps.Marker({
+                                position: driverPos, map: AppState.publicDriverMap, title: "Driver Location"
+                            });
+                        }
                         
                         if (driver.destination && AppState.directionsService) {
                             AppState.directionsService.route({
@@ -1300,12 +1316,18 @@ Wolfe.BT@TangentLLC
 
                     if (job.driverLocation) {
                         const driverPos = { lat: job.driverLocation.latitude, lng: job.driverLocation.longitude };
-                        AppState.driverMapMarkers['publicDriver'] = new google.maps.marker.AdvancedMarkerElement({
-                            position: driverPos,
-                            map: AppState.publicMap,
-                            title: "Driver Location",
-                            content: buildMarkerContent('DR', '#4285F4')
-                        });
+                        if (AppState.useAdvancedMarkers && google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+                             AppState.driverMapMarkers['publicDriver'] = new google.maps.marker.AdvancedMarkerElement({
+                                position: driverPos,
+                                map: AppState.publicMap,
+                                title: "Driver Location",
+                                content: buildMarkerContent('DR', '#4285F4')
+                            });
+                        } else {
+                            AppState.driverMapMarkers['publicDriver'] = new google.maps.Marker({
+                                position: driverPos, map: AppState.publicMap, title: "Driver Location"
+                            });
+                        }
                         
                          if (AppState.directionsService) {
                             const renderer = new google.maps.DirectionsRenderer({
@@ -1769,11 +1791,21 @@ Wolfe.BT@TangentLLC
                     if (AppState.driverMapMarkers[driver.id]) {
                         AppState.driverMapMarkers[driver.id].position = position;
                     } else {
-                        AppState.driverMapMarkers[driver.id] = new google.maps.marker.AdvancedMarkerElement({
-                            position, map: AppState.map,
-                            content: buildMarkerContent(driver.name, '#f39c12'),
-                            title: driver.name || 'Driver'
-                        });
+                        if (AppState.useAdvancedMarkers && google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+                             AppState.driverMapMarkers[driver.id] = new google.maps.marker.AdvancedMarkerElement({
+                                position, map: AppState.map,
+                                content: buildMarkerContent(driver.name, '#f39c12'),
+                                title: driver.name || 'Driver'
+                            });
+                        } else {
+                            // Fallback to legacy Marker
+                            AppState.driverMapMarkers[driver.id] = new google.maps.Marker({
+                                position, map: AppState.map,
+                                title: driver.name || 'Driver',
+                                // Legacy marker doesn't support custom HTML content easily without SVG or overlay.
+                                // We'll just use default marker for fallback.
+                            });
+                        }
                     }
                 });
 
@@ -1797,10 +1829,16 @@ Wolfe.BT@TangentLLC
                     if (AppState.userMarker) {
                         AppState.userMarker.position = pos;
                     } else {
-                        AppState.userMarker = new google.maps.marker.AdvancedMarkerElement({
-                            position: pos, map: AppState.map, title: 'Your Location',
-                            content: buildMarkerContent('ME', '#4285F4')
-                        });
+                        if (AppState.useAdvancedMarkers && google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+                             AppState.userMarker = new google.maps.marker.AdvancedMarkerElement({
+                                position: pos, map: AppState.map, title: 'Your Location',
+                                content: buildMarkerContent('ME', '#4285F4')
+                            });
+                        } else {
+                            AppState.userMarker = new google.maps.Marker({
+                                position: pos, map: AppState.map, title: 'Your Location'
+                            });
+                        }
                     }
                 } else if (AppState.userMarker) {
                     AppState.userMarker.map = null;
@@ -2037,6 +2075,23 @@ Wolfe.BT@TangentLLC
                 await importLibrary('marker');
                 
                 console.log("Google Maps libraries loaded successfully.");
+
+                // Set up global auth failure handler
+                window.gm_authFailure = () => {
+                     console.error("Google Maps Authentication Failed.");
+                     if (AppState.useAdvancedMarkers) {
+                         console.warn("Attempting fallback to standard map (disabling Advanced Markers)...");
+                         showToast("Map configuration invalid. Switching to standard map.", "warning");
+                         // Disable for current session
+                         AppState.useAdvancedMarkers = false;
+                         // Force re-init without mapId
+                         if(!AppState.publicMap && !AppState.publicDriverMap) initMap("map", true);
+                     } else {
+                         showToast("Google Maps Auth Failed. Check API Key.", "error");
+                         document.getElementById("map").innerHTML = `<div class="text-center p-4"><p class="font-bold text-red-400">Authentication Failed</p><p class="text-gray-400">Please check your API Key in Settings.</p></div>`;
+                         settingsModal.classList.remove('hidden');
+                     }
+                };
                 if(!AppState.publicMap && !AppState.publicDriverMap) initMap(); 
                 AppState.directionsService = new google.maps.DirectionsService();
                 setupAutocomplete();
