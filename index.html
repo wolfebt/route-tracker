@@ -735,11 +735,14 @@ Wolfe.BT@TangentLLC
             <div class="space-y-4">
                 <div>
                     <label for="google-maps-api-key-input" class="block text-sm font-medium text-gray-300">Google Maps API Key</label>
-                    <div class="flex space-x-2 mt-1">
-                        <input type="password" id="google-maps-api-key-input" placeholder="Enter API Key" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <button id="save-api-key-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0">Save</button>
-                    </div>
+                    <input type="password" id="google-maps-api-key-input" placeholder="Enter API Key" class="w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
+                <div>
+                    <label for="google-maps-map-id-input" class="block text-sm font-medium text-gray-300">Google Maps Map ID</label>
+                    <input type="text" id="google-maps-map-id-input" placeholder="Enter Map ID" class="w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p class="text-xs text-gray-400 mt-1">Required for Advanced Markers. Create one in Google Cloud Console.</p>
+                </div>
+                <button id="save-settings-btn" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Settings</button>
                 <button id="open-profile-modal-btn" class="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">Edit Profile</button>
                 <button id="open-user-guide-btn" class="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600">User Guide</button>
                 <button id="open-invite-modal-btn" class="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">Invite Others</button>
@@ -868,7 +871,8 @@ Wolfe.BT@TangentLLC
         const settingsModal = document.getElementById('settings-modal');
         const settingsCancelBtn = document.getElementById('settings-cancel-btn');
         const googleMapsApiKeyInput = document.getElementById('google-maps-api-key-input');
-        const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+        const googleMapsMapIdInput = document.getElementById('google-maps-map-id-input');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
         const openProfileModalBtn = document.getElementById('open-profile-modal-btn');
         const adminControls = document.getElementById('admin-controls');
         const openAdminSettingsBtn = document.getElementById('open-admin-settings-btn');
@@ -1027,11 +1031,12 @@ Wolfe.BT@TangentLLC
                 return null;
             }
             if(mapElement) mapElement.innerHTML = ''; 
+            const mapId = localStorage.getItem('googleMapsMapId') || 'DEMO_MAP_ID';
             const mapOptions = {
                 center: { lat: 39.8283, lng: -98.5795 }, // Center of the US
                 zoom: 4,
                 disableDefaultUI: true,
-                mapId: 'DEMO_MAP_ID', // REQUIRED for Advanced Markers
+                mapId: mapId, // REQUIRED for Advanced Markers
             };
             const map = new google.maps.Map(mapElement, mapOptions);
             
@@ -2010,7 +2015,7 @@ Wolfe.BT@TangentLLC
 
         async function loadGoogleMapsScript() {
             const apiKey = localStorage.getItem('googleMapsApiKey');
-
+            
             if (!apiKey) {
                 console.warn("Google Maps API Key not found in localStorage.");
                 settingsModal.classList.remove('hidden');
@@ -2053,10 +2058,10 @@ Wolfe.BT@TangentLLC
             // Deprecated: google.maps.places.Autocomplete
             // Replaced by gmp-place-autocomplete in addDestinationInput and manual replacements below.
             // This function is kept to initialize the 'Job Origin' and 'Location Share Destination' which are static in HTML.
-
+            
             // Re-creating static inputs as gmp-place-autocomplete is complex due to the need to replace DOM elements.
             // Instead, we will transform the existing inputs into containers for the web component.
-
+            
             const originInput = document.getElementById('job-origin-input');
             if (originInput && originInput.tagName === 'INPUT') {
                 const container = document.createElement('div');
@@ -2064,13 +2069,13 @@ Wolfe.BT@TangentLLC
                 container.className = originInput.className;
                 container.style.padding = '0'; // Remove padding from container to let component fill it
                 container.style.border = 'none';
-
+                
                 originInput.parentNode.replaceChild(container, originInput);
-
+                
                 const placeAutocomplete = document.createElement('gmp-place-autocomplete');
                 placeAutocomplete.id = 'job-origin-input'; // Keep ID for reference
                 placeAutocomplete.placeholder = 'Job Origin';
-                placeAutocomplete.className = 'w-full';
+                placeAutocomplete.className = 'w-full'; 
                 container.appendChild(placeAutocomplete);
             }
 
@@ -2083,7 +2088,7 @@ Wolfe.BT@TangentLLC
                 container.style.border = 'none';
 
                 shareDestInput.parentNode.replaceChild(container, shareDestInput);
-
+                
                 const placeAutocomplete = document.createElement('gmp-place-autocomplete');
                 placeAutocomplete.id = 'location-share-destination';
                 placeAutocomplete.placeholder = 'Enter a destination (optional)';
@@ -2332,19 +2337,28 @@ Wolfe.BT@TangentLLC
 
         settingsBtn.addEventListener('click', () => {
             googleMapsApiKeyInput.value = localStorage.getItem('googleMapsApiKey') || '';
+            googleMapsMapIdInput.value = localStorage.getItem('googleMapsMapId') || '';
             settingsModal.classList.remove('hidden');
         });
 
-        saveApiKeyBtn.addEventListener('click', () => {
+        saveSettingsBtn.addEventListener('click', () => {
             const key = googleMapsApiKeyInput.value.trim();
+            const mapId = googleMapsMapIdInput.value.trim();
+            
             if (key) {
                 localStorage.setItem('googleMapsApiKey', key);
-                showToast('API Key saved. Reloading...', 'success');
-                setTimeout(() => location.reload(), 1000);
             } else {
                 localStorage.removeItem('googleMapsApiKey');
-                showToast('API Key cleared.', 'info');
             }
+
+            if (mapId) {
+                localStorage.setItem('googleMapsMapId', mapId);
+            } else {
+                localStorage.removeItem('googleMapsMapId');
+            }
+
+            showToast('Settings saved. Reloading...', 'success');
+            setTimeout(() => location.reload(), 1000);
         });
 
         openProfileModalBtn.addEventListener('click', () => {
@@ -2624,12 +2638,17 @@ Wolfe.BT@TangentLLC
             };
 
             const originVal = getPlaceValue('job-origin-input');
-
+            
             // Destinations
-            const destinationElements = Array.from(destinationsContainer.querySelectorAll('gmp-place-autocomplete'));
+            const destinationElements = Array.from(destinationsContainer.querySelectorAll('.destination-input'));
             const destinations = destinationElements.map(el => {
-                const place = el.getPlace ? el.getPlace() : null;
-                return place ? (place.formatted_address || place.name) : (el.value || '');
+                if (el.tagName === 'GMP-PLACE-AUTOCOMPLETE') {
+                    const place = el.place;
+                    if (place) return place.formatted_address || place.name;
+                    return el.dataset.originalValue || ''; // Should be unused if we use input for edits, but safe
+                }
+                // Standard input fallback
+                return el.value.trim();
             }).filter(val => val);
 
             if (destinations.length === 0) {
@@ -2643,7 +2662,7 @@ Wolfe.BT@TangentLLC
             const jobData = { 
                 jobName: jobNameInput.value.trim(), 
                 jobDate: jobDateInput.value,
-                origin: originVal,
+                origin: originVal, 
                 destinations: destinations,
                 isOptimized: optimizeRouteCheckbox.checked,
                 contactName: contactNameInput.value.trim(),
@@ -3098,7 +3117,7 @@ Wolfe.BT@TangentLLC
             const destinationCount = destinationsContainer.children.length;
             const newDestDiv = document.createElement('div');
             newDestDiv.className = 'flex items-center space-x-2';
-
+            
             // Create container for web component
             const inputContainer = document.createElement('div');
             inputContainer.className = "w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -3125,7 +3144,7 @@ Wolfe.BT@TangentLLC
             removeBtn.type = 'button';
             removeBtn.className = `remove-destination-btn p-1 text-red-400 hover:text-red-300 ${destinationCount === 0 ? 'hidden' : ''}`;
             removeBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-
+            
             newDestDiv.appendChild(inputContainer);
             newDestDiv.appendChild(removeBtn);
 
@@ -3133,7 +3152,7 @@ Wolfe.BT@TangentLLC
 
             removeBtn.addEventListener('click', () => {
                 newDestDiv.remove();
-                Array.from(destinationsContainer.querySelectorAll('gmp-place-autocomplete')).forEach((el, index) => {
+                Array.from(destinationsContainer.querySelectorAll('.destination-input')).forEach((el, index) => {
                     el.placeholder = `Destination ${index + 1}`;
                 });
                  optimizeRouteContainer.classList.toggle('hidden', destinationsContainer.children.length <= 1);
